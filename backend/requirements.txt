@@ -1,0 +1,17 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+python-multipart==0.0.9
+pydantic==2.7.4
+PyMuPDF==1.24.9
+sentence-transformers==3.0.1
+numpy==1.26.4
+scikit-learn==1.4.2
+langchain==0.2.6
+langchain-openai==0.1.14
+langchain-google-genai==1.0.6
+langchain-community==0.2.6
+requests==2.32.3
+pydub==0.25.1
+aiofiles==24.1.0
+google-cloud-texttospeech==2.16.4
+python-dotenv==1.0.1

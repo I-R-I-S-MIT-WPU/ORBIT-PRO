@@ -11,6 +11,11 @@ let currentSnippets = [];
 let HEALTH = {};
 let HAS_ANALYSIS = false;
 
+// Text selection variables
+let selectedText = "";
+let textSelectionInsights = null;
+let isProcessingTextSelection = false;
+
 // Toast notification system with debouncing
 let toastTimeout = null;
 let lastToastMessage = '';
@@ -459,7 +464,9 @@ function initAdobeView(url) {
             window.AdobeDC.View.Enum.CallbackType.EVENT_LISTENER,
             (event) => {
               if (event.type === 'PAGE_VIEW_CHANGED' && event.data && event.data.pageNumber) {
+                const oldPage = CURRENT_PAGE;
                 CURRENT_PAGE = event.data.pageNumber;
+                console.log(`Page changed from ${oldPage} to ${CURRENT_PAGE}`);
                 updatePageCount();
 
                 // Update the goto input field
@@ -468,16 +475,44 @@ function initAdobeView(url) {
                   gotoInput.value = CURRENT_PAGE;
                 }
               }
-            },
-            {
-              enableFilePreviewEvents: true,
-              enableAnnotationEvents: false
+
+              // Handle text selection events
+              if (event.type === 'TEXT_SELECTION_CHANGED' && event.data) {
+                const selectedText = event.data.selectedText || '';
+                console.log('Text selection changed:', selectedText);
+
+                if (selectedText && selectedText.trim().length > 10) { // Only process meaningful selections
+                  console.log('Processing meaningful text selection:', selectedText.substring(0, 100) + '...');
+                  handleTextSelection(selectedText, CURRENT_PAGE);
+
+                  // Also refresh recommendations for current document
+                  try { getDocumentRecommendations(); } catch (_) { }
+                }
+              }
+
+              // Handle text selection start
+              if (event.type === 'TEXT_SELECTION_STARTED') {
+                console.log('Text selection started');
+                // Clear previous insights when new selection starts
+                hideTextSelectionUI();
+              }
+
+              // Handle text selection end
+              if (event.type === 'TEXT_SELECTION_ENDED') {
+                console.log('Text selection ended');
+              }
+
+              // Debug: Log all events to identify potential conflicts
+              console.log('Adobe viewer event:', event.type, event.data);
             }
           );
         }
 
         // Set up the toolbar
         setupToolbar();
+
+        // Set up text selection events
+        setupTextSelectionEvents();
 
         // Update current document name
         updateCurrentDocName();
@@ -999,6 +1034,59 @@ window.addEventListener('adobe_dc_view_sdk_error', (event) => {
   }
 });
 
+function showTextSelectionLoading() {
+  let panel = document.getElementById('textSelectionPanel');
+
+  // Create panel if it doesn't exist
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'textSelectionPanel';
+    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden';
+    document.body.appendChild(panel);
+  }
+
+  panel.innerHTML = `
+    <div class="p-6">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+        <h3 class="text-lg font-semibold text-slate-800 dark:text-white">Analyzing Text Selection...</h3>
+      </div>
+      
+      <!-- Progress Bar -->
+      <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-4">
+        <div id="textSelectionProgress" class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+      </div>
+      
+      <div class="text-sm text-slate-600 dark:text-slate-400">
+        <div id="textSelectionStatus">Initializing analysis...</div>
+      </div>
+    </div>
+  `;
+
+  panel.classList.remove('hidden');
+
+  // Simulate progress updates
+  let progress = 0;
+  const progressBar = document.getElementById('textSelectionProgress');
+  const status = document.getElementById('textSelectionStatus');
+
+  const progressInterval = setInterval(() => {
+    progress += Math.random() * 15;
+    if (progress > 90) progress = 90;
+
+    if (progressBar) progressBar.style.width = progress + '%';
+    if (status) {
+      if (progress < 30) status.textContent = 'Extracting text context...';
+      else if (progress < 60) status.textContent = 'Searching across documents...';
+      else if (progress < 90) status.textContent = 'Generating insights...';
+      else status.textContent = 'Finalizing results...';
+    }
+  }, 200);
+
+  // Store interval for cleanup
+  panel.dataset.progressInterval = progressInterval;
+}
+
 function setupToolbar() {
   const prevBtn = document.getElementById('prevPageBtn');
   const nextBtn = document.getElementById('nextPageBtn');
@@ -1009,8 +1097,9 @@ function setupToolbar() {
   const zoomOutBtn = document.getElementById('zoomOutBtn');
   const searchBtn = document.getElementById('searchBtn');
   const searchInput = document.getElementById('searchInput');
+  const textSelectionBtn = document.getElementById('textSelectionBtn');
 
-  if (!prevBtn || !nextBtn || !gotoBtn || !gotoInput || !pageCountEl || !zoomInBtn || !zoomOutBtn || !searchBtn || !searchInput) {
+  if (!prevBtn || !nextBtn || !gotoBtn || !gotoInput || !pageCountEl || !zoomInBtn || !zoomOutBtn || !searchBtn || !searchInput || !textSelectionBtn) {
     console.error('One or more toolbar elements not found');
     return;
   }
@@ -1154,6 +1243,14 @@ function setupToolbar() {
         toast('Please enter a search term.', 'warning');
       }
     }
+  });
+
+  // Text Selection functionality
+  textSelectionBtn.addEventListener('click', async () => {
+    // Try to get current page from viewer first
+    await updateCurrentPageFromViewer();
+    // Show a clean text input modal instead of trying to get selected text
+    showTextInputModal();
   });
 
   async function performSearch(query) {
@@ -1357,10 +1454,14 @@ async function analyze() {
   const job = document.getElementById('job').value.trim();
   const docs = getSelectedDocs();
 
-  if (!persona || !job || !docs.length) {
-    toast('Please enter persona, job, and upload/select documents', 'warning');
+  if (!docs.length) {
+    toast('Please upload/select documents to analyze', 'warning');
     return;
   }
+
+  // Persona and job are now optional
+  const personaText = persona || 'General User';
+  const jobText = job || 'Understanding document content and structure';
 
   const btn = document.getElementById('analyzeBtn');
   const prev = btn.innerHTML;
@@ -1390,7 +1491,7 @@ async function analyze() {
   };
   setProgress(1, docs[0] || '', 'Starting...');
 
-  const payload = { persona, job, documents: docs, approach: 'nlp', method: 'auto', top_k: 5 };
+  const payload = { persona: personaText, job: jobText, documents: docs, approach: 'nlp', method: 'auto', top_k: 5 };
 
   try {
     // Kick off async job
@@ -1487,41 +1588,128 @@ async function podcast() {
   btn.textContent = 'Creating Podcast...';
 
   try {
-    // Create a more structured podcast script
-    const podcastScript = await createPodcastScript(persona, job);
+    // Create enhanced podcast data with sections and snippets
+    const sections = currentSections.slice(0, 3); // Top 3 sections
+    const snippets = currentSnippets.slice(0, 5); // Top 5 snippets
 
-    if (!podcastScript) {
-      throw new Error('Could not generate podcast content');
-    }
+    // Create related insights from sections and snippets
+    const relatedInsights = [];
 
-    // Send the script to the server for text-to-speech
-    const res = await fetch('/api/podcast', {
+    // Add sections as insights
+    sections.forEach((section, index) => {
+      relatedInsights.push({
+        document: section.document,
+        page_number: section.page_number,
+        section_title: section.section_title,
+        relevant_text: section.section_summary || section.section_title,
+        relevance_score: 0.9 - (index * 0.1), // Decreasing relevance
+        insight_type: "section",
+        jump_url: `/files/${section.document}#page=${section.page_number}`
+      });
+    });
+
+    // Add snippets as insights
+    snippets.forEach((snippet, index) => {
+      relatedInsights.push({
+        document: snippet.document,
+        page_number: snippet.page_number,
+        section_title: `Key Insight ${index + 1}`,
+        relevant_text: snippet.refined_text,
+        relevance_score: 0.85 - (index * 0.05), // Decreasing relevance
+        insight_type: "snippet",
+        jump_url: `/files/${snippet.document}#page=${snippet.page_number}`
+      });
+    });
+
+    // Use the ENHANCED podcast API for dual voices and better quality
+    const enhancedPodcastData = {
+      selected_text: sections.length > 0 ? sections[0].section_summary || sections[0].section_title :
+        snippets.length > 0 ? snippets[0].refined_text :
+          "Analysis of selected documents",
+      related_insights: relatedInsights,
+      document: currentDoc ? currentDoc.split('/').pop() : 'analyzed_documents',
+      page_number: CURRENT_PAGE || 1,
+      conversation_style: "academic",
+      persona: persona,
+      job: job
+    };
+
+    console.log('Creating enhanced podcast with data:', enhancedPodcastData);
+
+    // Send to enhanced podcast endpoint for dual voice generation
+    const res = await fetch('/api/enhanced-podcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: podcastScript,
-        output_name: 'podcast.mp3',
-        voice: 'en-US-Studio-O', // High-quality voice
-        speed: 0.9, // Slightly slower for better comprehension
-        pitch: 1.0, // Normal pitch
-      })
+      body: JSON.stringify(enhancedPodcastData)
     });
 
     if (!res.ok) throw new Error(await res.text());
 
     const data = await res.json();
     const player = document.getElementById('player');
-    player.src = data.url;
 
-    // Add metadata for better UX
-    player.setAttribute('title', `Podcast: ${job}`);
+    console.log('Enhanced podcast response:', data);
+    console.log('Audio URL from API:', data.url);
+
+    // Set up the audio player with new source
+    const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+    console.log('Final audio URL:', audioUrl);
+
+    player.src = audioUrl;
+    player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
+
+    // Reset audio player initialization to ensure proper setup
+    resetAudioPlayerInitialization();
+
+    // Initialize audio player UI before loading
+    initializeAudioPlayer();
+
+    // Clear any existing audio info
+    const audioInfo = document.getElementById('audioInfo');
+    const audioTitle = document.getElementById('audioTitle');
+    if (audioInfo) audioInfo.classList.add('hidden');
+    if (audioTitle) audioTitle.textContent = 'Loading dual voice podcast...';
+
+    // Wait for audio to load metadata
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Audio loading timeout'));
+      }, 15000); // 15 second timeout for enhanced podcast
+
+      player.addEventListener('loadedmetadata', () => {
+        clearTimeout(timeout);
+        resolve();
+      }, { once: true });
+
+      player.addEventListener('error', (e) => {
+        clearTimeout(timeout);
+        reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+      }, { once: true });
+
+      player.load(); // Force load
+    });
+
+    // Initialize audio player UI if not already done
+    initializeAudioPlayer();
 
     // Play the podcast
     await player.play();
-    toast('Podcast is now playing', 'success');
+
+    // Update UI to show it's playing
+    const playPauseBtn = document.getElementById('playPauseBtn');
+
+    if (playPauseBtn) {
+      const icon = playPauseBtn.querySelector('i');
+      if (icon) icon.className = 'fas fa-pause text-sm';
+    }
+
+    if (audioInfo) audioInfo.classList.remove('hidden');
+    if (audioTitle) audioTitle.textContent = `AI Podcast: ${job} (Dual Voice)`;
+
+    toast('High-quality dual voice podcast is now playing! 🎧', 'success');
 
   } catch (e) {
-    console.error('Podcast error:', e);
+    console.error('Enhanced podcast error:', e);
     toast(`Podcast failed: ${e.message || 'Unknown error'}`, 'error');
   } finally {
     btn.disabled = false;
@@ -1540,18 +1728,18 @@ async function createPodcastScript(persona, job) {
     const personaIntro = persona ? `${persona}` : 'curious learner';
 
     const openers = [
-      `${greeting}! You’re tuned in to a focused deep‑dive designed for ${personaIntro}.`,
+      `${greeting}! You're tuned in to a focused deep-dive designed for ${personaIntro}.`,
       `${greeting}! Welcome back—this session is crafted especially for ${personaIntro}.`,
-      `${greeting}! Let’s get into it—tailored insights for ${personaIntro}.`
+      `${greeting}! Let's get into it—tailored insights for ${personaIntro}.`
     ];
     const bridges = [
-      'Here’s the through‑line that ties it together:',
-      'Let’s connect the dots across sections:',
+      'Here is the through-line that ties it together: ',
+      'Let us connect the dots across sections: ',
       'Zooming out, a few patterns stand out:'
     ];
     const closers = [
       'Thanks for listening—until next time, keep exploring.',
-      'That’s a wrap—stay curious and keep building.',
+      'That is a wrap—stay curious and keep building.',
       'Appreciate your time—go turn these ideas into momentum.'
     ];
 
@@ -1559,14 +1747,14 @@ async function createPodcastScript(persona, job) {
 
     const lines = [];
     // Intro
-    lines.push(`${choose(openers)} We’re tackling ${job || 'our topic today'}, with crisp insights and quick takeaways.`);
+    lines.push(`${choose(openers)} We're tackling ${job || 'our topic today'}, with crisp insights and quick takeaways.`);
 
     // Section highlights
     if (sections.length) {
       lines.push(`First, a fast orientation through the key sections.`);
       sections.forEach((s, i) => {
         const title = (s.section_title || `Topic ${i + 1}`).replace(/\s+/g, ' ').trim();
-        lines.push(`Section ${i + 1}: ${title}. If you’re skimming the PDF, jump to page ${s.page_number}.`);
+        lines.push(`Section ${i + 1}: ${title}. If you're skimming the PDF, jump to page ${s.page_number}.`);
       });
     }
 
@@ -1587,7 +1775,7 @@ async function createPodcastScript(persona, job) {
       lines.push(`Notice how ${titles[0]} sets context that ${titles[1]} elaborates with specifics.`);
     }
     if (snippets.length >= 2) {
-      lines.push(`There’s a subtle tension between two ideas: “${(snippets[0].refined_text || '').slice(0, 80)}” and “${(snippets[1].refined_text || '').slice(0, 80)}.” That contrast is worth exploring.`);
+      lines.push(`There's a subtle tension between two ideas: "${(snippets[0].refined_text || '').slice(0, 80)}" and "${(snippets[1].refined_text || '').slice(0, 80)}." That contrast is worth exploring.`);
     }
 
     // Practical wrap
@@ -1651,4 +1839,1293 @@ async function main() {
 }
 
 window.addEventListener('DOMContentLoaded', main);
+
+// Create podcast from text selection
+async function createPodcastFromTextSelection() {
+  if (!textSelectionInsights) {
+    showNotification('No text selection insights available', 'error');
+    return;
+  }
+
+  // Show podcast generation progress
+  showPodcastGenerationProgress();
+
+  try {
+    const response = await fetch('/api/enhanced-podcast', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        selected_text: textSelectionInsights.selected_text,
+        related_insights: textSelectionInsights.insights || [],
+        document: currentDoc || 'unknown',
+        page_number: CURRENT_PAGE,
+        conversation_style: 'academic',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Hide progress and show success
+    hidePodcastGenerationProgress();
+
+    if (result.url) {
+      showNotification('Podcast generated successfully!', 'success');
+      loadAudio(result.url, `Podcast: ${textSelectionInsights.selected_text.substring(0, 50)}...`);
+    } else {
+      showNotification('Failed to generate podcast', 'error');
+    }
+  } catch (error) {
+    console.error('Error creating podcast:', error);
+    hidePodcastGenerationProgress();
+    showNotification(`Error creating podcast: ${error.message}`, 'error');
+  }
+}
+
+function showPodcastGenerationProgress() {
+  // Create or show podcast progress modal
+  let progressModal = document.getElementById('podcastProgressModal');
+  if (!progressModal) {
+    progressModal = document.createElement('div');
+    progressModal.id = 'podcastProgressModal';
+    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    progressModal.innerHTML = `
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Generating Podcast...</h3>
+          
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+            <div id="podcastProgress" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            <div id="podcastStatus">Initializing podcast generation...</div>
+          </div>
+          
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            This may take a few minutes for high-quality audio
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(progressModal);
+  }
+
+  progressModal.classList.remove('hidden');
+
+  // Simulate progress updates
+  let progress = 0;
+  const progressBar = document.getElementById('podcastProgress');
+  const status = document.getElementById('podcastStatus');
+
+  const progressInterval = setInterval(() => {
+    progress += Math.random() * 8;
+    if (progress > 85) progress = 85;
+
+    if (progressBar) progressBar.style.width = progress + '%';
+    if (status) {
+      if (progress < 20) status.textContent = 'Analyzing selected text...';
+      else if (progress < 40) status.textContent = 'Generating conversation script...';
+      else if (progress < 60) status.textContent = 'Creating voice segments...';
+      else if (progress < 80) status.textContent = 'Mixing audio...';
+      else status.textContent = 'Finalizing podcast...';
+    }
+  }, 300);
+
+  // Store interval for cleanup
+  progressModal.dataset.progressInterval = progressInterval;
+}
+
+function hidePodcastGenerationProgress() {
+  const progressModal = document.getElementById('podcastProgressModal');
+  if (progressModal) {
+    // Clear progress interval
+    const interval = progressModal.dataset.progressInterval;
+    if (interval) clearInterval(parseInt(interval));
+
+    // Hide modal
+    progressModal.classList.add('hidden');
+  }
+}
+
+// Enhanced text selection event handler
+function setupTextSelectionEvents() {
+  if (!adobeViewer || !adobeApis) {
+    console.log("Adobe viewer not ready, retrying in 1 second...");
+    setTimeout(setupTextSelectionEvents, 1000);
+    return;
+  }
+
+  try {
+    // Enable text selection APIs
+    if (adobeApis.enableTextSelection) {
+      adobeApis.enableTextSelection();
+    }
+
+    console.log("✅ Text selection events configured successfully");
+  } catch (error) {
+    console.error("Error setting up text selection events:", error);
+  }
+}
+
+// Text selection functions - defined here so they're available when buttons are clicked
+function handleTextSelection(text, pageNumber) {
+  console.log("Handling text selection:", text.substring(0, 100) + "...", "Page:", pageNumber);
+
+  if (!text || text.trim().length < 10) {
+    console.log("Text too short, ignoring selection");
+    return;
+  }
+
+  // Store the selected text globally
+  selectedText = text.trim();
+
+  // Show loading state
+  showTextSelectionLoading();
+
+  // Call the text selection API
+  fetch('/api/text-selection', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      selected_text: selectedText,
+      document: currentDoc || 'unknown',
+      page_number: pageNumber || CURRENT_PAGE,
+      persona: '', // Will be filled from UI if available
+      job: '',     // Will be filled from UI if available
+    }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      console.log("Text selection response:", data);
+      textSelectionInsights = data;
+      displayTextSelectionInsights(data);
+    })
+    .catch(error => {
+      console.error('Error processing text selection:', error);
+      showNotification(`Error processing text selection: ${error.message}`, 'error');
+    });
+}
+
+function displayTextSelectionInsights(insights) {
+  let panel = document.getElementById('textSelectionPanel');
+
+  // Create panel if it doesn't exist
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'textSelectionPanel';
+    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden';
+    document.body.appendChild(panel);
+  }
+
+  // Clear any existing progress intervals
+  const existingInterval = panel.dataset.progressInterval;
+  if (existingInterval) {
+    clearInterval(parseInt(existingInterval));
+  }
+
+  panel.innerHTML = `
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-800 dark:text-white">Text Selection Insights</h3>
+        <button onclick="clearTextSelection()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="mb-4">
+        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Selected Text:</div>
+        <div class="bg-slate-100 dark:bg-slate-700 p-3 rounded-lg text-sm text-slate-800 dark:text-slate-200">
+          "${insights.selected_text.substring(0, 200)}${insights.selected_text.length > 200 ? '...' : ''}"
+        </div>
+      </div>
+      
+      ${insights.summary ? `
+        <div class="mb-4">
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Summary:</div>
+          <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm text-slate-700 dark:text-slate-300">
+            ${insights.summary}
+          </div>
+        </div>
+      ` : ''}
+      
+      ${insights.insights && insights.insights.length > 0 ? `
+        <div class="mb-4">
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Related Content (${insights.insights.length}):</div>
+          <div class="space-y-2 max-h-40 overflow-y-auto">
+            ${insights.insights.slice(0, 5).map((insight, idx) => `
+              <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded border-l-4 border-blue-500">
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                  ${insight.document} (p.${insight.page_number}) - ${insight.insight_type}
+                </div>
+                <div class="text-sm text-slate-700 dark:text-slate-300">
+                  ${insight.relevant_text.substring(0, 100)}${insight.relevant_text.length > 100 ? '...' : ''}
+                </div>
+                <button onclick="jumpToDocument('${insight.document}', ${insight.page_number})" 
+                        class="mt-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                  Jump to this section →
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      
+      <div class="flex space-x-2">
+        <button onclick="getTextSelectionRecommendations()" 
+                class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+          Get Recommendations
+        </button>
+        <button onclick="createPodcastFromTextSelection()" 
+                class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+          Create Podcast
+        </button>
+      </div>
+    </div>
+  `;
+
+  panel.classList.remove('hidden');
+}
+
+function showNotification(message, type = 'info') {
+  toast(message, type);
+}
+
+async function getTextSelectionRecommendations() {
+  if (!textSelectionInsights || !textSelectionInsights.selected_text) return;
+
+  const selectedText = textSelectionInsights.selected_text;
+  if (!selectedText || selectedText.trim().length < 10) return;
+
+  try {
+    const response = await fetch('/api/document-search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: selectedText,
+        top_k: 5,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const results = await response.json();
+
+    // Update the recommendations panel with text-selection-based results
+    displayTextSelectionRecommendations(results.results, selectedText);
+
+  } catch (error) {
+    console.error('Error getting text selection recommendations:', error);
+    showNotification(`Error getting recommendations: ${error.message}`, 'error');
+  }
+}
+
+function displayTextSelectionRecommendations(results, selectedText) {
+  const panel = document.getElementById('textSelectionPanel');
+  if (!panel) return;
+
+  const recommendationsHtml = `
+    <div class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
+      <div class="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+        Recommendations based on your selection:
+      </div>
+      <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">"${selectedText.substring(0, 80)}${selectedText.length > 80 ? '...' : ''}"</p>
+      
+      ${results && results.length > 0 ? `
+        <div class="mt-2 space-y-1">
+          ${results.slice(0, 3).map((result, idx) => `
+            <div class="text-xs text-slate-600 dark:text-slate-400">
+              ${idx + 1}. ${result.document} (p.${result.page_number}) - ${result.text.substring(0, 60)}...
+            </div>
+          `).join('')}
+        </div>
+      ` : '<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">No specific recommendations found.</div>'}
+    </div>
+  `;
+
+  // Add recommendations to the existing panel
+  const existingContent = panel.querySelector('.flex.space-x-2');
+  if (existingContent) {
+    existingContent.insertAdjacentHTML('beforebegin', recommendationsHtml);
+  }
+}
+
+function hideTextSelectionUI() {
+  const insightsPanel = document.getElementById('textSelectionPanel');
+  if (insightsPanel) {
+    insightsPanel.classList.add('hidden');
+  }
+
+  // Clear global variables
+  selectedText = "";
+  textSelectionInsights = null;
+}
+
+function clearTextSelection() {
+  hideTextSelectionUI();
+  toast('Text selection cleared', 'info');
+}
+
+function jumpToDocument(documentName, pageNumber) {
+  if (!documentName) {
+    showNotification('Document name not available', 'error');
+    return;
+  }
+
+  // Load the document if not already loaded
+  if (currentDoc !== `/files/${documentName}`) {
+    initAdobeView(`/files/${documentName}`).then(() => {
+      // Wait for viewer to initialize, then jump to page
+      setTimeout(() => {
+        jumpToPage(pageNumber || 1);
+      }, 1000);
+    });
+  } else {
+    // Document already loaded, jump directly to page
+    jumpToPage(pageNumber || 1);
+  }
+
+  // Hide the text selection panel after jumping
+  hideTextSelectionUI();
+}
+
+function loadAudio(url, title = 'Audio') {
+  const player = document.getElementById('player');
+  if (player) {
+    player.src = url;
+    player.setAttribute('title', title);
+    player.play().catch(e => console.log('Auto-play prevented:', e));
+    toast(`Loading audio: ${title}`, 'info');
+  } else {
+    // Fallback: create a new audio element
+    const audio = new Audio(url);
+    audio.title = title;
+    audio.play().catch(e => console.log('Auto-play prevented:', e));
+    toast(`Playing audio: ${title}`, 'info');
+  }
+}
+
+async function getDocumentRecommendations() {
+  if (!currentDoc) return;
+
+  try {
+    const filename = currentDoc.split('/').pop();
+    const response = await fetch(`/api/index/recommendations/${encodeURIComponent(filename)}?top_k=5`);
+
+    if (response.ok) {
+      const recommendations = await response.json();
+      console.log('Document recommendations:', recommendations);
+      // You can display these recommendations in the UI if needed
+    }
+  } catch (error) {
+    console.error('Error getting document recommendations:', error);
+  }
+}
+
+function showTextInputModal() {
+  // Create a modern modal overlay
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.id = 'textInputModal';
+
+  // Get the current page number more reliably
+  const currentPage = Math.max(1, CURRENT_PAGE || 1);
+  console.log('Current page for modal:', currentPage);
+
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 transform transition-all">
+      <!-- Header -->
+      <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+            <i class="fas fa-highlighter text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white">Text Selection Analysis</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Enter the text you want to analyze</p>
+          </div>
+        </div>
+        <button onclick="closeTextInputModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <!-- Content -->
+      <div class="p-6">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Selected Text from PDF
+          </label>
+          <textarea 
+            id="textInputArea" 
+            placeholder="Paste or type the text you selected from the PDF here... (minimum 10 characters)"
+            class="w-full h-32 p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-200 resize-none"
+          ></textarea>
+          <div class="flex items-center justify-between mt-2">
+            <span class="text-xs text-slate-500 dark:text-slate-400">
+              <span id="charCount">0</span>/1000 characters
+            </span>
+            <span class="text-xs text-slate-500 dark:text-slate-400">
+              Minimum: 10 characters
+            </span>
+          </div>
+          <div class="mt-2">
+          <!--
+            <button 
+              onclick="testCharCounter()" 
+              class="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+            >
+              Test Character Counter
+            </button>
+            <button 
+              onclick="refreshCharCounter()" 
+              class="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline ml-2"
+            >
+              Refresh Counter
+            </button>
+            <button 
+              onclick="checkAdobeViewerInterference()" 
+              class="text-xs text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 underline ml-2"
+            >
+              Check Interference
+            </button>
+            <button 
+              onclick="forceFixCharacterCounter()" 
+              class="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 underline ml-2"
+            >
+              Force Fix
+            </button>
+            -->
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Page Number (Optional)
+          </label>
+          <input 
+            type="number" 
+            id="pageInput" 
+            min="1" 
+            value="${currentPage}"
+            class="w-24 p-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-200"
+          >
+          <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Current page: ${currentPage}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="flex items-center justify-end space-x-3 p-6 border-t border-slate-200 dark:border-slate-700">
+        <button 
+          onclick="closeTextInputModal()" 
+          class="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+        >
+          Cancel
+        </button>
+        <button 
+          id="analyzeTextBtn"
+          onclick="analyzeSelectedText()" 
+          class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          <i class="fas fa-search mr-2"></i>Analyze Text
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Add modal to DOM first
+  document.body.appendChild(modal);
+
+  // Initialize character counter with multiple strategies and better timing
+  initializeCharacterCounter(modal);
+
+  // Close modal on escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeTextInputModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+// Separate function to initialize character counter with better error handling
+function initializeCharacterCounter(modal) {
+  // Prevent multiple initializations
+  if (modal.dataset.counterInitialized === 'true') {
+    console.log('Character counter already initialized, skipping...');
+    return;
+  }
+
+  modal.dataset.counterInitialized = 'true';
+
+  // Try multiple times to initialize the counter
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  function tryInitialize() {
+    attempts++;
+    console.log(`Attempting to initialize character counter (attempt ${attempts})`);
+
+    const textArea = document.getElementById('textInputArea');
+    const charCount = document.getElementById('charCount');
+    const analyzeBtn = document.getElementById('analyzeTextBtn');
+
+    if (!textArea || !charCount || !analyzeBtn) {
+      console.log('Elements not found, retrying...');
+      if (attempts < maxAttempts) {
+        setTimeout(tryInitialize, 300);
+      } else {
+        console.error('Failed to initialize character counter after multiple attempts');
+      }
+      return;
+    }
+
+    console.log('Elements found, initializing character counter...');
+
+    // Simple, direct character counter function
+    function updateCharCount() {
+      try {
+        const length = textArea.value.length;
+        charCount.textContent = length;
+
+        // Enable/disable analyze button based on text length
+        if (length >= 10) {
+          analyzeBtn.disabled = false;
+          analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+          analyzeBtn.disabled = true;
+          analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        console.log(`Character count updated: ${length}`);
+      } catch (error) {
+        console.error('Error in updateCharCount:', error);
+      }
+    }
+
+    // Strategy 1: Simple input event listener (most reliable)
+    textArea.addEventListener('input', updateCharCount);
+    console.log('Added input event listener');
+
+    // Strategy 2: Paste event listener
+    textArea.addEventListener('paste', updateCharCount);
+    console.log('Added paste event listener');
+
+    // Strategy 3: Keyup event listener for immediate feedback
+    textArea.addEventListener('keyup', updateCharCount);
+    console.log('Added keyup event listener');
+
+    // Strategy 4: Change event listener
+    textArea.addEventListener('change', updateCharCount);
+    console.log('Added change event listener');
+
+    // Strategy 5: Focus event to update on focus
+    textArea.addEventListener('focus', updateCharCount);
+    console.log('Added focus event listener');
+
+    // Strategy 6: Simple polling as backup (very frequent)
+    const pollInterval = setInterval(() => {
+      try {
+        if (textArea && charCount && textArea.parentNode) {
+          const currentLength = textArea.value.length;
+          const displayedLength = parseInt(charCount.textContent) || 0;
+
+          if (currentLength !== displayedLength) {
+            console.log(`Polling detected length change: ${displayedLength} -> ${currentLength}`);
+            updateCharCount();
+          }
+        } else {
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        console.log('Polling error:', error);
+        clearInterval(pollInterval);
+      }
+    }, 50); // Very frequent polling for immediate response
+
+    // Initial character count
+    updateCharCount();
+
+    // Focus on text area
+    textArea.focus();
+
+    // Store interval for cleanup
+    modal.dataset.pollInterval = pollInterval;
+
+    console.log('Character counter initialized successfully');
+    console.log('Text area length:', textArea.value.length);
+    console.log('Character count element:', charCount.textContent);
+
+    // Verify the counter is working
+    setTimeout(() => {
+      console.log('Verification - Text area value:', textArea.value);
+      console.log('Verification - Character count:', charCount.textContent);
+      console.log('Verification - Button disabled:', analyzeBtn.disabled);
+    }, 200);
+
+  } // end of tryInitialize function
+
+  // Start initialization with a delay to ensure DOM is ready
+  setTimeout(tryInitialize, 200);
+}
+
+function closeTextInputModal() {
+  const modal = document.getElementById('textInputModal');
+  console.log('Attempting to close modal:', modal);
+
+  if (modal) {
+    // Clear the poll interval
+    const pollInterval = modal.dataset.pollInterval;
+    if (pollInterval) {
+      clearInterval(parseInt(pollInterval));
+      console.log('Cleared poll interval');
+    }
+
+    // Reset initialization flag
+    modal.dataset.counterInitialized = 'false';
+    console.log('Reset counter initialization flag');
+
+    // Remove the modal
+    modal.remove();
+    console.log('Modal removed from DOM');
+  } else {
+    console.error('Modal element not found for closing');
+  }
+}
+
+function analyzeSelectedText() {
+  const textArea = document.getElementById('textInputArea');
+  const pageInput = document.getElementById('pageInput');
+
+  const selectedText = textArea.value.trim();
+  const pageNumber = parseInt(pageInput.value) || CURRENT_PAGE || 1;
+
+  if (selectedText.length < 10) {
+    toast('Please enter at least 10 characters.', 'warning');
+    return;
+  }
+
+  // Close modal
+  closeTextInputModal();
+
+  // Process the text selection
+  handleTextSelection(selectedText, pageNumber);
+}
+
+async function updateCurrentPageFromViewer() {
+  if (!adobeViewer) {
+    console.log('No Adobe viewer available for page detection');
+    return;
+  }
+
+  try {
+    const apis = await adobeViewer.getAPIs();
+    if (apis && apis.getCurrentPage) {
+      const currentPage = await apis.getCurrentPage();
+      if (currentPage && typeof currentPage === 'number') {
+        const oldPage = CURRENT_PAGE;
+        CURRENT_PAGE = Math.max(1, currentPage);
+        console.log(`Updated current page from viewer: ${oldPage} -> ${CURRENT_PAGE}`);
+      }
+    } else if (apis && apis.getPageZoom) {
+      // Alternative: try to get page info from zoom APIs
+      console.log('getCurrentPage not available, trying alternative methods');
+    }
+  } catch (error) {
+    console.log('Could not get current page from viewer:', error);
+  }
+}
+
+// Test function to verify character counter is working
+function testCharCounter() {
+  const textArea = document.getElementById('textInputArea');
+  const charCount = document.getElementById('charCount');
+  const analyzeBtn = document.getElementById('analyzeTextBtn');
+
+  if (!textArea || !charCount || !analyzeBtn) {
+    alert('Elements not found!');
+    return;
+  }
+
+  console.log('=== CHARACTER COUNTER TEST ===');
+  console.log('Text area element:', textArea);
+  console.log('Character count element:', charCount);
+  console.log('Analyze button:', analyzeBtn);
+  console.log('Text area value before test:', textArea.value);
+  console.log('Character count before test:', charCount.textContent);
+  console.log('Button disabled before test:', analyzeBtn.disabled);
+
+  // Test with some sample text
+  const testText = 'This is a test message with 35 characters!';
+
+  console.log('Setting text area value to:', testText);
+  textArea.value = testText;
+
+  console.log('Text area value after setting:', textArea.value);
+  console.log('Text area length after setting:', textArea.value.length);
+
+  // Force update the counter immediately
+  charCount.textContent = textArea.value.length;
+  console.log('Manually updated counter to:', charCount.textContent);
+
+  // Update button state
+  if (textArea.value.length >= 10) {
+    analyzeBtn.disabled = false;
+    analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    console.log('Button enabled');
+  } else {
+    analyzeBtn.disabled = true;
+    analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    console.log('Button disabled');
+  }
+
+  // Test if events are working by dispatching an input event
+  console.log('Testing input event...');
+  const inputEvent = new Event('input', { bubbles: true });
+  textArea.dispatchEvent(inputEvent);
+
+  // Wait a moment for events to process
+  setTimeout(() => {
+    console.log('=== AFTER EVENT TEST ===');
+    console.log('Text area value:', textArea.value);
+    console.log('Text area length:', textArea.value.length);
+    console.log('Counter shows:', charCount.textContent);
+    console.log('Button disabled:', analyzeBtn.disabled);
+
+    // Show current state
+    alert(`Test Results:\n\nText area value: "${textArea.value}"\nLength: ${textArea.value.length}\nCounter shows: ${charCount.textContent}\nButton disabled: ${analyzeBtn.disabled}\n\nCheck console for detailed logs.`);
+  }, 100);
+}
+
+// Manual refresh function for character counter
+function refreshCharCounter() {
+  const textArea = document.getElementById('textInputArea');
+  const charCount = document.getElementById('charCount');
+  const analyzeBtn = document.getElementById('analyzeTextBtn');
+
+  if (!textArea || !charCount || !analyzeBtn) {
+    console.error('Elements not found for refresh');
+    return;
+  }
+
+  console.log('=== REFRESHING CHARACTER COUNTER ===');
+  console.log('Current text area value:', textArea.value);
+  console.log('Current text area length:', textArea.value.length);
+
+  // Force update the counter
+  const length = textArea.value.length;
+  charCount.textContent = length;
+  console.log('Updated counter to:', length);
+
+  // Update button state
+  if (length >= 10) {
+    analyzeBtn.disabled = false;
+    analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    console.log('Button enabled');
+  } else {
+    analyzeBtn.disabled = true;
+    analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    console.log('Button disabled');
+  }
+
+  // Reinstall event listeners on the existing textarea
+  try {
+    // Remove existing listeners by cloning the textarea
+    const newTextArea = textArea.cloneNode(true);
+    newTextArea.value = textArea.value;
+
+    // Add our event listeners
+    newTextArea.addEventListener('input', () => {
+      const len = newTextArea.value.length;
+      charCount.textContent = len;
+      if (len >= 10) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    });
+
+    newTextArea.addEventListener('paste', () => {
+      const len = newTextArea.value.length;
+      charCount.textContent = len;
+      if (len >= 10) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    });
+
+    newTextArea.addEventListener('keyup', () => {
+      const len = newTextArea.value.length;
+      charCount.textContent = len;
+      if (len >= 10) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    });
+
+    newTextArea.addEventListener('change', () => {
+      const len = newTextArea.value.length;
+      charCount.textContent = len;
+      if (len >= 10) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    });
+
+    newTextArea.addEventListener('focus', () => {
+      const len = newTextArea.value.length;
+      charCount.textContent = len;
+      if (len >= 10) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    });
+
+    // Replace the old textarea
+    textArea.parentNode.replaceChild(newTextArea, textArea);
+
+    // Focus on the new textarea
+    newTextArea.focus();
+
+    console.log('Reinitialized event listeners with new textarea');
+  } catch (error) {
+    console.log('Failed to reinitialize event listeners:', error);
+  }
+
+  console.log('Refresh complete');
+}
+
+// Global function to force refresh character counter (useful for debugging)
+function forceRefreshCharCounter() {
+  console.log('=== FORCE REFRESH CHARACTER COUNTER ===');
+
+  const textArea = document.getElementById('textInputArea');
+  const charCount = document.getElementById('charCount');
+  const analyzeBtn = document.getElementById('analyzeTextBtn');
+
+  if (!textArea || !charCount || !analyzeBtn) {
+    console.log('Modal not open, cannot refresh counter');
+    return false;
+  }
+
+  // Force update
+  const length = textArea.value.length;
+  charCount.textContent = length;
+
+  // Update button state
+  if (length >= 10) {
+    analyzeBtn.disabled = false;
+    analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+  } else {
+    analyzeBtn.disabled = true;
+    analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+  }
+
+  console.log(`Forced refresh: ${length} characters, button ${analyzeBtn.disabled ? 'disabled' : 'enabled'}`);
+  return true;
+}
+
+// Function to check for Adobe viewer interference
+function checkAdobeViewerInterference() {
+  console.log('=== CHECKING ADOBE VIEWER INTERFERENCE ===');
+
+  const interference = {
+    adobeViewerExists: !!window.adobeViewer,
+    adobeViewExists: !!window.adobeView,
+    currentDoc: !!currentDoc,
+    modalOpen: !!document.getElementById('textInputModal'),
+    textAreaExists: !!document.getElementById('textInputArea'),
+    charCountExists: !!document.getElementById('charCount')
+  };
+
+  console.log('Interference check results:', interference);
+
+  if (interference.adobeViewerExists) {
+    console.log('Adobe viewer is active, this might interfere with DOM events');
+
+    // Check if the viewer is in an iframe
+    try {
+      const viewerContainer = document.getElementById('adobe-dc-view');
+      if (viewerContainer) {
+        const iframes = viewerContainer.querySelectorAll('iframe');
+        console.log('Adobe viewer iframes found:', iframes.length);
+
+        iframes.forEach((iframe, index) => {
+          console.log(`Iframe ${index}:`, {
+            src: iframe.src,
+            contentWindow: !!iframe.contentWindow,
+            contentDocument: !!iframe.contentDocument
+          });
+        });
+      }
+    } catch (error) {
+      console.log('Could not inspect Adobe viewer iframes:', error);
+    }
+  }
+
+  if (interference.modalOpen && interference.textAreaExists) {
+    const textArea = document.getElementById('textInputArea');
+    const charCount = document.getElementById('charCount');
+
+    console.log('Text area value:', textArea.value);
+    console.log('Text area length:', textArea.value.length);
+    console.log('Character count shows:', charCount.textContent);
+
+    // Check if the textarea has our custom value setter
+    try {
+      const descriptor = Object.getOwnPropertyDescriptor(textArea, 'value');
+      console.log('Textarea value property descriptor:', descriptor);
+
+      if (descriptor && descriptor.set) {
+        console.log('Custom value setter is installed');
+      } else {
+        console.log('No custom value setter found');
+      }
+    } catch (error) {
+      console.log('Could not check value property descriptor:', error);
+    }
+
+    // Check if events are working
+    const testEvent = new Event('input', { bubbles: true });
+    textArea.dispatchEvent(testEvent);
+
+    setTimeout(() => {
+      console.log('After test event - Text area length:', textArea.value.length);
+      console.log('After test event - Character count shows:', charCount.textContent);
+
+      // Test if our custom setter is working
+      console.log('Testing custom setter...');
+      const originalValue = textArea.value;
+      textArea.value = 'Test interference check';
+
+      setTimeout(() => {
+        console.log('After custom setter test:');
+        console.log('Text area value:', textArea.value);
+        console.log('Character count shows:', charCount.textContent);
+
+        // Restore original value
+        textArea.value = originalValue;
+      }, 100);
+    }, 100);
+  }
+
+  return interference;
+}
+
+// Force fix function for character counter when Adobe viewer interference is detected
+function forceFixCharacterCounter() {
+  console.log('=== FORCE FIXING CHARACTER COUNTER ===');
+
+  const modal = document.getElementById('textInputModal');
+  if (!modal) {
+    console.log('Modal not open, cannot force fix');
+    return;
+  }
+
+  // Reset the initialization flag
+  modal.dataset.counterInitialized = 'false';
+
+  // Clear any existing intervals
+  const pollInterval = modal.dataset.pollInterval;
+  if (pollInterval) {
+    clearInterval(parseInt(pollInterval));
+    console.log('Cleared existing poll interval');
+  }
+
+  // Force reinitialize the character counter
+  console.log('Reinitializing character counter...');
+  initializeCharacterCounter(modal);
+
+  // Also force a manual refresh
+  setTimeout(() => {
+    refreshCharCounter();
+  }, 200);
+
+  console.log('Force fix complete');
+}
+
+// Add to global scope for debugging
+window.forceRefreshCharCounter = forceRefreshCharCounter;
+window.testCharCounter = testCharCounter;
+window.refreshCharCounter = refreshCharCounter;
+window.checkAdobeViewerInterference = checkAdobeViewerInterference;
+window.forceFixCharacterCounter = forceFixCharacterCounter;
+
+// Initialize audio player controls
+let audioPlayerInitialized = false;
+
+// Function to reset audio player initialization (useful when loading new audio)
+function resetAudioPlayerInitialization() {
+  audioPlayerInitialized = false;
+}
+
+function initializeAudioPlayer() {
+  // Prevent multiple initializations
+  if (audioPlayerInitialized) {
+    console.log('Audio player already initialized, skipping...');
+    return;
+  }
+
+  const player = document.getElementById('player');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const audioProgress = document.getElementById('audioProgress');
+  const progressContainer = document.getElementById('progressContainer');
+  const currentTime = document.getElementById('currentTime');
+  const totalTime = document.getElementById('totalTime');
+  const audioInfo = document.getElementById('audioInfo');
+  const audioTitle = document.getElementById('audioTitle');
+  const speedBtn = document.getElementById('speedBtn');
+  const speedMenu = document.getElementById('speedMenu');
+
+  if (!player || !playPauseBtn || !stopBtn) {
+    console.log('Audio player elements not found');
+    return;
+  }
+
+  // Mark as initialized to prevent duplicate calls
+  audioPlayerInitialized = true;
+
+  // Get the current player reference
+  const currentPlayer = player;
+
+  // Format time helper function
+  function formatTime(seconds) {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  // Update progress bar and time display
+  function updateProgress() {
+    if (currentPlayer.duration && !isNaN(currentPlayer.duration)) {
+      const progress = (currentPlayer.currentTime / currentPlayer.duration) * 100;
+      if (audioProgress) audioProgress.style.width = progress + '%';
+      if (currentTime) currentTime.textContent = formatTime(currentPlayer.currentTime);
+      if (totalTime) totalTime.textContent = formatTime(currentPlayer.duration);
+    }
+  }
+
+  // Update play/pause button icon
+  function updatePlayPauseIcon() {
+    const icon = playPauseBtn.querySelector('i');
+    if (icon) {
+      if (currentPlayer.paused) {
+        icon.className = 'fas fa-play text-sm';
+      } else {
+        icon.className = 'fas fa-pause text-sm';
+      }
+    }
+  }
+
+  // Show audio info
+  function showAudioInfo() {
+    if (audioInfo && audioTitle) {
+      audioInfo.classList.remove('hidden');
+      audioTitle.textContent = currentPlayer.title || 'AI Podcast';
+    }
+  }
+
+  // Hide audio info
+  function hideAudioInfo() {
+    if (audioInfo) audioInfo.classList.add('hidden');
+    if (audioTitle) audioTitle.textContent = 'No audio loaded';
+  }
+
+  // Play/Pause button click handler
+  playPauseBtn.addEventListener('click', () => {
+    if (currentPlayer.paused) {
+      // Only show error toast if the play actually fails and it's not a user-initiated pause
+      currentPlayer.play().catch(e => {
+        console.log('Play failed:', e);
+        // Only show error if it's a genuine failure, not just a user pause
+        if (e.name !== 'AbortError' && !currentPlayer.paused) {
+          toast('Failed to play audio. Please try again.', 'error');
+        }
+      });
+    } else {
+      currentPlayer.pause();
+    }
+  });
+
+  // Stop button click handler
+  stopBtn.addEventListener('click', () => {
+    currentPlayer.pause();
+    currentPlayer.currentTime = 0;
+    updateProgress();
+    updatePlayPauseIcon();
+  });
+
+  // Progress bar seeking functionality
+  if (progressContainer) {
+    progressContainer.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Check if audio is ready for seeking
+      if (!currentPlayer.duration || isNaN(currentPlayer.duration) || currentPlayer.readyState < 1) {
+        console.log('Audio not ready for seeking yet');
+        toast('Audio is still loading. Please wait a moment before seeking.', 'info');
+        return;
+      }
+
+      const rect = progressContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      const percentage = clickX / width;
+
+      // Ensure percentage is within valid range
+      const clampedPercentage = Math.max(0, Math.min(1, percentage));
+
+      // Store current playback state
+      const wasPlaying = !currentPlayer.paused;
+
+      // Seek to the new position
+      const newTime = clampedPercentage * currentPlayer.duration;
+
+      // Ensure the seek operation completes before resuming
+      currentPlayer.currentTime = newTime;
+
+      // Update progress immediately
+      updateProgress();
+
+      // Resume playback if it was playing before
+      if (wasPlaying) {
+        // Add a small delay to ensure the seek operation completes
+        setTimeout(() => {
+          currentPlayer.play().catch(e => {
+            console.log('Failed to resume playback after seek:', e);
+            // Don't show error toast for seek failures as they're usually temporary
+          });
+        }, 100);
+      }
+
+      console.log(`Seeked to ${clampedPercentage * 100}% (${currentPlayer.currentTime}s / ${currentPlayer.duration}s)`);
+    });
+  }
+
+  // Show progress handle on hover
+  progressContainer.addEventListener('mouseenter', () => {
+    const handle = document.getElementById('progressHandle');
+    if (handle) handle.style.opacity = '1';
+  });
+
+  progressContainer.addEventListener('mouseleave', () => {
+    const handle = document.getElementById('progressHandle');
+    if (handle) handle.style.opacity = '0';
+  });
+
+  // Playback speed controls - cycling through speeds
+  if (speedBtn) {
+    const speeds = [1, 1.25, 1.5, 1.75, 2.0];
+    let currentSpeedIndex = 0;
+
+    speedBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Cycle to next speed
+      currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
+      const newSpeed = speeds[currentSpeedIndex];
+
+      // Apply the new speed
+      currentPlayer.playbackRate = newSpeed;
+      speedBtn.textContent = newSpeed + 'x';
+
+      console.log(`Playback speed set to ${newSpeed}x`);
+
+      // Show feedback
+      toast(`Speed: ${newSpeed}x`, 'info');
+    });
+  }
+
+  // Audio event listeners
+  currentPlayer.addEventListener('loadedmetadata', () => {
+    console.log('Audio metadata loaded');
+    updateProgress();
+    showAudioInfo();
+  });
+
+  currentPlayer.addEventListener('timeupdate', updateProgress);
+
+  currentPlayer.addEventListener('play', () => {
+    console.log('Audio started playing');
+    updatePlayPauseIcon();
+    showAudioInfo();
+  });
+
+  currentPlayer.addEventListener('pause', () => {
+    console.log('Audio paused');
+    updatePlayPauseIcon();
+  });
+
+  currentPlayer.addEventListener('ended', () => {
+    console.log('Audio ended');
+    updatePlayPauseIcon();
+    currentPlayer.currentTime = 0;
+    updateProgress();
+  });
+
+  currentPlayer.addEventListener('error', (e) => {
+    console.error('Audio error:', e);
+    // Only show error toast for genuine errors, not user-initiated actions
+    if (e.target.error && e.target.error.code !== 20) { // Code 20 is usually user abort
+      toast('Audio playback error. Please try again.', 'error');
+      hideAudioInfo();
+    }
+  });
+
+  currentPlayer.addEventListener('loadstart', () => {
+    console.log('Audio loading started');
+    if (audioTitle) audioTitle.textContent = 'Loading...';
+  });
+
+  currentPlayer.addEventListener('canplay', () => {
+    console.log('Audio can start playing');
+  });
+
+  // Initial state
+  updateProgress();
+  updatePlayPauseIcon();
+  hideAudioInfo();
+
+  console.log('Audio player initialized with seeking and speed controls');
+}
+
+// Initialize audio player when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  initializeAudioPlayer();
+});
 

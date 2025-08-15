@@ -5,7 +5,9 @@ __pycache__/
 .venv/
 
 # Env
+.env
 
+temp/
 
 # Data
 files/

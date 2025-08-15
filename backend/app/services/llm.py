@@ -1,79 +1,87 @@
 import os
-from typing import List, Dict
+from typing import Dict, List, Optional
 
-# Providers
-from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.chat_models import ChatOllama
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+# Load environment variables in the service
+load_dotenv()
 
 
-def get_llm_response(messages: List[Dict]) -> str:
-    provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+def get_llm_service():
+    """Get the LLM service instance."""
+    return LLMService()
 
-    if provider == "gemini":
-        api_key = os.getenv("GOOGLE_API_KEY")
-        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
-        if not api_key and not credentials_path:
-            raise ValueError("Either GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS must be set.")
+class LLMService:
+    def __init__(self):
+        self.provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+        self.model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self.api_key = os.getenv("GOOGLE_API_KEY")
 
-        if api_key:
-            llm = ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key, temperature=0.7)
+        print(f"🔍 LLM Service Debug:")
+        print(f"   Provider: {self.provider}")
+        print(f"   Model: {self.model}")
+        print(f"   API Key: {'Set' if self.api_key else 'Not Set'}")
+        print(f"   API Key length: {len(self.api_key) if self.api_key else 0}")
+
+        if self.provider == "gemini" and self.api_key:
+            # Configure Google Generative AI
+            genai.configure(api_key=self.api_key)
+            self.client = genai.GenerativeModel(self.model)
+            print(f"✅ LLM client initialized successfully")
         else:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
-            llm = ChatGoogleGenerativeAI(model=model_name, temperature=0.7)
+            self.client = None
+            print(
+                f"⚠️ LLM client not initialized. Provider: {self.provider}, API Key: {'Set' if self.api_key else 'Not Set'}"
+            )
 
+    def get_llm_response(self, messages: List[Dict[str, str]]) -> Optional[str]:
+        """
+        Get response from LLM service.
+
+        Args:
+                messages: List of message dictionaries with 'role' and 'content'
+
+        Returns:
+                LLM response text or None if failed
+        """
         try:
-            response = llm.invoke(messages)
-            return response.content
+            if not self.client:
+                print("Error: LLM client not initialized")
+                return None
+
+            # Convert chat-style messages to a single prompt for Gemini
+            prompt_parts: List[str] = []
+            for m in messages or []:
+                role = m.get("role")
+                content = m.get("content", "")
+                if not content:
+                    continue
+                if role == "system":
+                    prompt_parts.append(f"[Instructions]\n{content}\n")
+                elif role == "user":
+                    prompt_parts.append(f"[User]\n{content}\n")
+                else:
+                    prompt_parts.append(content)
+
+            prompt = "\n".join(prompt_parts).strip()
+            if not prompt:
+                print("Error: Empty prompt constructed for LLM")
+                return None
+
+            # Generate response
+            response = self.client.generate_content(prompt)
+
+            if response and hasattr(response, "text"):
+                return response.text
+            else:
+                print("Error: Invalid response from Gemini")
+                return None
+
         except Exception as e:
-            raise RuntimeError(f"Gemini call failed: {e}")
+            print(f"Error getting LLM response: {e}")
+            return None
 
-    elif provider == "azure":
-        api_key = os.getenv("AZURE_OPENAI_KEY")
-        api_base = os.getenv("AZURE_OPENAI_BASE")
-        api_version = os.getenv("AZURE_API_VERSION")
-        deployment_name = os.getenv("AZURE_DEPLOYMENT_NAME", "gpt-4o")
-
-        if not all([api_key, api_base, api_version]):
-            raise ValueError("Missing one of AZURE_OPENAI_KEY, AZURE_OPENAI_BASE, or AZURE_API_VERSION.")
-
-        llm = AzureChatOpenAI(
-            azure_deployment=deployment_name,
-            openai_api_version=api_version,
-            azure_endpoint=api_base,
-            api_key=api_key,
-            temperature=0.7,
-        )
-        try:
-            response = llm.invoke(messages)
-            return response.content
-        except Exception as e:
-            raise RuntimeError(f"Azure OpenAI call failed: {e}")
-
-    elif provider == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
-        api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-        model_name = os.getenv("OPENAI_MODEL", "gpt-4o")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY is not set.")
-        llm = ChatOpenAI(model=model_name, api_key=api_key, base_url=api_base, temperature=0.7)
-        try:
-            response = llm.invoke(messages)
-            return response.content
-        except Exception as e:
-            raise RuntimeError(f"OpenAI call failed: {e}")
-
-    elif provider == "ollama":
-        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        model = os.getenv("OLLAMA_MODEL", "gemma3:1b")
-        llm = ChatOllama(model=model, base_url=ollama_url, temperature=0.7)
-        try:
-            response = llm.invoke(messages)
-            return response.content
-        except Exception as e:
-            raise RuntimeError(f"Ollama call failed: {e}")
-
-    else:
-        raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
+    def generate_conversation_script(self, prompt: str) -> Optional[str]:
+        pass

@@ -8,8 +8,8 @@
   <link rel="stylesheet" href="/styles.css" />
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Adobe PDF Embed API -->
-  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Google Fonts -->
@@ -341,8 +341,25 @@
             </div>
 
             <!-- PDF Viewer Container -->
-            <div id="adobe-dc-view"
-              class="w-full h-[70vh] min-h-[500px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-300 dark:border-slate-600">
+            <div id="pdf-viewer-container"
+              class="w-full h-[70vh] min-h-[500px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-300 dark:border-slate-600 relative">
+              <canvas id="pdf-canvas" class="w-full h-full"></canvas>
+              <div id="pdf-loading"
+                class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-800/90">
+                <div class="text-center">
+                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p class="text-slate-600 dark:text-slate-400">Loading PDF...</p>
+                </div>
+              </div>
+              <div id="pdf-error"
+                class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-800/90 hidden">
+                <div class="text-center">
+                  <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                  <p class="text-slate-600 dark:text-slate-400">Failed to load PDF</p>
+                  <button id="retry-pdf"
+                    class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Retry</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

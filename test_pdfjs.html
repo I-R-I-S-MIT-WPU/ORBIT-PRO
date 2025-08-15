@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF.js Text Selection Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .pdf-viewer {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+            position: relative;
+            min-height: 600px;
+        }
+
+        .canvas-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .controls button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+
+        .controls button:hover {
+            background: #0056b3;
+        }
+
+        .controls button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .text-selection {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+
+        .text-selection h3 {
+            margin-top: 0;
+            color: #0056b3;
+        }
+
+        .selected-text {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>PDF.js Text Selection Test</h1>
+        <p>This page tests PDF.js text selection functionality. Upload a PDF and try selecting text to see if it works
+            correctly.</p>
+
+        <div class="controls">
+            <label for="fileInput">Select PDF File:</label>
+            <input type="file" id="fileInput" accept=".pdf" />
+            <button id="loadBtn" disabled>Load PDF</button>
+            <button id="prevPageBtn" disabled>Previous</button>
+            <button id="nextPageBtn" disabled>Next</button>
+            <span id="pageInfo">Page: 0 / 0</span>
+            <button id="zoomInBtn" disabled>Zoom In</button>
+            <button id="zoomOutBtn" disabled>Zoom Out</button>
+            <span id="zoomInfo">Zoom: 100%</span>
+        </div>
+
+        <div class="pdf-viewer">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Upload a PDF to get started</p>
+            </div>
+            <div id="canvas-container" class="canvas-container" style="display: none;">
+                <canvas id="pdf-canvas"></canvas>
+            </div>
+        </div>
+
+        <div id="textSelection" class="text-selection" style="display: none;">
+            <h3>Text Selection Results</h3>
+            <p><strong>Selected Text:</strong></p>
+            <div id="selectedText" class="selected-text">No text selected yet. Try selecting text in the PDF above.
+            </div>
+            <p><strong>Page:</strong> <span id="currentPage">-</span></p>
+            <p><strong>Character Count:</strong> <span id="charCount">0</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Set PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let pdfDoc = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        let currentScale = 1.0;
+        let pdfCanvas = null;
+        let pdfContext = null;
+
+        // DOM elements
+        const fileInput = document.getElementById('fileInput');
+        const loadBtn = document.getElementById('loadBtn');
+        const prevPageBtn = document.getElementById('prevPageBtn');
+        const nextPageBtn = document.getElementById('nextPageBtn');
+        const pageInfo = document.getElementById('pageInfo');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const zoomInfo = document.getElementById('zoomInfo');
+        const loading = document.getElementById('loading');
+        const canvasContainer = document.getElementById('canvas-container');
+        const textSelection = document.getElementById('textSelection');
+        const selectedText = document.getElementById('selectedText');
+        const currentPageSpan = document.getElementById('currentPage');
+        const charCount = document.getElementById('charCount');
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                loadBtn.disabled = false;
+            } else {
+                loadBtn.disabled = true;
+            }
+        });
+
+        // Load button click handler
+        loadBtn.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                loadPDF(file);
+            }
+        });
+
+        // Navigation buttons
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                loadPage(currentPage - 1);
+            }
+        });
+
+        nextPageBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                loadPage(currentPage + 1);
+            }
+        });
+
+        // Zoom buttons
+        zoomInBtn.addEventListener('click', () => {
+            currentScale = Math.min(currentScale * 1.2, 3.0);
+            loadPage(currentPage);
+            updateZoomInfo();
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            currentScale = Math.max(currentScale / 1.2, 0.5);
+            loadPage(currentPage);
+            updateZoomInfo();
+        });
+
+        // Load PDF function
+        async function loadPDF(file) {
+            try {
+                loading.style.display = 'block';
+                canvasContainer.style.display = 'none';
+                textSelection.style.display = 'none';
+
+                const arrayBuffer = await file.arrayBuffer();
+                pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+
+                totalPages = pdfDoc.numPages;
+                currentPage = 1;
+                currentScale = 1.0;
+
+                // Initialize canvas
+                pdfCanvas = document.getElementById('pdf-canvas');
+                pdfContext = pdfCanvas.getContext('2d');
+
+                // Load first page
+                await loadPage(1);
+
+                // Update UI
+                updatePageInfo();
+                updateZoomInfo();
+                prevPageBtn.disabled = false;
+                nextPageBtn.disabled = false;
+                zoomInBtn.disabled = false;
+                zoomOutBtn.disabled = false;
+
+                // Set up text selection
+                setupTextSelection();
+
+                loading.style.display = 'none';
+                canvasContainer.style.display = 'block';
+                textSelection.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                alert('Error loading PDF: ' + error.message);
+                loading.style.display = 'block';
+            }
+        }
+
+        // Load specific page
+        async function loadPage(pageNum) {
+            try {
+                if (pageNum < 1 || pageNum > totalPages) return;
+
+                currentPage = pageNum;
+                const page = await pdfDoc.getPage(pageNum);
+
+                const viewport = page.getViewport({ scale: currentScale });
+
+                // Set canvas dimensions
+                pdfCanvas.width = viewport.width;
+                pdfCanvas.height = viewport.height;
+
+                // Render page
+                const renderContext = {
+                    canvasContext: pdfContext,
+                    viewport: viewport
+                };
+
+                await page.render(renderContext).promise;
+
+                updatePageInfo();
+                updateCurrentPageSpan();
+
+            } catch (error) {
+                console.error('Error loading page:', error);
+            }
+        }
+
+        // Set up text selection
+        function setupTextSelection() {
+            // Listen for selection changes
+            document.addEventListener('selectionchange', handleSelectionChange);
+
+            // Listen for mouse events on canvas
+            pdfCanvas.addEventListener('mouseup', handleSelectionChange);
+            pdfCanvas.addEventListener('keyup', handleSelectionChange);
+        }
+
+        // Handle text selection
+        function handleSelectionChange() {
+            const selection = window.getSelection();
+            const text = selection.toString().trim();
+
+            if (text) {
+                selectedText.textContent = text;
+                charCount.textContent = text.length;
+                updateCurrentPageSpan();
+            } else {
+                selectedText.textContent = 'No text selected. Try selecting text in the PDF above.';
+                charCount.textContent = '0';
+            }
+        }
+
+        // Update page info
+        function updatePageInfo() {
+            pageInfo.textContent = `Page: ${currentPage} / ${totalPages}`;
+        }
+
+        // Update zoom info
+        function updateZoomInfo() {
+            zoomInfo.textContent = `Zoom: ${Math.round(currentScale * 100)}%`;
+        }
+
+        // Update current page span
+        function updateCurrentPageSpan() {
+            currentPageSpan.textContent = currentPage;
+        }
+    </script>
+</body>
+
+</html>

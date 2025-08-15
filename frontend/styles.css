@@ -477,6 +477,104 @@ main {
   color: #60a5fa;
 }
 
+/* Delete button hover effects */
+.doc-item button:hover .fa-trash {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Drag and drop styles for the upload area */
+.group\/upload.dragover {
+  border-color: var(--primary);
+  background: rgba(239, 246, 255, 0.5);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-xl);
+}
+
+.group\/upload.dragover .border-dashed {
+  border-color: var(--primary);
+  background: rgba(239, 246, 255, 0.5);
+}
+
+/* Dark theme support for drag and drop */
+[data-theme="dark"] .group\/upload.dragover {
+  background: rgba(30, 58, 138, 0.3);
+}
+
+[data-theme="dark"] .group\/upload.dragover .border-dashed {
+  border-color: var(--primary);
+  background: rgba(30, 58, 138, 0.3);
+}
+
+/* Upload Progress Modal */
+#uploadProgressModal {
+  animation: fadeIn 0.3s ease-out;
+}
+
+#uploadProgressModal .bg-white,
+#uploadProgressModal .dark\:bg-slate-800 {
+  animation: scaleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+#uploadProgressBar {
+  transition: width 0.3s ease-out;
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+  background-size: 200% 100%;
+  animation: gradientShift 2s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Upload progress text animations */
+#uploadProgressText {
+  transition: all 0.3s ease-out;
+}
+
+#uploadProgressPercent {
+  font-weight: 600;
+  color: var(--primary);
+  transition: all 0.3s ease-out;
+}
+
+/* Success state for progress bar */
+#uploadProgressBar.success {
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  animation: none;
+}
+
+/* Error state for progress bar */
+#uploadProgressBar.error {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+  animation: none;
+}
+
+/* Delete confirmation modal animations */
+#deleteConfirmationModal {
+  animation: fadeIn 0.3s ease-out;
+}
+
+#deleteConfirmationModal .bg-white,
+#deleteConfirmationModal .dark\:bg-slate-800 {
+  animation: scaleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Delete button loading state */
+#deleteConfirmationModal button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+#deleteConfirmationModal button:disabled:hover {
+  transform: none;
+}
+
 /* Section and Snippet Styles */
 .section-item, .snippet-item {
   padding: var(--spacing-lg);
@@ -654,15 +752,104 @@ main {
 }
 
 /* PDF Viewer Container */
-#adobe-dc-view {
+#pdf-viewer-container {
   width: 100% !important;
   height: 70vh !important;
-  min-height: 600px !important;
+  min-height: 500px !important;
   background: var(--bg-primary);
   border-radius: var(--radius-xl);
-  overflow: hidden;
+  overflow: auto !important; /* Enable scrolling */
   box-shadow: var(--shadow-2xl);
   border: 1px solid var(--border-color);
+  position: relative;
+}
+
+#pdf-viewer-container.dark {
+  background: #2d3748;
+}
+
+/* Loading and error states */
+.pdf-loading,
+.pdf-error,
+.pdf-no-document {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.dark .pdf-loading,
+.dark .pdf-error,
+.dark .pdf-no-document {
+  background: rgba(45, 55, 72, 0.9);
+}
+
+/* PDF Canvas */
+#pdf-canvas {
+  display: block;
+  margin: 0 auto;
+  max-width: none; /* Allow full width in continuous mode */
+  height: auto;
+}
+
+/* Text Layer */
+#text-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+#text-layer .text-layer-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+#text-layer span {
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  color: transparent !important; /* Make text transparent to avoid overlapping with canvas */
+  background: transparent;
+  border: none;
+  outline: none;
+  z-index: 2;
+}
+
+/* Ensure proper scrolling behavior */
+#pdf-viewer-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+#pdf-viewer-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+#pdf-viewer-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+#pdf-viewer-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 /* Force Adobe viewer styling */
@@ -1210,4 +1397,70 @@ main {
 #adobe-dc-view .adobe-dc-view-content {
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
+}
+
+/* PDF Viewer Styles */
+.pdf-page-container {
+  position: relative;
+  display: inline-block;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.textLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.2;
+  line-height: 1.0;
+  -webkit-user-select: text;
+  user-select: text;
+  pointer-events: auto;
+}
+
+.textLayer > span {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  -webkit-user-select: text;
+  user-select: text;
+  pointer-events: auto;
+}
+
+.textLayer .highlight {
+  margin: -1px;
+  padding: 1px;
+  background-color: rgba(180, 0, 170, 0.2);
+  border-radius: 4px;
+}
+
+.textLayer .highlight.begin {
+  border-radius: 4px 0px 0px 4px;
+}
+
+.textLayer .highlight.end {
+  border-radius: 0px 4px 4px 0px;
+}
+
+.textLayer .highlight.middle {
+  border-radius: 0px;
+}
+
+.textLayer .highlight.selected {
+  background-color: rgba(0, 100, 0, 0.2);
+}
+
+/* Ensure text selection works properly */
+.textLayer span::selection {
+  background: rgba(0, 0, 255, 0.3);
+}
+
+.textLayer span::-moz-selection {
+  background: rgba(0, 0, 255, 0.3);
 }

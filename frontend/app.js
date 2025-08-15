@@ -12,6 +12,10 @@ let currentSnippets = [];
 let HEALTH = {};
 let HAS_ANALYSIS = false;
 
+// View mode variables
+let isContinuousView = false;
+let viewModeToggle = null;
+
 // Text selection variables
 let selectedText = "";
 let textSelectionInsights = null;
@@ -112,6 +116,14 @@ function removeToast(toastEl) {
 async function initViewer(url, containerId = 'pdf-viewer-container') {
   return new Promise(async (resolve) => {
     try {
+      // Check if we have a valid URL
+      if (!url || url === 'undefined' || url === 'null') {
+        console.log('No valid URL provided to initViewer');
+        hidePDFLoading();
+        resolve(false);
+        return;
+      }
+
       // Set worker path for PDF.js
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -119,7 +131,7 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
       pdfCanvas = document.getElementById('pdf-canvas');
       pdfContext = pdfCanvas.getContext('2d');
 
-      // Show loading state
+      // Show loading state only when we have a valid URL
       showPDFLoading();
 
       // Load the PDF document
@@ -129,6 +141,15 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
       // Get total pages
       totalPages = pdfDoc.numPages;
       updatePageCount();
+
+      // Initialize view mode (start with single page view)
+      isContinuousView = false;
+      const singlePageView = document.getElementById('single-page-view');
+      const continuousView = document.getElementById('continuous-view');
+      if (singlePageView && continuousView) {
+        singlePageView.classList.remove('hidden');
+        continuousView.classList.add('hidden');
+      }
 
       // Set canvas dimensions
       resizeCanvas();
@@ -206,6 +227,161 @@ async function loadPage(pageNum) {
   }
 }
 
+// Load all pages for continuous scrolling
+async function loadAllPages() {
+  try {
+    if (!pdfDoc) return;
+
+    const continuousContainer = document.getElementById('continuous-view');
+    if (!continuousContainer) return;
+
+    // Clear existing content
+    continuousContainer.innerHTML = '';
+
+    // Show loading progress
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'text-center py-8';
+    loadingDiv.innerHTML = `
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <p class="text-slate-600 dark:text-slate-400">Loading pages...</p>
+    `;
+    continuousContainer.appendChild(loadingDiv);
+
+    // Load all pages
+    const pagePromises = [];
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      pagePromises.push(loadPageToContainer(pageNum, continuousContainer));
+    }
+
+    await Promise.all(pagePromises);
+
+    // Remove loading indicator
+    if (loadingDiv.parentNode) {
+      loadingDiv.parentNode.removeChild(loadingDiv);
+    }
+
+    // Set up text selection for all pages
+    setupTextSelectionEvents();
+
+    console.log(`All ${totalPages} pages loaded successfully`);
+
+  } catch (error) {
+    console.error('Error loading all pages:', error);
+    toast('Failed to load PDF pages. Please try again.', 'error');
+  }
+}
+
+// Toggle between single page and continuous view modes
+async function toggleViewMode() {
+  try {
+    isContinuousView = !isContinuousView;
+
+    const singlePageView = document.getElementById('single-page-view');
+    const continuousView = document.getElementById('continuous-view');
+
+    if (isContinuousView) {
+      // Switch to continuous view
+      singlePageView.classList.add('hidden');
+      continuousView.classList.remove('hidden');
+
+      // Update button text
+      if (viewModeToggle) {
+        viewModeToggle.innerHTML = '<i class="fas fa-list mr-1"></i>Continuous';
+        viewModeToggle.title = 'Switch to single page view';
+      }
+
+      // Load all pages
+      await loadAllPages();
+
+      toast('Switched to continuous view - scroll to see all pages', 'info');
+    } else {
+      // Switch to single page view
+      continuousView.classList.add('hidden');
+      singlePageView.classList.remove('hidden');
+
+      // Update button text
+      if (viewModeToggle) {
+        viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
+        viewModeToggle.title = 'Switch to continuous view';
+      }
+
+      // Load current page
+      await loadPage(currentPage);
+
+      toast('Switched to single page view', 'info');
+    }
+
+    // Update toolbar state
+    updateToolbarState();
+
+  } catch (error) {
+    console.error('Error toggling view mode:', error);
+    toast('Failed to switch view mode', 'error');
+  }
+}
+
+// Load a single page to the container
+async function loadPageToContainer(pageNum, container) {
+  try {
+    const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale: currentScale });
+
+    // Create page wrapper
+    const pageWrapper = document.createElement('div');
+    pageWrapper.className = 'page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto';
+    pageWrapper.style.width = `${viewport.width}px`;
+    pageWrapper.style.maxWidth = '100%';
+
+    // Create canvas for this page
+    const canvas = document.createElement('canvas');
+    canvas.className = 'page-canvas w-full h-auto';
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.dataset.pageNumber = pageNum;
+
+    // Create page info overlay
+    const pageInfo = document.createElement('div');
+    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium';
+    pageInfo.textContent = `Page ${pageNum}`;
+
+    pageWrapper.appendChild(canvas);
+    pageWrapper.appendChild(pageInfo);
+
+    // Render the page
+    const context = canvas.getContext('2d');
+    const renderContext = {
+      canvasContext: context,
+      viewport: viewport
+    };
+
+    await page.render(renderContext).promise;
+
+    // Add to container
+    container.appendChild(pageWrapper);
+
+    // Add click handler for page navigation
+    pageWrapper.addEventListener('click', () => {
+      currentPage = pageNum;
+      updatePageCount();
+
+      // Update goto input field
+      const gotoInput = document.getElementById('gotoPageInput');
+      if (gotoInput) {
+        gotoInput.value = currentPage;
+      }
+
+      // Scroll to this page
+      pageWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    return pageWrapper;
+
+  } catch (error) {
+    console.error(`Error loading page ${pageNum}:`, error);
+    return null;
+  }
+}
+
 // Resize canvas to fit container
 function resizeCanvas() {
   if (!pdfCanvas) return;
@@ -232,8 +408,10 @@ function resizeCanvas() {
 function showPDFLoading() {
   const loading = document.getElementById('pdf-loading');
   const error = document.getElementById('pdf-error');
+  const neutral = document.getElementById('pdf-neutral');
   if (loading) loading.classList.remove('hidden');
   if (error) error.classList.add('hidden');
+  if (neutral) neutral.classList.add('hidden');
 }
 
 // Hide PDF loading state
@@ -246,8 +424,42 @@ function hidePDFLoading() {
 function showPDFError() {
   const loading = document.getElementById('pdf-loading');
   const error = document.getElementById('pdf-error');
+  const neutral = document.getElementById('pdf-neutral');
   if (loading) loading.classList.add('hidden');
   if (error) error.classList.remove('hidden');
+  if (neutral) neutral.classList.add('hidden');
+}
+
+// Show PDF neutral state (no document selected)
+function showPDFNeutral() {
+  const loading = document.getElementById('pdf-loading');
+  const error = document.getElementById('pdf-error');
+  const neutral = document.getElementById('pdf-neutral');
+  const canvas = document.getElementById('pdf-canvas');
+
+  if (loading) loading.classList.add('hidden');
+  if (error) error.classList.add('hidden');
+  if (neutral) neutral.classList.remove('hidden');
+
+  // Clear canvas and show placeholder
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Set canvas to a reasonable size
+    canvas.width = 800;
+    canvas.height = 600;
+
+    // Draw a placeholder
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw placeholder text
+    ctx.fillStyle = '#64748b';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Select a document to view', canvas.width / 2, canvas.height / 2);
+  }
 }
 
 // Theme handling (light/dark)
@@ -326,7 +538,7 @@ async function loadDocument(doc) {
     showPDFLoading();
 
     // Construct the URL for the document
-    const docUrl = `/static/${encodeURIComponent(doc.filename)}`;
+    const docUrl = `/files/${encodeURIComponent(doc.filename)}`;
 
     // Initialize the PDF.js viewer
     const success = await initViewer(docUrl);
@@ -969,11 +1181,14 @@ async function getDocumentRecommendations() {
   try {
     if (!currentDoc) return;
 
-    const response = await fetch('/api/document-recommendations', {
+    // Use the text-selection API with empty selected text to get document overview
+    const response = await fetch('/api/text-selection', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        selected_text: '', // Empty text to get document overview
         document: currentDoc,
+        page_number: 1,
         persona: document.getElementById('persona')?.value || '',
         job: document.getElementById('job')?.value || ''
       })
@@ -983,10 +1198,41 @@ async function getDocumentRecommendations() {
       const data = await response.json();
       // Handle recommendations data
       console.log('Document recommendations:', data);
+
+      // Update the recommendations panel if data is available
+      if (data.insights && data.insights.length > 0) {
+        updateRecommendationsPanel(data.insights);
+      }
     }
   } catch (error) {
     console.error('Error getting document recommendations:', error);
   }
+}
+
+// Update recommendations panel
+function updateRecommendationsPanel(recommendations) {
+  const container = document.getElementById('recommendations');
+  if (!container) return;
+
+  if (!recommendations || recommendations.length === 0) {
+    container.innerHTML = `
+      <div class="text-center text-xs text-slate-500 dark:text-slate-400 py-3">
+        No recommendations found
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = recommendations.slice(0, 5).map((rec, index) => `
+    <div class="p-2 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4 border-emerald-500">
+      <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
+        ${rec.document} (p.${rec.page_number})
+      </div>
+      <div class="text-sm text-slate-700 dark:text-slate-300">
+        ${rec.relevant_text.substring(0, 80)}${rec.relevant_text.length > 80 ? '...' : ''}
+      </div>
+    </div>
+  `).join('');
 }
 
 // Get document insights
@@ -1213,14 +1459,22 @@ function setupToolbar() {
     if (zoomInBtn) {
       zoomInBtn.addEventListener('click', () => {
         currentScale = Math.min(currentScale * 1.2, 3.0);
-        loadPage(currentPage);
+        if (isContinuousView) {
+          loadAllPages(); // Reload all pages with new scale
+        } else {
+          loadPage(currentPage); // Reload current page with new scale
+        }
       });
     }
 
     if (zoomOutBtn) {
       zoomOutBtn.addEventListener('click', () => {
         currentScale = Math.max(currentScale / 1.2, 0.5);
-        loadPage(currentPage);
+        if (isContinuousView) {
+          loadAllPages(); // Reload all pages with new scale
+        } else {
+          loadPage(currentPage); // Reload current page with new scale
+        }
       });
     }
 
@@ -1248,6 +1502,14 @@ function setupToolbar() {
       });
     }
 
+    // View mode toggle
+    viewModeToggle = document.getElementById('viewModeToggle');
+    if (viewModeToggle) {
+      viewModeToggle.addEventListener('click', () => {
+        toggleViewMode();
+      });
+    }
+
     // Update button states
     updateToolbarState();
 
@@ -1261,13 +1523,33 @@ function setupToolbar() {
 function updateToolbarState() {
   const prevPageBtn = document.getElementById('prevPageBtn');
   const nextPageBtn = document.getElementById('nextPageBtn');
+  const gotoPageInput = document.getElementById('gotoPageInput');
+  const gotoPageBtn = document.getElementById('gotoPageBtn');
 
-  if (prevPageBtn) {
-    prevPageBtn.disabled = currentPage <= 1;
+  // Update navigation buttons based on view mode
+  if (isContinuousView) {
+    // In continuous view, disable navigation buttons since all pages are visible
+    if (prevPageBtn) prevPageBtn.disabled = true;
+    if (nextPageBtn) nextPageBtn.disabled = true;
+    if (gotoPageInput) gotoPageInput.disabled = true;
+    if (gotoPageBtn) gotoPageBtn.disabled = true;
+  } else {
+    // In single page view, enable navigation buttons
+    if (prevPageBtn) prevPageBtn.disabled = currentPage <= 1;
+    if (nextPageBtn) nextPageBtn.disabled = currentPage >= totalPages;
+    if (gotoPageInput) gotoPageInput.disabled = false;
+    if (gotoPageBtn) gotoPageBtn.disabled = false;
   }
 
-  if (nextPageBtn) {
-    nextPageBtn.disabled = currentPage >= totalPages;
+  // Update view mode toggle button
+  if (viewModeToggle) {
+    if (isContinuousView) {
+      viewModeToggle.innerHTML = '<i class="fas fa-list mr-1"></i>Continuous';
+      viewModeToggle.title = 'Switch to single page view';
+    } else {
+      viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
+      viewModeToggle.title = 'Switch to continuous view';
+    }
   }
 }
 
@@ -1363,8 +1645,11 @@ function showManualTextInput() {
 // Retry loading PDF
 function retryPDF() {
   if (currentDoc) {
-    const docUrl = `/static/${encodeURIComponent(currentDoc)}`;
+    const docUrl = `/files/${encodeURIComponent(currentDoc)}`;
     initViewer(docUrl);
+  } else {
+    // No document selected, show neutral state
+    showPDFNeutral();
   }
 }
 
@@ -1379,6 +1664,9 @@ document.addEventListener('DOMContentLoaded', function () {
 // Initialize the application
 async function main() {
   await loadDocuments();
+
+  // Initialize PDF viewer in neutral state
+  showPDFNeutral();
 
   // Set up event listeners
   document.getElementById('uploadBtn')?.addEventListener('click', uploadFiles);

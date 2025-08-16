@@ -474,23 +474,23 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
 
     // Group text items by their vertical position
     const lineMap = new Map();
-    
+
     // First pass: group text items by their vertical position
     textContent.items.forEach((item) => {
       if (!item.str || item.str.trim() === '') return;
-      
+
       const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
       const style = textContent.styles[item.fontName];
       const fontSize = Math.max(0.1, Math.sqrt((tx[0] * tx[0]) + (tx[1] * tx[1])));
       const lineHeight = (style?.lineHeight || 1.2) * fontSize;
-      
+
       // Round the vertical position to group items on the same line
       const lineKey = Math.round(tx[5] / 2) * 2;
-      
+
       if (!lineMap.has(lineKey)) {
         lineMap.set(lineKey, []);
       }
-      
+
       lineMap.get(lineKey).push({
         text: item.str,
         left: tx[4],
@@ -501,12 +501,12 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
         direction: item.strDirection
       });
     });
-    
+
     // Second pass: create text elements for each line
     for (const [lineKey, items] of lineMap.entries()) {
       // Sort items horizontally
       items.sort((a, b) => a.left - b.left);
-      
+
       // Create a container for this line
       const lineContainer = document.createElement('div');
       lineContainer.className = 'text-line';
@@ -517,7 +517,7 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
       lineContainer.style.lineHeight = `${items[0].fontSize * 1.2}px`;
       lineContainer.style.whiteSpace = 'nowrap';
       lineContainer.style.pointerEvents = 'auto';
-      
+
       // Add text spans for each item in the line
       items.forEach(item => {
         const textElement = document.createElement('span');
@@ -538,10 +538,10 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
         textElement.style.pointerEvents = 'auto';
         textElement.style.verticalAlign = 'top';
         textElement.style.direction = item.direction === 'ttb' ? 'vertical-rl' : 'ltr';
-        
+
         lineContainer.appendChild(textElement);
       });
-      
+
       textLayerDiv.appendChild(lineContainer);
     }
 
@@ -649,8 +649,14 @@ function toggleTheme() {
 }
 
 async function fetchConfig() {
-  // No longer needed with PDF.js
-  console.log('PDF.js configuration loaded');
+  try {
+    const res = await fetch('/api/config');
+    const data = await res.json();
+    // Store any config data if needed
+    console.log('Config loaded:', data);
+  } catch (e) {
+    console.error('Config fetch failed:', e);
+  }
 }
 
 async function fetchHealth() {
@@ -677,19 +683,301 @@ async function fetchHealth() {
   }
 }
 
+async function loadDocuments() {
+  try {
+    const res = await fetch('/api/documents');
+    const docs = await res.json();
+    const list = document.getElementById('docList');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    docs.forEach((d) => {
+      const li = document.createElement('li');
+      li.className = 'doc-item group';
+
+      // Create a beautiful document item
+      li.innerHTML = `
+        <div class="flex items-center space-x-3 flex-1">
+          <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-file-pdf text-white text-sm"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors duration-300">
+              ${d.filename}
+            </div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+              PDF Document
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0" title="View document">
+            <i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>
+          </button>
+          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0" title="Delete document" onclick="deleteDocument('${d.filename}')">
+            <i class="fas fa-trash text-red-600 dark:text-red-400 text-xs"></i>
+          </button>
+          <div class="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-all duration-300"></div>
+        </div>
+      `;
+
+      li.dataset.filename = d.filename;
+
+      // Add click handlers
+      li.addEventListener('click', () => {
+        // Toggle selection
+        li.classList.toggle('selected');
+
+        // Update visual state
+        const indicator = li.querySelector('.w-3.h-3');
+        const viewBtn = li.querySelector('button');
+
+        if (li.classList.contains('selected')) {
+          indicator.className = 'w-3 h-3 rounded-full bg-blue-500 animate-pulse';
+          viewBtn.className = 'p-2 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-lg transition-all duration-300 opacity-100 transform translate-x-0';
+          viewBtn.innerHTML = '<i class="fas fa-check text-blue-600 dark:text-blue-400 text-xs"></i>';
+          viewBtn.title = 'Document selected';
+        } else {
+          indicator.className = 'w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-all duration-300';
+          viewBtn.className = 'p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0';
+          viewBtn.innerHTML = '<i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>';
+          viewBtn.title = 'View document';
+        }
+
+        // Load document if not already loaded
+        if (li.classList.contains('selected') && currentDoc !== `/files/${d.filename}`) {
+          initViewer(`/files/${d.filename}`);
+        }
+
+        updateSelectedCount();
+      });
+
+      list.appendChild(li);
+    });
+
+    updateSelectedCount();
+  } catch (e) {
+    console.error('Failed to load documents:', e);
+  }
+}
+
+function getSelectedDocs() {
+  const list = document.getElementById('docList');
+  if (!list) return [];
+
+  const docs = [];
+  for (const li of list.children) {
+    if (li.classList.contains('selected')) {
+      docs.push(li.dataset.filename || li.textContent);
+    }
+  }
+  return docs;
+}
+
+function updateSelectedCount() {
+  const el = document.getElementById('selectedCount');
+  if (!el) return;
+  const list = document.getElementById('docList');
+  if (!list) return;
+
+  let count = 0;
+  for (const li of list.children) if (li.classList.contains('selected')) count++;
+  el.textContent = `${count} selected`;
+}
+
 function updateCurrentDocName() {
   const currentDocNameEl = document.getElementById('currentDocName');
-  if (currentDocNameEl) {
-    if (currentDoc) {
-      const filename = currentDoc.split('/').pop() || currentDoc;
-      currentDocNameEl.textContent = filename;
-      currentDocNameEl.title = filename;
-    } else {
-      currentDocNameEl.textContent = 'No document selected';
-      currentDocNameEl.title = 'No document selected';
+  if (currentDocNameEl && currentDoc) {
+    const filename = currentDoc.split('/').pop();
+    currentDocNameEl.textContent = filename || 'Unknown document';
+  } else if (currentDocNameEl) {
+    currentDocNameEl.textContent = 'No document selected';
+  }
+}
+
+// Handle file uploads
+async function uploadFiles() {
+  const input = document.getElementById('fileInput');
+  if (!input.files.length) {
+    toast('Please select files to upload', 'warning');
+    return;
+  }
+
+  // Validate file types
+  const files = Array.from(input.files);
+  const invalidFiles = files.filter(file => !file.type.includes('pdf'));
+
+  if (invalidFiles.length > 0) {
+    toast(`Invalid file type(s): ${invalidFiles.map(f => f.name).join(', ')}. Only PDF files are supported.`, 'error');
+    return;
+  }
+
+  // Show upload progress UI
+  showUploadProgress();
+
+  const form = new FormData();
+  for (const f of files) form.append('files', f);
+
+  try {
+    // Create XMLHttpRequest for progress tracking
+    const xhr = new XMLHttpRequest();
+
+    // Track upload progress
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = (event.loaded / event.total) * 100;
+        updateUploadProgress(percentComplete, `Uploading ${files.length} file(s)...`);
+      }
+    });
+
+    // Handle upload completion
+    xhr.addEventListener('load', async () => {
+      if (xhr.status === 200) {
+        updateUploadProgress(100, 'Upload completed!', 'success');
+        toast(`Successfully uploaded ${files.length} file(s)! 🎉`, 'success');
+
+        // Reload documents list
+        await loadDocuments();
+
+        // Hide progress after a short delay
+        setTimeout(() => {
+          hideUploadProgress();
+        }, 1500);
+      } else {
+        updateUploadProgress(0, 'Upload failed', 'error');
+        toast(`Upload failed: ${xhr.statusText || 'Unknown error'}`, 'error');
+        hideUploadProgress();
+      }
+    });
+
+    // Handle upload errors
+    xhr.addEventListener('error', () => {
+      updateUploadProgress(0, 'Upload failed', 'error');
+      toast('Upload failed: Network error', 'error');
+      hideUploadProgress();
+    });
+
+    // Handle upload timeout
+    xhr.addEventListener('timeout', () => {
+      updateUploadProgress(0, 'Upload failed', 'error');
+      toast('Upload failed: Request timed out', 'error');
+      hideUploadProgress();
+    });
+
+    // Start the upload
+    xhr.open('POST', '/api/upload');
+    xhr.timeout = 300000; // 5 minutes timeout for large files
+    xhr.send(form);
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    updateUploadProgress(0, 'Upload failed', 'error');
+    toast(`Upload failed: ${error.message}`, 'error');
+    hideUploadProgress();
+  }
+}
+
+// Show upload progress UI
+function showUploadProgress() {
+  // Create or show upload progress modal
+  let progressModal = document.getElementById('uploadProgressModal');
+  if (!progressModal) {
+    progressModal = document.createElement('div');
+    progressModal.id = 'uploadProgressModal';
+    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    progressModal.innerHTML = `
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div class="text-center">
+          <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-cloud-upload-alt text-white text-lg"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Uploading Files...</h3>
+          
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+            <div id="uploadProgressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">
+            <div id="uploadProgressText">Preparing upload...</div>
+          </div>
+          
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            <span id="uploadProgressPercent">0%</span> complete
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(progressModal);
+  }
+
+  progressModal.classList.remove('hidden');
+}
+
+// Update upload progress
+function updateUploadProgress(percent, status, state = 'uploading') {
+  const progressBar = document.getElementById('uploadProgressBar');
+  const progressText = document.getElementById('uploadProgressText');
+  const progressPercent = document.getElementById('uploadProgressPercent');
+  const progressModal = document.getElementById('uploadProgressModal');
+
+  if (progressBar) {
+    progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+
+    // Update progress bar appearance based on state
+    progressBar.classList.remove('success', 'error');
+    if (state === 'success') {
+      progressBar.classList.add('success');
+    } else if (state === 'error') {
+      progressBar.classList.add('error');
+    }
+  }
+
+  if (progressText) {
+    progressText.textContent = status;
+  }
+
+  if (progressPercent) {
+    progressPercent.textContent = `${Math.round(percent)}%`;
+  }
+
+  // Update modal icon based on state
+  if (progressModal) {
+    const icon = progressModal.querySelector('.fas');
+    if (icon) {
+      if (state === 'success') {
+        icon.className = 'fas fa-check-circle text-white text-lg';
+      } else if (state === 'error') {
+        icon.className = 'fas fa-exclamation-circle text-white text-lg';
+      } else {
+        icon.className = 'fas fa-cloud-upload-alt text-white text-lg';
+      }
+    }
+
+    // Update modal title based on state
+    const title = progressModal.querySelector('h3');
+    if (title) {
+      if (state === 'success') {
+        title.textContent = 'Upload Complete!';
+      } else if (state === 'error') {
+        title.textContent = 'Upload Failed';
+      } else {
+        title.textContent = 'Uploading Files...';
+      }
     }
   }
 }
+
+// Hide upload progress
+function hideUploadProgress() {
+  const progressModal = document.getElementById('uploadProgressModal');
+  if (progressModal) {
+    progressModal.classList.add('hidden');
+  }
+}
+
+// ... existing code ...
 
 // Load a document into the PDF viewer
 async function loadDocument(doc) {
@@ -1148,63 +1436,68 @@ function showTextSelectionLoading() {
   if (!panel) {
     panel = document.createElement('div');
     panel.id = 'textSelectionPanel';
-    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40';
+    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden';
     document.body.appendChild(panel);
   }
 
   panel.innerHTML = `
     <div class="p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-slate-800 dark:text-white">Analyzing Text...</h3>
-        <button onclick="hideTextSelectionUI()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-          <i class="fas fa-times"></i>
-        </button>
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+        <h3 class="text-lg font-semibold text-slate-800 dark:text-white">Analyzing Text Selection...</h3>
       </div>
       
-      <div class="text-center py-8">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p class="text-slate-600 dark:text-slate-400">Processing selected text...</p>
-        <p class="text-xs text-slate-500 dark:text-slate-500 mt-2">Finding relevant content across all documents</p>
+      <!-- Progress Bar -->
+      <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-4">
+        <div id="textSelectionProgress" class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+      </div>
+      
+      <div class="text-sm text-slate-600 dark:text-slate-400">
+        <div id="textSelectionStatus">Initializing analysis...</div>
       </div>
     </div>
   `;
 
   panel.classList.remove('hidden');
+
+  // Simulate progress updates
+  let progress = 0;
+  const progressBar = document.getElementById('textSelectionProgress');
+  const status = document.getElementById('textSelectionStatus');
+
+  const progressInterval = setInterval(() => {
+    progress += Math.random() * 15;
+    if (progress > 90) progress = 90;
+
+    if (progressBar) progressBar.style.width = progress + '%';
+    if (status) {
+      if (progress < 30) status.textContent = 'Extracting text context...';
+      else if (progress < 60) status.textContent = 'Searching across documents...';
+      else if (progress < 90) status.textContent = 'Generating insights...';
+      else status.textContent = 'Finalizing results...';
+    }
+  }, 200);
+
+  // Store interval for cleanup
+  panel.dataset.progressInterval = progressInterval;
 }
 
 // Hide text selection UI
 function hideTextSelectionUI() {
-  const panel = document.getElementById('textSelectionPanel');
-  if (panel) {
-    panel.classList.add('hidden');
+  const insightsPanel = document.getElementById('textSelectionPanel');
+  if (insightsPanel) {
+    insightsPanel.classList.add('hidden');
   }
+
+  // Clear global variables
+  selectedText = "";
+  textSelectionInsights = null;
 }
 
 // Clear text selection
 function clearTextSelection() {
-  try {
-    // Clear the window selection
-    if (window.getSelection) {
-      window.getSelection().removeAllRanges();
-    } else if (document.selection) {
-      document.selection.empty();
-    }
-
-    // Clear highlighting
-    clearTextHighlighting();
-
-    // Hide toolbar
-    hideTextSelectionToolbar();
-
-    // Clear stored data
-    selectedText = "";
-    textSelectionInsights = null;
-    hideTextSelectionUI();
-
-    toast('Text selection cleared', 'info');
-  } catch (error) {
-    console.error('Error clearing text selection:', error);
-  }
+  hideTextSelectionUI();
+  toast('Text selection cleared', 'info');
 }
 
 // Display text selection insights
@@ -1215,8 +1508,14 @@ function displayTextSelectionInsights(insights) {
   if (!panel) {
     panel = document.createElement('div');
     panel.id = 'textSelectionPanel';
-    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40';
+    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden';
     document.body.appendChild(panel);
+  }
+
+  // Clear any existing progress intervals
+  const existingInterval = panel.dataset.progressInterval;
+  if (existingInterval) {
+    clearInterval(parseInt(existingInterval));
   }
 
   panel.innerHTML = `
@@ -1267,7 +1566,7 @@ function displayTextSelectionInsights(insights) {
       ` : ''}
       
       <div class="flex space-x-2">
-        <button onclick="getTextSelectionRecommendations()" 
+        <button onclick="getTextSelectionInsights()" 
                 class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
           Get Recommendations
         </button>
@@ -1285,14 +1584,25 @@ function displayTextSelectionInsights(insights) {
 // Jump to document function (placeholder for now)
 function jumpToDocument(documentName, pageNumber) {
   if (!documentName) {
-    toast('Document name not available', 'error');
+    showNotification('Document name not available', 'error');
     return;
   }
 
-  // For now, just show a toast message
-  toast(`Would jump to ${documentName} page ${pageNumber}`, 'info');
+  // Load the document if not already loaded
+  if (currentDoc !== `/files/${documentName}`) {
+    initViewer(`/files/${documentName}`).then(() => {
+      // Wait for viewer to initialize, then jump to page
+      setTimeout(() => {
+        jumpToPage(pageNumber || 1);
+      }, 1000);
+    });
+  } else {
+    // Document already loaded, jump directly to page
+    jumpToPage(pageNumber || 1);
+  }
 
-  // TODO: Implement actual document jumping when PDF.js navigation is complete
+  // Hide the text selection panel after jumping
+  hideTextSelectionUI();
 }
 
 // Get text selection recommendations (placeholder for now)
@@ -1302,22 +1612,111 @@ function getTextSelectionRecommendations() {
 }
 
 // Create podcast from text selection (placeholder for now)
-function createPodcastFromTextSelection() {
-  toast('Creating podcast...', 'info');
-  // TODO: Implement podcast creation API call
-}
-
-async function analyze() {
-  const persona = document.getElementById('persona').value.trim();
-  const job = document.getElementById('job').value.trim();
-
-  if (!persona && !job) {
-    toast('Please provide either a persona or job description', 'warning');
+async function createPodcastFromTextSelection() {
+  if (!textSelectionInsights) {
+    toast('No text selection insights available', 'error');
     return;
   }
 
-  if (!currentDoc) {
-    toast('Please select a document first', 'warning');
+  // Show podcast generation progress
+  showPodcastGenerationProgress();
+
+  try {
+    const response = await fetch('/api/enhanced-podcast', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        selected_text: textSelectionInsights.selected_text,
+        related_insights: textSelectionInsights.insights || [],
+        document: currentDoc || 'unknown',
+        page_number: currentPage,
+        conversation_style: 'academic',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Hide progress and show success
+    hidePodcastGenerationProgress();
+
+    if (result.url) {
+      toast('Podcast generated successfully!', 'success');
+
+      // Set up the audio player with new source
+      const player = document.getElementById('player');
+      const audioUrl = result.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+
+      player.src = audioUrl;
+      player.setAttribute('title', `Podcast: ${textSelectionInsights.selected_text.substring(0, 50)}...`);
+
+      // Reset audio player initialization to ensure proper setup
+      resetAudioPlayerInitialization();
+
+      // Initialize audio player UI before loading
+      initializeAudioPlayer();
+
+      // Clear any existing audio info
+      const audioInfo = document.getElementById('audioInfo');
+      const audioTitle = document.getElementById('audioTitle');
+      if (audioInfo) audioInfo.classList.add('hidden');
+      if (audioTitle) audioTitle.textContent = 'Loading podcast...';
+
+      // Wait for audio to load metadata
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Audio loading timeout'));
+        }, 15000); // 15 second timeout
+
+        player.addEventListener('loadedmetadata', () => {
+          clearTimeout(timeout);
+          resolve();
+        }, { once: true });
+
+        player.addEventListener('error', (e) => {
+          clearTimeout(timeout);
+          reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+        }, { once: true });
+
+        player.load(); // Force load
+      });
+
+      // Play the podcast
+      await player.play();
+
+      // Update UI to show it's playing
+      const playPauseBtn = document.getElementById('playPauseBtn');
+      if (playPauseBtn) {
+        const icon = playPauseBtn.querySelector('i');
+        if (icon) icon.className = 'fas fa-pause text-sm';
+      }
+
+      if (audioInfo) audioInfo.classList.remove('hidden');
+      if (audioTitle) audioTitle.textContent = `Podcast: ${textSelectionInsights.selected_text.substring(0, 50)}...`;
+
+    } else {
+      toast('Failed to generate podcast', 'error');
+    }
+  } catch (error) {
+    console.error('Error creating podcast:', error);
+    hidePodcastGenerationProgress();
+    toast(`Error creating podcast: ${error.message}`, 'error');
+  }
+}
+
+async function analyze() {
+  // Get persona and job from input fields, use defaults if empty
+  const persona = document.getElementById('persona').value.trim() || 'General User';
+  const job = document.getElementById('job').value.trim() || 'Understanding document content and structure';
+
+  const selectedDocs = getSelectedDocs();
+  if (selectedDocs.length === 0) {
+    toast('Please select at least one document to analyze', 'warning');
     return;
   }
 
@@ -1328,21 +1727,44 @@ async function analyze() {
   analyzeBtn.disabled = true;
 
   try {
-    // Get document recommendations
+    // Call the correct /api/analyze endpoint
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        persona: persona,
+        job: job,
+        documents: selectedDocs,
+        approach: 'nlp',
+        method: 'auto',
+        top_k: 5
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Analysis failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Analysis response:', data);
+
+    // Store the analysis results
+    currentSections = data.sections || [];
+    currentSnippets = data.snippets || [];
+
+    // Render the results - this is what the analyze button should do
+    renderSections(currentSections, data.related_map || {});
+    renderSnippets(currentSnippets);
+
+    // Get document recommendations (this is separate from insights/podcast)
     await getDocumentRecommendations();
 
-    // Get document insights
-    await getDocumentInsights();
-
-    // Get document podcast
-    await getDocumentPodcast();
-
     HAS_ANALYSIS = true;
-    toast('Analysis completed successfully!', 'success');
+    toast('Analysis completed successfully! Top Sections and Key Insights are now available.', 'success');
 
   } catch (error) {
     console.error('Analysis failed:', error);
-    toast('Analysis failed. Please try again.', 'error');
+    toast(`Analysis failed: ${error.message}`, 'error');
   } finally {
     // Restore button state
     analyzeBtn.innerHTML = originalText;
@@ -1355,28 +1777,22 @@ async function getDocumentRecommendations() {
   try {
     if (!currentDoc) return;
 
-    // Use the text-selection API with empty selected text to get document overview
-    const response = await fetch('/api/text-selection', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        selected_text: '', // Empty text to get document overview
-        document: currentDoc,
-        page_number: 1,
-        persona: document.getElementById('persona')?.value || '',
-        job: document.getElementById('job')?.value || ''
-      })
+    // Use the correct recommendations endpoint
+    const response = await fetch(`/api/index/recommendations/${encodeURIComponent(currentDoc)}?top_k=5`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
     });
 
     if (response.ok) {
       const data = await response.json();
-      // Handle recommendations data
       console.log('Document recommendations:', data);
 
       // Update the recommendations panel if data is available
-      if (data.insights && data.insights.length > 0) {
-        updateRecommendationsPanel(data.insights);
+      if (data.recommendations && data.recommendations.length > 0) {
+        updateRecommendationsPanel(data.recommendations);
       }
+    } else {
+      console.warn('Failed to get recommendations:', response.status);
     }
   } catch (error) {
     console.error('Error getting document recommendations:', error);
@@ -1397,16 +1813,23 @@ function updateRecommendationsPanel(recommendations) {
     return;
   }
 
-  container.innerHTML = recommendations.slice(0, 5).map((rec, index) => `
-    <div class="p-2 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4 border-emerald-500">
-      <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
-        ${rec.document} (p.${rec.page_number})
+  container.innerHTML = recommendations.slice(0, 5).map((rec, index) => {
+    // Handle different possible data structures
+    const documentName = rec.document || rec.filename || 'Unknown';
+    const pageNumber = rec.page_number || rec.page || 1;
+    const relevantText = rec.relevant_text || rec.text || rec.content || 'No text available';
+
+    return `
+      <div class="p-2 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4 border-emerald-500">
+        <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
+          ${documentName} (p.${pageNumber})
+        </div>
+        <div class="text-sm text-slate-700 dark:text-slate-300">
+          ${relevantText.substring(0, 80)}${relevantText.length > 80 ? '...' : ''}
+        </div>
       </div>
-      <div class="text-sm text-slate-700 dark:text-slate-300">
-        ${rec.relevant_text.substring(0, 80)}${rec.relevant_text.length > 80 ? '...' : ''}
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // Get document insights
@@ -1414,20 +1837,29 @@ async function getDocumentInsights() {
   try {
     if (!currentDoc) return;
 
-    const response = await fetch('/api/document-insights', {
+    const persona = document.getElementById('persona').value.trim();
+    const job = document.getElementById('job').value.trim();
+    const curr = currentSections[0];
+    // Use top 3 snippet texts for richer insights
+    const relatedTexts = (currentSnippets || []).slice(0, 3).map((s) => s.refined_text);
+
+    const response = await fetch('/api/insights', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        document: currentDoc,
-        persona: document.getElementById('persona')?.value || '',
-        job: document.getElementById('job')?.value || ''
-      })
+        persona,
+        job,
+        current_text: curr ? curr.section_title : '',
+        related_texts: relatedTexts
+      }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      // Handle insights data
-      console.log('Document insights:', data);
+      document.getElementById('insights').textContent = data.content;
+      toast('Insights ready', 'success');
+    } else {
+      console.warn('Failed to get insights:', response.status);
     }
   } catch (error) {
     console.error('Error getting document insights:', error);
@@ -1439,21 +1871,130 @@ async function getDocumentPodcast() {
   try {
     if (!currentDoc) return;
 
+    const persona = document.getElementById('persona').value.trim() || 'listener';
+    const job = document.getElementById('job').value.trim() || 'exploring this content';
+
+    // Create enhanced podcast data with sections and snippets
+    const sections = currentSections.slice(0, 3); // Top 3 sections
+    const snippets = currentSnippets.slice(0, 5); // Top 5 snippets
+
+    // Create related insights from sections and snippets
+    const relatedInsights = [];
+
+    // Add sections as insights
+    sections.forEach((section, index) => {
+      relatedInsights.push({
+        document: section.document,
+        page_number: section.page_number,
+        section_title: section.section_title,
+        relevant_text: section.section_summary || section.section_title,
+        relevance_score: 0.9 - (index * 0.1), // Decreasing relevance
+        insight_type: "section",
+        jump_url: `/files/${section.document}#page=${section.page_number}`
+      });
+    });
+
+    // Add snippets as insights
+    snippets.forEach((snippet, index) => {
+      relatedInsights.push({
+        document: snippet.document,
+        page_number: snippet.page_number,
+        section_title: `Key Insight ${index + 1}`,
+        relevant_text: snippet.refined_text,
+        relevance_score: 0.85 - (index * 0.05), // Decreasing relevance
+        insight_type: "snippet",
+        jump_url: `/files/${snippet.document}#page=${snippet.page_number}`
+      });
+    });
+
+    // Use the ENHANCED podcast API for dual voices and better quality
+    const enhancedPodcastData = {
+      selected_text: sections.length > 0 ? sections[0].section_summary || sections[0].section_title :
+        snippets.length > 0 ? snippets[0].refined_text :
+          "Analysis of selected documents",
+      related_insights: relatedInsights,
+      document: currentDoc ? currentDoc.split('/').pop() : 'analyzed_documents',
+      page_number: currentPage || 1,
+      conversation_style: "academic",
+      persona: persona,
+      job: job
+    };
+
+    console.log('Creating enhanced podcast with data:', enhancedPodcastData);
+
+    // Send to enhanced podcast endpoint for dual voice generation
     const response = await fetch('/api/enhanced-podcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        document: currentDoc,
-        selected_text: selectedText || '',
-        persona: document.getElementById('persona')?.value || '',
-        job: document.getElementById('job')?.value || ''
-      })
+      body: JSON.stringify(enhancedPodcastData)
     });
 
     if (response.ok) {
       const data = await response.json();
-      // Handle podcast data
-      console.log('Document podcast:', data);
+      const player = document.getElementById('player');
+
+      console.log('Enhanced podcast response:', data);
+      console.log('Audio URL from API:', data.url);
+
+      // Set up the audio player with new source
+      const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+      console.log('Final audio URL:', audioUrl);
+
+      player.src = audioUrl;
+      player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
+
+      // Reset audio player initialization to ensure proper setup
+      resetAudioPlayerInitialization();
+
+      // Initialize audio player UI before loading
+      initializeAudioPlayer();
+
+      // Clear any existing audio info
+      const audioInfo = document.getElementById('audioInfo');
+      const audioTitle = document.getElementById('audioTitle');
+      if (audioInfo) audioInfo.classList.add('hidden');
+      if (audioTitle) audioTitle.textContent = 'Loading dual voice podcast...';
+
+      // Wait for audio to load metadata
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Audio loading timeout'));
+        }, 15000); // 15 second timeout for enhanced podcast
+
+        player.addEventListener('loadedmetadata', () => {
+          clearTimeout(timeout);
+          resolve();
+        }, { once: true });
+
+        player.addEventListener('error', (e) => {
+          clearTimeout(timeout);
+          reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+        }, { once: true });
+
+        player.load(); // Force load
+      });
+
+      // Initialize audio player UI if not already done
+      initializeAudioPlayer();
+
+      // Play the podcast
+      await player.play();
+
+      // Update UI to show it's playing
+      const playPauseBtn = document.getElementById('playPauseBtn');
+
+      if (playPauseBtn) {
+        const icon = playPauseBtn.querySelector('i');
+        if (icon) icon.className = 'fas fa-pause text-sm';
+      }
+
+      if (audioInfo) audioInfo.classList.remove('hidden');
+      if (audioTitle) audioTitle.textContent = `AI Podcast: ${job} (Dual Voice)`;
+
+      toast('High-quality dual voice podcast is now playing! 🎧', 'success');
+
+    } else {
+      console.warn('Failed to generate podcast:', response.status);
     }
   } catch (error) {
     console.error('Error getting document podcast:', error);
@@ -1485,6 +2026,32 @@ function setupTextSelectionEvents() {
     console.log("✅ PDF.js text selection events configured successfully");
   } catch (error) {
     console.error("Error setting up PDF.js text selection events:", error);
+  }
+}
+
+// Handle selection change event
+function handleSelectionChange() {
+  const selection = window.getSelection();
+  const selectedText = selection.toString().trim();
+
+  // Clear any existing timeout
+  if (textSelectionTimeout) {
+    clearTimeout(textSelectionTimeout);
+  }
+
+  // Only process if there's meaningful text selection
+  if (selectedText && selectedText.length > 10) {
+    console.log('Text selection detected:', selectedText.substring(0, 100) + '...');
+
+    // Debounce the text selection processing
+    textSelectionTimeout = setTimeout(() => {
+      if (!isProcessingTextSelection) {
+        handleTextSelection(selectedText, currentPage);
+      }
+    }, 500);
+  } else if (selectedText.length === 0) {
+    // Clear selection when no text is selected
+    hideTextSelectionUI();
   }
 }
 
@@ -1555,63 +2122,64 @@ async function handleTextSelection(event) {
     // Get the range of the selection
     if (selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
-      
-      // Ensure the selection is within our text layer
-      const textLayer = document.querySelector('.text-layer');
-      if (textLayer && !textLayer.contains(range.commonAncestorContainer)) {
-        return; // Selection is not in our text layer
+
+      // Check if the selection is within our PDF viewer
+      const pdfContainer = document.getElementById('pdf-viewer-container');
+      if (pdfContainer && pdfContainer.contains(range.commonAncestorContainer)) {
+
+        // Process the selected text and trigger insights
+        console.log('Processing text selection:', selectedText.substring(0, 100) + '...');
+
+        // Set processing flag to prevent duplicate calls
+        isProcessingTextSelection = true;
+
+        try {
+          // Call the text selection API
+          const response = await fetch('/api/text-selection', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              selected_text: selectedText,
+              document: currentDoc ? currentDoc.split('/').pop() : 'unknown',
+              page_number: currentPage,
+              persona: document.getElementById('persona')?.value || '',
+              job: document.getElementById('job')?.value || ''
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Text selection response:', data);
+
+            // Store the insights globally
+            textSelectionInsights = data;
+
+            // Display the insights
+            displayTextSelectionInsights(data);
+
+            // Also refresh recommendations for current document
+            try {
+              getDocumentRecommendations();
+            } catch (_) { }
+
+          } else {
+            console.error('Text selection API failed:', response.status);
+            toast('Failed to analyze text selection', 'error');
+          }
+        } catch (error) {
+          console.error('Error processing text selection:', error);
+          toast('Error processing text selection', 'error');
+        } finally {
+          // Reset processing flag
+          isProcessingTextSelection = false;
+        }
       }
-
-      // Highlight the selected text in the text layer
-      highlightSelectedText(selection);
-
-      // Show the text selection toolbar
-      showTextSelectionToolbar(selectedText);
-
-      // Clear any existing timeout
-      if (textSelectionTimeout) {
-        clearTimeout(textSelectionTimeout);
-      }
-
-      // Debounce text selection to avoid multiple rapid calls
-      textSelectionTimeout = setTimeout(() => {
-        processSelectedText(selectedText, currentPage);
-      }, 300);
     }
   } catch (error) {
-    console.error("Error handling text selection:", error);
-  }
-}
-
-// Handle selection change events
-function handleSelectionChange(event) {
-  try {
-    const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
-
-    if (selectedText && selectedText.length >= 10) {
-      // Highlight the selected text
-      highlightSelectedText(selection);
-
-      // Show the text selection toolbar
-      showTextSelectionToolbar(selectedText);
-
-      // Clear any existing timeout
-      if (textSelectionTimeout) {
-        clearTimeout(textSelectionTimeout);
-      }
-
-      // Debounce text selection
-      textSelectionTimeout = setTimeout(() => {
-        processSelectedText(selectedText, currentPage);
-      }, 300);
-    } else {
-      // Clear highlighting if no text is selected
-      clearTextHighlighting();
-      hideTextSelectionToolbar();
-    }
-  } catch (error) {
-    console.error("Error handling selection change:", error);
+    console.error("Error in handleTextSelection:", error);
+    isProcessingTextSelection = false;
   }
 }
 
@@ -1624,23 +2192,23 @@ function highlightSelectedText(selection) {
     if (!selection.rangeCount) return;
 
     const range = selection.getRangeAt(0);
-    
+
     // Get the text layer container
     const textLayer = document.querySelector('.text-layer');
     if (!textLayer) return;
-    
+
     // Get the bounding rectangle of the selection
     const rects = range.getClientRects();
     if (rects.length === 0) return;
-    
+
     // Create a highlight for each rectangle in the selection
     Array.from(rects).forEach(rect => {
       if (rect.width === 0 || rect.height === 0) return;
-      
+
       // Create highlight element
       const highlight = document.createElement('div');
       highlight.className = 'text-highlight';
-      
+
       // Position the highlight
       const textLayerRect = textLayer.getBoundingClientRect();
       highlight.style.position = 'absolute';
@@ -1652,21 +2220,21 @@ function highlightSelectedText(selection) {
       highlight.style.pointerEvents = 'none';
       highlight.style.borderRadius = '2px';
       highlight.style.zIndex = '1';
-      
+
       textLayer.appendChild(highlight);
     });
-    
+
     // Also add the selected class to the text nodes for better text selection
     const walker = document.createTreeWalker(
       range.commonAncestorContainer,
       NodeFilter.SHOW_TEXT,
       {
-        acceptNode: function(node) {
+        acceptNode: function (node) {
           return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
         }
       }
     );
-    
+
     while (walker.nextNode()) {
       const node = walker.currentNode;
       if (node.parentNode && !node.parentNode.classList.contains('text-layer')) {
@@ -1686,7 +2254,7 @@ function clearTextHighlighting() {
     document.querySelectorAll('.selected').forEach(el => {
       el.classList.remove('selected');
     });
-    
+
     // Remove highlight elements
     document.querySelectorAll('.text-highlight').forEach(el => {
       el.remove();
@@ -1998,25 +2566,36 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-// Initialize the application
+// Main function to initialize the application
 async function main() {
+  await fetchConfig();
+  await fetchHealth();
   await loadDocuments();
 
-  // Initialize PDF viewer in neutral state
-  showPDFNeutral();
+  // Set up upload functionality
+  setupUploadFunctionality();
 
-  // Set up event listeners
-  document.getElementById('uploadBtn')?.addEventListener('click', uploadFiles);
-  document.getElementById('analyzeBtn')?.addEventListener('click', analyze);
+  document.getElementById('analyzeBtn').addEventListener('click', analyze);
+  const ib = document.getElementById('insightsBtn');
+  const pb = document.getElementById('podcastBtn');
+  const cb = document.getElementById('clusterBtn');
+  if (ib) { ib.disabled = true; ib.addEventListener('click', insights); }
+  if (pb) { pb.disabled = true; pb.addEventListener('click', podcast); }
+  if (cb) { cb.addEventListener('click', clusterDocuments); }
+  setupToolbar();
 
-  // Set up theme
+  // Initialize audio player
+  initializeAudioPlayer();
+
+  // Theme
   initTheme();
   const themeToggle = document.getElementById('themeToggle');
   if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
 
-  // Set up document selection controls
   const selectAllBtn = document.getElementById('selectAllBtn');
   const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+  const deleteAllBtn = document.getElementById('deleteAllBtn');
+
   if (selectAllBtn) selectAllBtn.addEventListener('click', () => {
     const list = document.getElementById('docList');
     for (const li of list.children) li.classList.add('selected');
@@ -2027,8 +2606,15 @@ async function main() {
     for (const li of list.children) li.classList.remove('selected');
     updateSelectedCount();
   });
+  if (deleteAllBtn) deleteAllBtn.addEventListener('click', () => {
+    const selectedDocs = getSelectedDocs();
+    if (selectedDocs.length === 0) {
+      toast('Please select documents to delete', 'warning');
+      return;
+    }
+    showDeleteAllConfirmation(selectedDocs);
+  });
 
-  // Set up document filter
   const docFilter = document.getElementById('docFilter');
   if (docFilter) docFilter.addEventListener('input', () => {
     const q = (docFilter.value || '').toLowerCase();
@@ -2040,162 +2626,803 @@ async function main() {
   });
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', main);
+// Set up upload functionality with drag and drop
+function setupUploadFunctionality() {
+  const uploadBtn = document.getElementById('uploadBtn');
+  const fileInput = document.getElementById('fileInput');
+  const uploadArea = document.querySelector('.group\\/upload');
 
-// Show text selection toolbar
-function showTextSelectionToolbar(selectedText) {
-  try {
-    // Remove existing toolbar
-    hideTextSelectionToolbar();
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+  }
 
-    // Create toolbar
-    const toolbar = document.createElement('div');
-    toolbar.id = 'text-selection-toolbar';
-    toolbar.className = 'fixed bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg z-50 p-2 flex items-center space-x-2';
+  if (fileInput) {
+    fileInput.addEventListener('change', uploadFiles);
+  }
 
-    // Position toolbar near the selection
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      toolbar.style.left = `${rect.left + window.scrollX}px`;
-      toolbar.style.top = `${rect.bottom + window.scrollY + 10}px`;
-    } else {
-      // Fallback position
-      toolbar.style.left = '50%';
-      toolbar.style.top = '20px';
-      toolbar.style.transform = 'translateX(-50%)';
-    }
+  // Drag and drop functionality
+  if (uploadArea) {
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, preventDefaults, false);
+      document.body.addEventListener(eventName, preventDefaults, false);
+    });
 
-    // Add toolbar content
-    toolbar.innerHTML = `
-      <div class="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
-        <span class="font-medium">Selected: ${selectedText.length} chars</span>
-      </div>
-      <div class="flex items-center space-x-1">
-        <button onclick="copySelectedText()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors" title="Copy text">
-          <i class="fas fa-copy text-blue-500"></i>
-        </button>
-        <button onclick="getTextSelectionInsights()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors" title="Get insights">
-          <i class="fas fa-lightbulb text-yellow-500"></i>
-        </button>
-        <button onclick="clearTextSelection()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors" title="Clear selection">
-          <i class="fas fa-times text-red-500"></i>
-        </button>
+    // Highlight drop area when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    // Handle dropped files
+    uploadArea.addEventListener('drop', handleDrop, false);
+  }
+}
+
+function preventDefaults(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function highlight(e) {
+  const uploadArea = document.querySelector('.group\\/upload');
+  if (uploadArea) {
+    uploadArea.classList.add('dragover');
+  }
+}
+
+function unhighlight(e) {
+  const uploadArea = document.querySelector('.group\\/upload');
+  if (uploadArea) {
+    uploadArea.classList.remove('dragover');
+  }
+}
+
+function handleDrop(e) {
+  const dt = e.dataTransfer;
+  const files = dt.files;
+
+  if (files.length > 0) {
+    // Show immediate feedback
+    toast(`Processing ${files.length} dropped file(s)...`, 'info');
+
+    const fileInput = document.getElementById('fileInput');
+    fileInput.files = files;
+
+    // Start upload after a brief delay to show the feedback
+    setTimeout(() => {
+      uploadFiles();
+    }, 100);
+  } else {
+    toast('No valid files found in the dropped items', 'warning');
+  }
+}
+
+// Initialize the application when DOM is loaded
+window.addEventListener('DOMContentLoaded', main);
+
+// Show text selection hint
+function showTextSelectionHint() {
+  // Create or show text selection hint
+  let hint = document.getElementById('textSelectionHint');
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'textSelectionHint';
+    hint.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-y-full opacity-0 transition-all duration-300';
+    hint.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <i class="fas fa-mouse-pointer text-sm"></i>
+        <span class="text-sm">Select text to get insights and recommendations</span>
       </div>
     `;
+    document.body.appendChild(hint);
+  }
 
-    document.body.appendChild(toolbar);
+  // Show the hint with animation
+  setTimeout(() => {
+    hint.classList.remove('translate-y-full', 'opacity-0');
+    hint.classList.add('translate-y-0', 'opacity-100');
+  }, 100);
 
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      if (document.getElementById('text-selection-toolbar')) {
-        hideTextSelectionToolbar();
-      }
-    }, 5000);
+  // Hide the hint after 5 seconds
+  setTimeout(() => {
+    hint.classList.add('translate-y-full', 'opacity-0');
+  }, 5000);
+}
 
-  } catch (error) {
-    console.error("Error showing text selection toolbar:", error);
+// Insights function
+async function insights() {
+  if (!HAS_ANALYSIS || (!currentSections.length && !currentSnippets.length)) {
+    toast('Run Analyze and ensure sections/snippets are available.', 'error');
+    return;
+  }
+  const persona = document.getElementById('persona').value.trim();
+  const job = document.getElementById('job').value.trim();
+  const curr = currentSections[0];
+  // Use top 3 snippet texts for richer insights
+  const relatedTexts = (currentSnippets || []).slice(0, 3).map((s) => s.refined_text);
+  const btn = document.getElementById('insightsBtn');
+  const prev = btn.textContent; btn.disabled = true; btn.textContent = 'Thinking...';
+  try {
+    const res = await fetch('/api/insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ persona, job, current_text: curr ? curr.section_title : '', related_texts: relatedTexts }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    document.getElementById('insights').textContent = data.content;
+    toast('Insights ready', 'success');
+  } catch (e) {
+    toast(`Insights failed: ${e.message || e}`, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = prev;
   }
 }
 
-// Hide text selection toolbar
-function hideTextSelectionToolbar() {
-  try {
-    const toolbar = document.getElementById('text-selection-toolbar');
-    if (toolbar) {
-      toolbar.remove();
-    }
-  } catch (error) {
-    console.error("Error hiding text selection toolbar:", error);
+// Podcast function
+async function podcast() {
+  if (!HAS_ANALYSIS || (!currentSections.length && !currentSnippets.length)) {
+    toast('Run Analyze first to generate content for podcast.', 'error');
+    return;
   }
-}
 
-// Copy selected text to clipboard
-function copySelectedText() {
+  const persona = document.getElementById('persona').value.trim() || 'listener';
+  const job = document.getElementById('job').value.trim() || 'exploring this content';
+  const btn = document.getElementById('podcastBtn');
+  const prev = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Creating Podcast...';
+
   try {
-    const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
+    // Create enhanced podcast data with sections and snippets
+    const sections = currentSections.slice(0, 3); // Top 3 sections
+    const snippets = currentSnippets.slice(0, 5); // Top 5 snippets
 
-    if (selectedText) {
-      navigator.clipboard.writeText(selectedText).then(() => {
-        toast('Text copied to clipboard!', 'success');
-      }).catch(() => {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = selectedText;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        toast('Text copied to clipboard!', 'success');
+    // Create related insights from sections and snippets
+    const relatedInsights = [];
+
+    // Add sections as insights
+    sections.forEach((section, index) => {
+      relatedInsights.push({
+        document: section.document,
+        page_number: section.page_number,
+        section_title: section.section_title,
+        relevant_text: section.section_summary || section.section_title,
+        relevance_score: 0.9 - (index * 0.1), // Decreasing relevance
+        insight_type: "section",
+        jump_url: `/files/${section.document}#page=${section.page_number}`
       });
+    });
+
+    // Add snippets as insights
+    snippets.forEach((snippet, index) => {
+      relatedInsights.push({
+        document: snippet.document,
+        page_number: snippet.page_number,
+        section_title: `Key Insight ${index + 1}`,
+        relevant_text: snippet.refined_text,
+        relevance_score: 0.85 - (index * 0.05), // Decreasing relevance
+        insight_type: "snippet",
+        jump_url: `/files/${snippet.document}#page=${section.page_number}`
+      });
+    });
+
+    // Use the ENHANCED podcast API for dual voices and better quality
+    const enhancedPodcastData = {
+      selected_text: sections.length > 0 ? sections[0].section_summary || sections[0].section_title :
+        snippets.length > 0 ? snippets[0].refined_text :
+          "Analysis of selected documents",
+      related_insights: relatedInsights,
+      document: currentDoc ? currentDoc.split('/').pop() : 'analyzed_documents',
+      page_number: currentPage || 1,
+      conversation_style: "academic",
+      persona: persona,
+      job: job
+    };
+
+    console.log('Creating enhanced podcast with data:', enhancedPodcastData);
+
+    // Send to enhanced podcast endpoint for dual voice generation
+    const res = await fetch('/api/enhanced-podcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(enhancedPodcastData)
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const data = await res.json();
+    const player = document.getElementById('player');
+
+    console.log('Enhanced podcast response:', data);
+    console.log('Audio URL from API:', data.url);
+
+    // Set up the audio player with new source
+    const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+    console.log('Final audio URL:', audioUrl);
+
+    player.src = audioUrl;
+    player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
+
+    // Reset audio player initialization to ensure proper setup
+    resetAudioPlayerInitialization();
+
+    // Initialize audio player UI before loading
+    initializeAudioPlayer();
+
+    // Clear any existing audio info
+    const audioInfo = document.getElementById('audioInfo');
+    const audioTitle = document.getElementById('audioTitle');
+    if (audioInfo) audioInfo.classList.add('hidden');
+    if (audioTitle) audioTitle.textContent = 'Loading dual voice podcast...';
+
+    // Wait for audio to load metadata
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Audio loading timeout'));
+      }, 15000); // 15 second timeout for enhanced podcast
+
+      player.addEventListener('loadedmetadata', () => {
+        clearTimeout(timeout);
+        resolve();
+      }, { once: true });
+
+      player.addEventListener('error', (e) => {
+        clearTimeout(timeout);
+        reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+      }, { once: true });
+
+      player.load(); // Force load
+    });
+
+    // Initialize audio player UI if not already done
+    initializeAudioPlayer();
+
+    // Play the podcast
+    await player.play();
+
+    // Update UI to show it's playing
+    const playPauseBtn = document.getElementById('playPauseBtn');
+
+    if (playPauseBtn) {
+      const icon = playPauseBtn.querySelector('i');
+      if (icon) icon.className = 'fas fa-pause text-sm';
     }
-  } catch (error) {
-    console.error("Error copying text:", error);
-    toast('Failed to copy text', 'error');
+
+    if (audioInfo) audioInfo.classList.remove('hidden');
+    if (audioTitle) audioTitle.textContent = `AI Podcast: ${job} (Dual Voice)`;
+
+    toast('High-quality dual voice podcast is now playing! 🎧', 'success');
+
+  } catch (e) {
+    console.error('Enhanced podcast error:', e);
+    toast(`Podcast failed: ${e.message || 'Unknown error'}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = prev;
   }
 }
 
 // Get insights for selected text
-function getTextSelectionInsights() {
-  try {
-    const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
+async function getTextSelectionInsights() {
+  if (!textSelectionInsights || !textSelectionInsights.selected_text) return;
 
-    if (selectedText && selectedText.length >= 10) {
-      processSelectedText(selectedText, currentPage);
-    } else {
-      toast('Please select some text first', 'warning');
+  const selectedText = textSelectionInsights.selected_text;
+  // Remove the 10-character minimum requirement - allow any non-empty text
+  if (!selectedText || selectedText.trim().length === 0) return;
+
+  try {
+    const response = await fetch('/api/document-search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: selectedText,
+        top_k: 5,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    const results = await response.json();
+
+    // Update the recommendations panel with text-selection-based results
+    displayTextSelectionRecommendations(results.results, selectedText);
+
   } catch (error) {
     console.error("Error getting text insights:", error);
+    showNotification(`Error getting recommendations: ${error.message}`, 'error');
   }
 }
 
-// Show text selection hint
-function showTextSelectionHint() {
-  try {
-    // Remove existing hint
-    hideTextSelectionHint();
+function displayTextSelectionRecommendations(results, selectedText) {
+  const panel = document.getElementById('textSelectionPanel');
+  if (!panel) return;
 
-    // Create hint element
-    const hint = document.createElement('div');
-    hint.id = 'text-selection-hint';
-    hint.className = 'text-selection-hint';
-    hint.innerHTML = `
-      <div class="flex items-center space-x-2">
-        <i class="fas fa-mouse-pointer text-white"></i>
-        <span>Select text to get insights and recommendations</span>
-        <button onclick="hideTextSelectionHint()" class="ml-2 text-white/80 hover:text-white">
-          <i class="fas fa-times"></i>
-        </button>
+  const recommendationsHtml = `
+    <div class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
+      <div class="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+        Recommendations based on your selection:
+      </div>
+      <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">"${selectedText.substring(0, 80)}${selectedText.length > 80 ? '...' : ''}"</p>
+      
+      ${results && results.length > 0 ? `
+        <div class="mt-2 space-y-1">
+          ${results.slice(0, 3).map((result, idx) => `
+            <div class="text-xs text-slate-600 dark:text-slate-400">
+              ${idx + 1}. ${result.document} (p.${result.page_number}) - ${result.text.substring(0, 60)}...
+            </div>
+          `).join('')}
+        </div>
+      ` : '<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">No specific recommendations found.</div>'}
+    </div>
+  `;
+
+  // Add recommendations to the existing panel
+  const existingContent = panel.querySelector('.flex.space-x-2');
+  if (existingContent) {
+    existingContent.insertAdjacentHTML('beforebegin', recommendationsHtml);
+  }
+}
+
+function showNotification(message, type = 'info') {
+  toast(message, type);
+}
+
+function loadAudio(url, title = 'Audio') {
+  const player = document.getElementById('player');
+  if (player) {
+    player.src = url;
+    player.setAttribute('title', title);
+    player.play().catch(e => console.log('Auto-play prevented:', e));
+    toast(`Loading audio: ${title}`, 'info');
+  } else {
+    // Fallback: create a new audio element
+    const audio = new Audio(url);
+    audio.title = title;
+    audio.play().catch(e => console.log('Auto-play prevented:', e));
+    toast(`Playing audio: ${title}`, 'info');
+  }
+}
+
+// ... existing code ...
+
+// Show podcast generation progress
+function showPodcastGenerationProgress() {
+  // Create or show podcast progress modal
+  let progressModal = document.getElementById('podcastProgressModal');
+  if (!progressModal) {
+    progressModal = document.createElement('div');
+    progressModal.id = 'podcastProgressModal';
+    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    progressModal.innerHTML = `
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Generating Podcast...</h3>
+          
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+            <div id="podcastProgress" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            <div id="podcastStatus">Initializing podcast generation...</div>
+          </div>
+          
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            This may take a few minutes for high-quality audio
+          </div>
+        </div>
       </div>
     `;
+    document.body.appendChild(progressModal);
+  }
 
-    document.body.appendChild(hint);
+  progressModal.classList.remove('hidden');
 
-    // Auto-hide after 8 seconds
-    setTimeout(() => {
-      if (document.getElementById('text-selection-hint')) {
-        hideTextSelectionHint();
-      }
-    }, 8000);
+  // Simulate progress updates
+  let progress = 0;
+  const progressBar = document.getElementById('podcastProgress');
+  const status = document.getElementById('podcastStatus');
 
-  } catch (error) {
-    console.error("Error showing text selection hint:", error);
+  const progressInterval = setInterval(() => {
+    progress += Math.random() * 8;
+    if (progress > 85) progress = 85;
+
+    if (progressBar) progressBar.style.width = progress + '%';
+    if (status) {
+      if (progress < 20) status.textContent = 'Analyzing selected text...';
+      else if (progress < 40) status.textContent = 'Generating conversation script...';
+      else if (progress < 60) status.textContent = 'Creating voice segments...';
+      else if (progress < 80) status.textContent = 'Mixing audio...';
+      else status.textContent = 'Finalizing podcast...';
+    }
+  }, 300);
+
+  // Store interval for cleanup
+  progressModal.dataset.progressInterval = progressInterval;
+}
+
+function hidePodcastGenerationProgress() {
+  const progressModal = document.getElementById('podcastProgressModal');
+  if (progressModal) {
+    // Clear progress interval
+    const interval = progressModal.dataset.progressInterval;
+    if (interval) clearInterval(parseInt(interval));
+
+    // Hide modal
+    progressModal.classList.add('hidden');
   }
 }
 
-// Hide text selection hint
-function hideTextSelectionHint() {
-  try {
-    const hint = document.getElementById('text-selection-hint');
-    if (hint) {
-      hint.remove();
-    }
-  } catch (error) {
-    console.error("Error hiding text selection hint:", error);
+// Audio Player Initialization Functions
+function resetAudioPlayerInitialization() {
+  const player = document.getElementById('player');
+  if (!player) return;
+
+  // Remove existing event listeners to prevent duplicates
+  player.removeEventListener('loadedmetadata', updateAudioDuration);
+  player.removeEventListener('timeupdate', updateAudioProgress);
+  player.removeEventListener('play', updatePlayPauseButton);
+  player.removeEventListener('pause', updatePlayPauseButton);
+  player.removeEventListener('ended', handleAudioEnded);
+  player.removeEventListener('error', handleAudioError);
+
+  // Reset UI elements
+  const currentTimeEl = document.getElementById('currentTime');
+  const totalTimeEl = document.getElementById('totalTime');
+  const progressEl = document.getElementById('audioProgress');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+
+  if (currentTimeEl) currentTimeEl.textContent = '0:00';
+  if (totalTimeEl) totalTimeEl.textContent = '0:00';
+  if (progressEl) progressEl.style.width = '0%';
+  if (playPauseBtn) {
+    const icon = playPauseBtn.querySelector('i');
+    if (icon) icon.className = 'fas fa-play text-sm';
   }
+}
+
+function initializeAudioPlayer() {
+  const player = document.getElementById('player');
+  if (!player) {
+    console.error('Audio player element not found');
+    return;
+  }
+
+  // Set up event listeners for audio player
+  player.addEventListener('loadedmetadata', updateAudioDuration);
+  player.addEventListener('timeupdate', updateAudioProgress);
+  player.addEventListener('play', updatePlayPauseButton);
+  player.addEventListener('pause', updatePlayPauseButton);
+  player.addEventListener('ended', handleAudioEnded);
+  player.addEventListener('error', handleAudioError);
+
+  // Set up control button event listeners
+  setupAudioControls();
+
+  console.log('Audio player initialized successfully');
+}
+
+function setupAudioControls() {
+  // Play/Pause button
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  if (playPauseBtn) {
+    playPauseBtn.removeEventListener('click', togglePlayPause);
+    playPauseBtn.addEventListener('click', togglePlayPause);
+  }
+
+  // Stop button
+  const stopBtn = document.getElementById('stopBtn');
+  if (stopBtn) {
+    stopBtn.removeEventListener('click', stopAudio);
+    stopBtn.addEventListener('click', stopAudio);
+  }
+
+  // Speed button
+  const speedBtn = document.getElementById('speedBtn');
+  if (speedBtn) {
+    speedBtn.removeEventListener('click', cyclePlaybackSpeed);
+    speedBtn.addEventListener('click', cyclePlaybackSpeed);
+  }
+
+  // Progress bar
+  const progressContainer = document.getElementById('progressContainer');
+  if (progressContainer) {
+    progressContainer.removeEventListener('click', seekAudio);
+    progressContainer.addEventListener('click', seekAudio);
+  }
+}
+
+function updateAudioDuration() {
+  const player = document.getElementById('player');
+  const totalTimeEl = document.getElementById('totalTime');
+
+  if (player && totalTimeEl && !isNaN(player.duration)) {
+    totalTimeEl.textContent = formatTime(player.duration);
+  }
+}
+
+function updateAudioProgress() {
+  const player = document.getElementById('player');
+  const currentTimeEl = document.getElementById('currentTime');
+  const progressEl = document.getElementById('audioProgress');
+
+  if (player && !isNaN(player.currentTime) && !isNaN(player.duration)) {
+    if (currentTimeEl) {
+      currentTimeEl.textContent = formatTime(player.currentTime);
+    }
+
+    if (progressEl) {
+      const progress = (player.currentTime / player.duration) * 100;
+      progressEl.style.width = `${progress}%`;
+    }
+  }
+}
+
+function updatePlayPauseButton() {
+  const player = document.getElementById('player');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+
+  if (player && playPauseBtn) {
+    const icon = playPauseBtn.querySelector('i');
+    if (icon) {
+      icon.className = player.paused ? 'fas fa-play text-sm' : 'fas fa-pause text-sm';
+    }
+  }
+}
+
+function handleAudioEnded() {
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  if (playPauseBtn) {
+    const icon = playPauseBtn.querySelector('i');
+    if (icon) icon.className = 'fas fa-play text-sm';
+  }
+
+  // Reset progress
+  const progressEl = document.getElementById('audioProgress');
+  if (progressEl) progressEl.style.width = '0%';
+
+  const currentTimeEl = document.getElementById('currentTime');
+  if (currentTimeEl) currentTimeEl.textContent = '0:00';
+}
+
+function handleAudioError(event) {
+  console.error('Audio error:', event);
+  toast('Error playing audio. Please try again.', 'error');
+}
+
+function togglePlayPause() {
+  const player = document.getElementById('player');
+  if (!player) return;
+
+  if (player.paused) {
+    player.play().catch(e => {
+      console.error('Error playing audio:', e);
+      toast('Error playing audio. Please try again.', 'error');
+    });
+  } else {
+    player.pause();
+  }
+}
+
+function stopAudio() {
+  const player = document.getElementById('player');
+  if (!player) return;
+
+  player.pause();
+  player.currentTime = 0;
+
+  // Update UI
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  if (playPauseBtn) {
+    const icon = playPauseBtn.querySelector('i');
+    if (icon) icon.className = 'fas fa-play text-sm';
+  }
+
+  const progressEl = document.getElementById('audioProgress');
+  if (progressEl) progressEl.style.width = '0%';
+
+  const currentTimeEl = document.getElementById('currentTime');
+  if (currentTimeEl) currentTimeEl.textContent = '0:00';
+}
+
+function cyclePlaybackSpeed() {
+  const player = document.getElementById('player');
+  const speedBtn = document.getElementById('speedBtn');
+
+  if (!player || !speedBtn) return;
+
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const currentSpeed = player.playbackRate;
+  const currentIndex = speeds.indexOf(currentSpeed);
+  const nextIndex = (currentIndex + 1) % speeds.length;
+  const newSpeed = speeds[nextIndex];
+
+  player.playbackRate = newSpeed;
+  speedBtn.textContent = `${newSpeed}x`;
+}
+
+function seekAudio(event) {
+  const player = document.getElementById('player');
+  const progressContainer = document.getElementById('progressContainer');
+
+  if (!player || !progressContainer || isNaN(player.duration)) return;
+
+  const rect = progressContainer.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  const containerWidth = rect.width;
+  const seekTime = (clickX / containerWidth) * player.duration;
+
+  player.currentTime = seekTime;
+}
+
+function formatTime(seconds) {
+  if (isNaN(seconds)) return '0:00';
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+// Document clustering functionality
+async function clusterDocuments() {
+  const selectedDocs = getSelectedDocs();
+  if (selectedDocs.length === 0) {
+    toast('Please select at least one document to cluster', 'warning');
+    return;
+  }
+
+  // Show loading state
+  const clusterBtn = document.getElementById('clusterBtn');
+  if (clusterBtn) {
+    const originalText = clusterBtn.innerHTML;
+    clusterBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clustering...';
+    clusterBtn.disabled = true;
+
+    try {
+      // Call the clustering API endpoint
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documents: selectedDocs,
+          approach: 'clustering',
+          method: 'auto',
+          top_k: 10
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Clustering failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Clustering response:', data);
+
+      // Store the clustering results
+      currentSections = data.sections || [];
+      currentSnippets = data.snippets || [];
+
+      // Render the clustered results
+      renderSections(currentSections, data.related_map || {});
+      renderSnippets(currentSnippets);
+
+      // Get document recommendations for clustered documents
+      await getDocumentRecommendations();
+
+      HAS_ANALYSIS = true;
+      toast('Document clustering completed! Similar documents are now grouped together.', 'success');
+
+    } catch (error) {
+      console.error('Clustering failed:', error);
+      toast(`Clustering failed: ${error.message}`, 'error');
+    } finally {
+      // Restore button state
+      clusterBtn.innerHTML = originalText;
+      clusterBtn.disabled = false;
+    }
+  }
+}
+
+// Show delete all confirmation dialog
+function showDeleteAllConfirmation(selectedDocs) {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  overlay.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Delete Documents?</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">
+          Are you sure you want to delete ${selectedDocs.length} selected document(s)? This action cannot be undone.
+        </p>
+        <div class="flex space-x-3">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+            Cancel
+          </button>
+          <button onclick="deleteSelectedDocuments()" 
+                  class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Close on outside click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  });
+}
+
+// Delete selected documents
+async function deleteSelectedDocuments() {
+  const selectedDocs = getSelectedDocs();
+  if (selectedDocs.length === 0) {
+    toast('No documents selected for deletion', 'warning');
+    return;
+  }
+
+  try {
+    // Call delete API for each selected document
+    const deletePromises = selectedDocs.map(async (docName) => {
+      const response = await fetch(`/api/documents/${encodeURIComponent(docName)}`, {
+        method: 'DELETE'
+      });
+      return response.ok;
+    });
+
+    const results = await Promise.all(deletePromises);
+    const successCount = results.filter(Boolean).length;
+
+    if (successCount > 0) {
+      toast(`Successfully deleted ${successCount} document(s)`, 'success');
+
+      // Reload documents list
+      await loadDocuments();
+
+      // Clear current document if it was deleted
+      if (currentDoc && selectedDocs.includes(currentDoc.split('/').pop())) {
+        currentDoc = null;
+        showPDFNeutral();
+      }
+
+      // Clear analysis results
+      currentSections = [];
+      currentSnippets = [];
+      HAS_ANALYSIS = false;
+
+      // Re-render empty sections and snippets
+      renderSections([], {});
+      renderSnippets([]);
+    } else {
+      toast('Failed to delete any documents', 'error');
+    }
+
+  } catch (error) {
+    console.error('Error deleting documents:', error);
+    toast('Error deleting documents', 'error');
+  }
+
+  // Close confirmation dialog
+  const overlay = document.querySelector('.fixed.bg-black\\/50');
+  if (overlay) overlay.remove();
 }

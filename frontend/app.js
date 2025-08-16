@@ -1992,73 +1992,71 @@ async function getDocumentPodcast() {
       body: JSON.stringify(enhancedPodcastData)
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      const player = document.getElementById('player');
+    if (!response.ok) throw new Error(await response.text());
 
-      console.log('Enhanced podcast response:', data);
-      console.log('Audio URL from API:', data.url);
+    const data = await response.json();
+    const player = document.getElementById('player');
 
-      // Set up the audio player with new source
-      const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
-      console.log('Final audio URL:', audioUrl);
+    console.log('Enhanced podcast response:', data);
+    console.log('Audio URL from API:', data.url);
 
-      player.src = audioUrl;
-      player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
+    // Set up the audio player with new source
+    const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+    console.log('Final audio URL:', audioUrl);
 
-      // Reset audio player initialization to ensure proper setup
-      resetAudioPlayerInitialization();
+    player.src = audioUrl;
+    player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
 
-      // Initialize audio player UI before loading
-      initializeAudioPlayer();
+    // Reset audio player initialization to ensure proper setup
+    resetAudioPlayerInitialization();
 
-      // Clear any existing audio info
-      const audioInfo = document.getElementById('audioInfo');
-      const audioTitle = document.getElementById('audioTitle');
-      if (audioInfo) audioInfo.classList.add('hidden');
-      if (audioTitle) audioTitle.textContent = 'Loading dual voice podcast...';
+    // Initialize audio player UI before loading
+    initializeAudioPlayer();
 
-      // Wait for audio to load metadata
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Audio loading timeout'));
-        }, 15000); // 15 second timeout for enhanced podcast
+    // Clear any existing audio info
+    const audioInfo = document.getElementById('audioInfo');
+    const audioTitle = document.getElementById('audioTitle');
+    if (audioInfo) audioInfo.classList.add('hidden');
+    if (audioTitle) audioTitle.textContent = 'Loading dual voice podcast...';
 
-        player.addEventListener('loadedmetadata', () => {
-          clearTimeout(timeout);
-          resolve();
-        }, { once: true });
+    // Wait for audio to load metadata
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Audio loading timeout'));
+      }, 15000); // 15 second timeout for enhanced podcast
 
-        player.addEventListener('error', (e) => {
-          clearTimeout(timeout);
-          reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
-        }, { once: true });
+      player.addEventListener('loadedmetadata', () => {
+        clearTimeout(timeout);
+        resolve();
+      }, { once: true });
 
-        player.load(); // Force load
-      });
+      player.addEventListener('error', (e) => {
+        clearTimeout(timeout);
+        reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+      }, { once: true });
 
-      // Initialize audio player UI if not already done
-      initializeAudioPlayer();
+      player.load(); // Force load
+    });
 
-      // Play the podcast
-      await player.play();
+    // Initialize audio player UI if not already done
+    initializeAudioPlayer();
 
-      // Update UI to show it's playing
-      const playPauseBtn = document.getElementById('playPauseBtn');
+    // Play the podcast
+    await player.play();
 
-      if (playPauseBtn) {
-        const icon = playPauseBtn.querySelector('i');
-        if (icon) icon.className = 'fas fa-pause text-sm';
-      }
+    // Update UI to show it's playing
+    const playPauseBtn = document.getElementById('playPauseBtn');
 
-      if (audioInfo) audioInfo.classList.remove('hidden');
-      if (audioTitle) audioTitle.textContent = `AI Podcast: ${job} (Dual Voice)`;
-
-      toast('High-quality dual voice podcast is now playing! 🎧', 'success');
-
-    } else {
-      console.warn('Failed to generate podcast:', response.status);
+    if (playPauseBtn) {
+      const icon = playPauseBtn.querySelector('i');
+      if (icon) icon.className = 'fas fa-pause text-sm';
     }
+
+    if (audioInfo) audioInfo.classList.remove('hidden');
+    if (audioTitle) audioTitle.textContent = `AI Podcast: ${job} (Dual Voice)`;
+
+    toast('High-quality dual voice podcast is now playing! 🎧', 'success');
+
   } catch (error) {
     console.error('Error getting document podcast:', error);
   }
@@ -2935,9 +2933,9 @@ async function podcast() {
       body: JSON.stringify(enhancedPodcastData)
     });
 
-    if (!res.ok) throw new Error(await res.text());
+    if (!response.ok) throw new Error(await response.text());
 
-    const data = await res.json();
+    const data = await response.json();
     const player = document.getElementById('player');
 
     console.log('Enhanced podcast response:', data);

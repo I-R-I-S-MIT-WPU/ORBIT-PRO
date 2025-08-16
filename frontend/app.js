@@ -451,39 +451,99 @@ async function loadPageToContainer(pageNum, container) {
 // Render text layer for text selection
 async function renderTextLayer(page, textLayerDiv, viewport) {
   try {
-    const textContent = await page.getTextContent();
+    const textContent = await page.getTextContent({
+      normalizeWhitespace: true,
+      disableCombineTextItems: true,
+      includeMarkedContent: false
+    });
 
-    // Clear existing content
+    // Clear existing content and set up text layer
     textLayerDiv.innerHTML = '';
+    textLayerDiv.style.position = 'absolute';
+    textLayerDiv.style.left = '0';
+    textLayerDiv.style.top = '0';
+    textLayerDiv.style.width = '100%';
+    textLayerDiv.style.height = '100%';
+    textLayerDiv.style.overflow = 'visible';
+    textLayerDiv.style.lineHeight = '1';
+    textLayerDiv.style.fontSize = '0';
+    textLayerDiv.style.userSelect = 'text';
+    textLayerDiv.style.webkitUserSelect = 'text';
+    textLayerDiv.style.lineHeight = '1.0';
+    textLayerDiv.style.fontSize = '0';
 
-    // Create text elements for each text item
+    // Group text items by their vertical position
+    const lineMap = new Map();
+    
+    // First pass: group text items by their vertical position
     textContent.items.forEach((item) => {
+      if (!item.str || item.str.trim() === '') return;
+      
       const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
       const style = textContent.styles[item.fontName];
-
-      // Calculate font size
-      let fontSize = Math.sqrt((tx[0] * tx[0]) + (tx[1] * tx[1]));
-      if (fontSize < 0.1) fontSize = 0.1;
-
-      // Create text element
-      const textElement = document.createElement('span');
-      textElement.textContent = item.str;
-      textElement.style.position = 'absolute';
-      textElement.style.left = `${tx[4]}px`;
-      textElement.style.top = `${tx[5]}px`;
-      textElement.style.fontSize = `${fontSize}px`;
-      textElement.style.fontFamily = style?.fontFamily || 'sans-serif';
-      textElement.style.transform = `scaleX(${tx[0] / fontSize})`;
-      textElement.style.transformOrigin = 'left';
-      textElement.style.whiteSpace = 'pre';
-      textElement.style.cursor = 'text';
-      textElement.style.userSelect = 'text';
-      textElement.style.color = 'transparent';
-      textElement.style.pointerEvents = 'auto';
-
-      // Add to text layer
-      textLayerDiv.appendChild(textElement);
+      const fontSize = Math.max(0.1, Math.sqrt((tx[0] * tx[0]) + (tx[1] * tx[1])));
+      const lineHeight = (style?.lineHeight || 1.2) * fontSize;
+      
+      // Round the vertical position to group items on the same line
+      const lineKey = Math.round(tx[5] / 2) * 2;
+      
+      if (!lineMap.has(lineKey)) {
+        lineMap.set(lineKey, []);
+      }
+      
+      lineMap.get(lineKey).push({
+        text: item.str,
+        left: tx[4],
+        top: tx[5],
+        fontSize: fontSize,
+        scale: tx[0] / fontSize,
+        style: style,
+        direction: item.strDirection
+      });
     });
+    
+    // Second pass: create text elements for each line
+    for (const [lineKey, items] of lineMap.entries()) {
+      // Sort items horizontally
+      items.sort((a, b) => a.left - b.left);
+      
+      // Create a container for this line
+      const lineContainer = document.createElement('div');
+      lineContainer.className = 'text-line';
+      lineContainer.style.position = 'absolute';
+      lineContainer.style.left = '0';
+      lineContainer.style.top = `${lineKey}px`;
+      lineContainer.style.height = `${items[0].fontSize * 1.2}px`;
+      lineContainer.style.lineHeight = `${items[0].fontSize * 1.2}px`;
+      lineContainer.style.whiteSpace = 'nowrap';
+      lineContainer.style.pointerEvents = 'auto';
+      
+      // Add text spans for each item in the line
+      items.forEach(item => {
+        const textElement = document.createElement('span');
+        textElement.className = 'text-span';
+        textElement.textContent = item.text;
+        textElement.style.position = 'absolute';
+        textElement.style.left = `${item.left}px`;
+        textElement.style.top = '0';
+        textElement.style.fontSize = `${item.fontSize}px`;
+        textElement.style.fontFamily = item.style?.fontFamily || 'sans-serif';
+        textElement.style.transform = `matrix(${item.scale}, 0, 0, 1, 0, 0)`;
+        textElement.style.transformOrigin = 'left top';
+        textElement.style.whiteSpace = 'pre';
+        textElement.style.cursor = 'text';
+        textElement.style.userSelect = 'text';
+        textElement.style.webkitUserSelect = 'text';
+        textElement.style.color = 'transparent';
+        textElement.style.pointerEvents = 'auto';
+        textElement.style.verticalAlign = 'top';
+        textElement.style.direction = item.direction === 'ttb' ? 'vertical-rl' : 'ltr';
+        
+        lineContainer.appendChild(textElement);
+      });
+      
+      textLayerDiv.appendChild(lineContainer);
+    }
 
     console.log(`Text layer rendered for page with ${textContent.items.length} text items`);
   } catch (error) {
@@ -976,19 +1036,9 @@ function renderSnippets(snippets) {
   `;
   container.appendChild(header);
 
-  // De-duplicate by (doc,page,text)
-  const seen = new Set();
-  const uniq = [];
-  snippets.forEach((s) => {
-    const key = `${s.document}:${s.page_number}:${s.refined_text}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    uniq.push(s);
-  });
+  currentSnippets = snippets;
 
-  currentSnippets = uniq;
-
-  uniq.forEach((s, index) => {
+  snippets.forEach((s, index) => {
     const item = document.createElement('div');
     item.className = 'snippet-item group cursor-pointer';
 
@@ -1502,22 +1552,32 @@ async function handleTextSelection(event) {
       return; // Ignore short selections
     }
 
-    // Highlight the selected text in the text layer
-    highlightSelectedText(selection);
+    // Get the range of the selection
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      
+      // Ensure the selection is within our text layer
+      const textLayer = document.querySelector('.text-layer');
+      if (textLayer && !textLayer.contains(range.commonAncestorContainer)) {
+        return; // Selection is not in our text layer
+      }
 
-    // Show the text selection toolbar
-    showTextSelectionToolbar(selectedText);
+      // Highlight the selected text in the text layer
+      highlightSelectedText(selection);
 
-    // Clear any existing timeout
-    if (textSelectionTimeout) {
-      clearTimeout(textSelectionTimeout);
+      // Show the text selection toolbar
+      showTextSelectionToolbar(selectedText);
+
+      // Clear any existing timeout
+      if (textSelectionTimeout) {
+        clearTimeout(textSelectionTimeout);
+      }
+
+      // Debounce text selection to avoid multiple rapid calls
+      textSelectionTimeout = setTimeout(() => {
+        processSelectedText(selectedText, currentPage);
+      }, 300);
     }
-
-    // Debounce text selection to avoid multiple rapid calls
-    textSelectionTimeout = setTimeout(() => {
-      processSelectedText(selectedText, currentPage);
-    }, 300);
-
   } catch (error) {
     console.error("Error handling text selection:", error);
   }
@@ -1564,33 +1624,55 @@ function highlightSelectedText(selection) {
     if (!selection.rangeCount) return;
 
     const range = selection.getRangeAt(0);
-    const selectedNodes = [];
-
-    // Get all text nodes in the selection
+    
+    // Get the text layer container
+    const textLayer = document.querySelector('.text-layer');
+    if (!textLayer) return;
+    
+    // Get the bounding rectangle of the selection
+    const rects = range.getClientRects();
+    if (rects.length === 0) return;
+    
+    // Create a highlight for each rectangle in the selection
+    Array.from(rects).forEach(rect => {
+      if (rect.width === 0 || rect.height === 0) return;
+      
+      // Create highlight element
+      const highlight = document.createElement('div');
+      highlight.className = 'text-highlight';
+      
+      // Position the highlight
+      const textLayerRect = textLayer.getBoundingClientRect();
+      highlight.style.position = 'absolute';
+      highlight.style.left = `${rect.left - textLayerRect.left + textLayer.scrollLeft}px`;
+      highlight.style.top = `${rect.top - textLayerRect.top + textLayer.scrollTop}px`;
+      highlight.style.width = `${rect.width}px`;
+      highlight.style.height = `${rect.height}px`;
+      highlight.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
+      highlight.style.pointerEvents = 'none';
+      highlight.style.borderRadius = '2px';
+      highlight.style.zIndex = '1';
+      
+      textLayer.appendChild(highlight);
+    });
+    
+    // Also add the selected class to the text nodes for better text selection
     const walker = document.createTreeWalker(
       range.commonAncestorContainer,
       NodeFilter.SHOW_TEXT,
       {
-        acceptNode: function (node) {
-          if (range.intersectsNode(node)) {
-            return NodeFilter.FILTER_ACCEPT;
-          }
-          return NodeFilter.FILTER_REJECT;
+        acceptNode: function(node) {
+          return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
         }
       }
     );
-
-    let node;
-    while (node = walker.nextNode()) {
-      selectedNodes.push(node);
-    }
-
-    // Highlight each selected text node
-    selectedNodes.forEach(textNode => {
-      if (textNode.parentElement && textNode.parentElement.classList.contains('text-layer')) {
-        textNode.parentElement.classList.add('selected');
+    
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentNode && !node.parentNode.classList.contains('text-layer')) {
+        node.parentNode.classList.add('selected');
       }
-    });
+    }
 
   } catch (error) {
     console.error("Error highlighting selected text:", error);
@@ -1600,9 +1682,14 @@ function highlightSelectedText(selection) {
 // Clear text highlighting
 function clearTextHighlighting() {
   try {
-    const selectedElements = document.querySelectorAll('.text-layer .selected');
-    selectedElements.forEach(element => {
-      element.classList.remove('selected');
+    // Remove selected class
+    document.querySelectorAll('.selected').forEach(el => {
+      el.classList.remove('selected');
+    });
+    
+    // Remove highlight elements
+    document.querySelectorAll('.text-highlight').forEach(el => {
+      el.remove();
     });
   } catch (error) {
     console.error("Error clearing text highlighting:", error);

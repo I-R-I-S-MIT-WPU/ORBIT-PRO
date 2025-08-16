@@ -1004,7 +1004,8 @@ async function loadDocument(doc) {
       // Update UI
       updateCurrentDocName();
 
-      // Enable insights and podcast buttons
+      // Enable insights and podcast buttons when document is loaded
+      // (they can work with just the document, even without analysis)
       const insightsBtn = document.getElementById('insightsBtn');
       const podcastBtn = document.getElementById('podcastBtn');
       if (insightsBtn) insightsBtn.disabled = false;
@@ -1742,7 +1743,9 @@ async function analyze() {
     });
 
     if (!response.ok) {
-      throw new Error(`Analysis failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Analysis API error:', response.status, errorText);
+      throw new Error(`Analysis failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -1758,6 +1761,12 @@ async function analyze() {
 
     // Get document recommendations (this is separate from insights/podcast)
     await getDocumentRecommendations();
+
+    // Enable insights and podcast buttons after successful analysis
+    const insightsBtn = document.getElementById('insightsBtn');
+    const podcastBtn = document.getElementById('podcastBtn');
+    if (insightsBtn) insightsBtn.disabled = false;
+    if (podcastBtn) podcastBtn.disabled = false;
 
     HAS_ANALYSIS = true;
     toast('Analysis completed successfully! Top Sections and Key Insights are now available.', 'success');
@@ -2579,9 +2588,20 @@ async function main() {
   const ib = document.getElementById('insightsBtn');
   const pb = document.getElementById('podcastBtn');
   const cb = document.getElementById('clusterBtn');
-  if (ib) { ib.disabled = true; ib.addEventListener('click', insights); }
-  if (pb) { pb.disabled = true; pb.addEventListener('click', podcast); }
-  if (cb) { cb.addEventListener('click', clusterDocuments); }
+
+  // Set up event listeners but keep buttons disabled until analysis is complete
+  if (ib) {
+    ib.disabled = true;
+    ib.addEventListener('click', insights);
+  }
+  if (pb) {
+    pb.disabled = true;
+    pb.addEventListener('click', podcast);
+  }
+  if (cb) {
+    cb.addEventListener('click', clusterDocuments);
+  }
+
   setupToolbar();
 
   // Initialize audio player
@@ -2737,23 +2757,45 @@ function showTextSelectionHint() {
 
 // Insights function
 async function insights() {
-  if (!HAS_ANALYSIS || (!currentSections.length && !currentSnippets.length)) {
-    toast('Run Analyze and ensure sections/snippets are available.', 'error');
+  // Check if we have any content to work with
+  if (!currentDoc && (!currentSections.length && !currentSnippets.length)) {
+    toast('Please select a document or run analysis first to generate insights.', 'error');
     return;
   }
-  const persona = document.getElementById('persona').value.trim();
-  const job = document.getElementById('job').value.trim();
-  const curr = currentSections[0];
-  // Use top 3 snippet texts for richer insights
-  const relatedTexts = (currentSnippets || []).slice(0, 3).map((s) => s.refined_text);
+
+  const persona = document.getElementById('persona').value.trim() || 'General User';
+  const job = document.getElementById('job').value.trim() || 'Understanding document content and structure';
   const btn = document.getElementById('insightsBtn');
-  const prev = btn.textContent; btn.disabled = true; btn.textContent = 'Thinking...';
+  const prev = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Thinking...';
+
   try {
+    let currentText = '';
+    let relatedTexts = [];
+
+    // If we have analysis results, use them
+    if (currentSections.length > 0 || currentSnippets.length > 0) {
+      const curr = currentSections[0];
+      currentText = curr ? curr.section_title : '';
+      relatedTexts = (currentSnippets || []).slice(0, 3).map((s) => s.refined_text);
+    } else if (currentDoc) {
+      // If no analysis but document is loaded, use document info
+      currentText = `Document: ${currentDoc.split('/').pop()}`;
+      relatedTexts = [`Analyzing the content of ${currentDoc.split('/').pop()}`];
+    }
+
     const res = await fetch('/api/insights', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ persona, job, current_text: curr ? curr.section_title : '', related_texts: relatedTexts }),
+      body: JSON.stringify({
+        persona,
+        job,
+        current_text: currentText,
+        related_texts: relatedTexts
+      }),
     });
+
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     document.getElementById('insights').textContent = data.content;
@@ -2761,11 +2803,12 @@ async function insights() {
   } catch (e) {
     toast(`Insights failed: ${e.message || e}`, 'error');
   } finally {
-    btn.disabled = false; btn.textContent = prev;
+    btn.disabled = false;
+    btn.textContent = prev;
   }
 }
 
-// Podcast function
+// Podcast function - using the old working implementation
 async function podcast() {
   if (!HAS_ANALYSIS || (!currentSections.length && !currentSnippets.length)) {
     toast('Run Analyze first to generate content for podcast.', 'error');
@@ -2809,7 +2852,7 @@ async function podcast() {
         relevant_text: snippet.refined_text,
         relevance_score: 0.85 - (index * 0.05), // Decreasing relevance
         insight_type: "snippet",
-        jump_url: `/files/${snippet.document}#page=${section.page_number}`
+        jump_url: `/files/${snippet.document}#page=${snippet.page_number}`
       });
     });
 
@@ -3291,7 +3334,7 @@ async function clusterDocuments() {
     clusterBtn.disabled = true;
 
     try {
-      // Call the clustering API endpoint
+      // Call the clustering API endpoint with proper parameters
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3299,12 +3342,16 @@ async function clusterDocuments() {
           documents: selectedDocs,
           approach: 'clustering',
           method: 'auto',
-          top_k: 10
+          top_k: 10,
+          persona: document.getElementById('persona')?.value?.trim() || 'General User',
+          job: document.getElementById('job')?.value?.trim() || 'Understanding document content and structure'
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Clustering failed: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Clustering API error:', response.status, errorText);
+        throw new Error(`Clustering failed: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();

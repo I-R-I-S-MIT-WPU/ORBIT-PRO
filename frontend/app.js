@@ -210,6 +210,12 @@ async function loadPage(pageNum) {
 
     await pdfPage.render(renderContext).promise;
 
+    // Create or update text layer for text selection
+    await createTextLayerForSinglePage(pdfPage, viewport);
+
+    // Show text selection hint
+    showTextSelectionHint();
+
     // Update page count display
     updatePageCount();
 
@@ -224,6 +230,42 @@ async function loadPage(pageNum) {
   } catch (error) {
     console.error('Error loading page:', error);
     toast('Failed to load page. Please try again.', 'error');
+  }
+}
+
+// Create text layer for single page view
+async function createTextLayerForSinglePage(page, viewport) {
+  try {
+    // Get or create text layer container
+    let textLayerContainer = document.getElementById('single-page-text-layer');
+    if (!textLayerContainer) {
+      textLayerContainer = document.createElement('div');
+      textLayerContainer.id = 'single-page-text-layer';
+      textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
+      textLayerContainer.style.width = `${viewport.width}px`;
+      textLayerContainer.style.height = `${viewport.height}px`;
+      textLayerContainer.style.fontSize = '0px';
+      textLayerContainer.style.lineHeight = '1';
+      textLayerContainer.style.color = 'transparent';
+      textLayerContainer.style.userSelect = 'text';
+      textLayerContainer.style.cursor = 'text';
+
+      // Insert after canvas
+      const canvasContainer = document.getElementById('pdf-viewer-container');
+      if (canvasContainer) {
+        canvasContainer.appendChild(textLayerContainer);
+      }
+    }
+
+    // Update text layer dimensions
+    textLayerContainer.style.width = `${viewport.width}px`;
+    textLayerContainer.style.height = `${viewport.height}px`;
+
+    // Render text content
+    await renderTextLayer(page, textLayerContainer, viewport);
+
+  } catch (error) {
+    console.error('Error creating text layer for single page:', error);
   }
 }
 
@@ -262,6 +304,9 @@ async function loadAllPages() {
 
     // Set up text selection for all pages
     setupTextSelectionEvents();
+
+    // Show text selection hint
+    showTextSelectionHint();
 
     console.log(`All ${totalPages} pages loaded successfully`);
 
@@ -331,6 +376,7 @@ async function loadPageToContainer(pageNum, container) {
     pageWrapper.className = 'page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto';
     pageWrapper.style.width = `${viewport.width}px`;
     pageWrapper.style.maxWidth = '100%';
+    pageWrapper.dataset.pageNumber = pageNum; // Add data attribute for easy selection
 
     // Create canvas for this page
     const canvas = document.createElement('canvas');
@@ -339,15 +385,27 @@ async function loadPageToContainer(pageNum, container) {
     canvas.height = viewport.height;
     canvas.dataset.pageNumber = pageNum;
 
+    // Create text layer for text selection
+    const textLayerDiv = document.createElement('div');
+    textLayerDiv.className = 'text-layer absolute inset-0 pointer-events-auto';
+    textLayerDiv.style.width = `${viewport.width}px`;
+    textLayerDiv.style.height = `${viewport.height}px`;
+    textLayerDiv.style.fontSize = '0px'; // Hide text but keep it selectable
+    textLayerDiv.style.lineHeight = '1';
+    textLayerDiv.style.color = 'transparent';
+    textLayerDiv.style.userSelect = 'text';
+    textLayerDiv.style.cursor = 'text';
+
     // Create page info overlay
     const pageInfo = document.createElement('div');
-    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium';
+    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium z-10';
     pageInfo.textContent = `Page ${pageNum}`;
 
     pageWrapper.appendChild(canvas);
+    pageWrapper.appendChild(textLayerDiv);
     pageWrapper.appendChild(pageInfo);
 
-    // Render the page
+    // Render the page to canvas
     const context = canvas.getContext('2d');
     const renderContext = {
       canvasContext: context,
@@ -356,11 +414,19 @@ async function loadPageToContainer(pageNum, container) {
 
     await page.render(renderContext).promise;
 
+    // Render text layer for text selection
+    await renderTextLayer(page, textLayerDiv, viewport);
+
     // Add to container
     container.appendChild(pageWrapper);
 
     // Add click handler for page navigation
-    pageWrapper.addEventListener('click', () => {
+    pageWrapper.addEventListener('click', (e) => {
+      // Don't navigate if clicking on text layer
+      if (e.target.closest('.text-layer')) {
+        return;
+      }
+
       currentPage = pageNum;
       updatePageCount();
 
@@ -379,6 +445,49 @@ async function loadPageToContainer(pageNum, container) {
   } catch (error) {
     console.error(`Error loading page ${pageNum}:`, error);
     return null;
+  }
+}
+
+// Render text layer for text selection
+async function renderTextLayer(page, textLayerDiv, viewport) {
+  try {
+    const textContent = await page.getTextContent();
+
+    // Clear existing content
+    textLayerDiv.innerHTML = '';
+
+    // Create text elements for each text item
+    textContent.items.forEach((item) => {
+      const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+      const style = textContent.styles[item.fontName];
+
+      // Calculate font size
+      let fontSize = Math.sqrt((tx[0] * tx[0]) + (tx[1] * tx[1]));
+      if (fontSize < 0.1) fontSize = 0.1;
+
+      // Create text element
+      const textElement = document.createElement('span');
+      textElement.textContent = item.str;
+      textElement.style.position = 'absolute';
+      textElement.style.left = `${tx[4]}px`;
+      textElement.style.top = `${tx[5]}px`;
+      textElement.style.fontSize = `${fontSize}px`;
+      textElement.style.fontFamily = style?.fontFamily || 'sans-serif';
+      textElement.style.transform = `scaleX(${tx[0] / fontSize})`;
+      textElement.style.transformOrigin = 'left';
+      textElement.style.whiteSpace = 'pre';
+      textElement.style.cursor = 'text';
+      textElement.style.userSelect = 'text';
+      textElement.style.color = 'transparent';
+      textElement.style.pointerEvents = 'auto';
+
+      // Add to text layer
+      textLayerDiv.appendChild(textElement);
+    });
+
+    console.log(`Text layer rendered for page with ${textContent.items.length} text items`);
+  } catch (error) {
+    console.error('Error rendering text layer:', error);
   }
 }
 
@@ -1023,13 +1132,28 @@ function hideTextSelectionUI() {
 
 // Clear text selection
 function clearTextSelection() {
-  selectedText = "";
-  textSelectionInsights = null;
-  hideTextSelectionUI();
+  try {
+    // Clear the window selection
+    if (window.getSelection) {
+      window.getSelection().removeAllRanges();
+    } else if (document.selection) {
+      document.selection.empty();
+    }
 
-  // Clear any existing selection
-  if (window.getSelection) {
-    window.getSelection().removeAllRanges();
+    // Clear highlighting
+    clearTextHighlighting();
+
+    // Hide toolbar
+    hideTextSelectionToolbar();
+
+    // Clear stored data
+    selectedText = "";
+    textSelectionInsights = null;
+    hideTextSelectionUI();
+
+    toast('Text selection cleared', 'info');
+  } catch (error) {
+    console.error('Error clearing text selection:', error);
   }
 }
 
@@ -1305,9 +1429,65 @@ function setupTextSelectionEvents() {
     // Add selection change listener for better text capture
     document.addEventListener('selectionchange', handleSelectionChange);
 
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', handleTextSelectionKeyboard);
+
     console.log("✅ PDF.js text selection events configured successfully");
   } catch (error) {
     console.error("Error setting up PDF.js text selection events:", error);
+  }
+}
+
+// Handle keyboard shortcuts for text selection
+function handleTextSelectionKeyboard(event) {
+  try {
+    // Escape key to clear selection
+    if (event.key === 'Escape') {
+      clearTextSelection();
+      event.preventDefault();
+    }
+
+    // Ctrl+A to select all text on current page
+    if (event.ctrlKey && event.key === 'a') {
+      selectAllTextOnCurrentPage();
+      event.preventDefault();
+    }
+  } catch (error) {
+    console.error("Error handling text selection keyboard:", error);
+  }
+}
+
+// Select all text on the current page
+function selectAllTextOnCurrentPage() {
+  try {
+    if (isContinuousView) {
+      // In continuous view, select text from the current page wrapper
+      const currentPageWrapper = document.querySelector(`[data-page-number="${currentPage}"]`);
+      if (currentPageWrapper) {
+        const textLayer = currentPageWrapper.querySelector('.text-layer');
+        if (textLayer) {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(textLayer);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+    } else {
+      // In single page view, select text from the single page text layer
+      const textLayer = document.getElementById('single-page-text-layer');
+      if (textLayer) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(textLayer);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+
+    toast('All text on current page selected', 'info');
+  } catch (error) {
+    console.error("Error selecting all text:", error);
   }
 }
 
@@ -1321,6 +1501,12 @@ async function handleTextSelection(event) {
     if (!selectedText || selectedText.length < 10) {
       return; // Ignore short selections
     }
+
+    // Highlight the selected text in the text layer
+    highlightSelectedText(selection);
+
+    // Show the text selection toolbar
+    showTextSelectionToolbar(selectedText);
 
     // Clear any existing timeout
     if (textSelectionTimeout) {
@@ -1344,6 +1530,12 @@ function handleSelectionChange(event) {
     const selectedText = selection.toString().trim();
 
     if (selectedText && selectedText.length >= 10) {
+      // Highlight the selected text
+      highlightSelectedText(selection);
+
+      // Show the text selection toolbar
+      showTextSelectionToolbar(selectedText);
+
       // Clear any existing timeout
       if (textSelectionTimeout) {
         clearTimeout(textSelectionTimeout);
@@ -1353,9 +1545,67 @@ function handleSelectionChange(event) {
       textSelectionTimeout = setTimeout(() => {
         processSelectedText(selectedText, currentPage);
       }, 300);
+    } else {
+      // Clear highlighting if no text is selected
+      clearTextHighlighting();
+      hideTextSelectionToolbar();
     }
   } catch (error) {
     console.error("Error handling selection change:", error);
+  }
+}
+
+// Highlight selected text in the text layer
+function highlightSelectedText(selection) {
+  try {
+    // Clear previous highlighting
+    clearTextHighlighting();
+
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    const selectedNodes = [];
+
+    // Get all text nodes in the selection
+    const walker = document.createTreeWalker(
+      range.commonAncestorContainer,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function (node) {
+          if (range.intersectsNode(node)) {
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_REJECT;
+        }
+      }
+    );
+
+    let node;
+    while (node = walker.nextNode()) {
+      selectedNodes.push(node);
+    }
+
+    // Highlight each selected text node
+    selectedNodes.forEach(textNode => {
+      if (textNode.parentElement && textNode.parentElement.classList.contains('text-layer')) {
+        textNode.parentElement.classList.add('selected');
+      }
+    });
+
+  } catch (error) {
+    console.error("Error highlighting selected text:", error);
+  }
+}
+
+// Clear text highlighting
+function clearTextHighlighting() {
+  try {
+    const selectedElements = document.querySelectorAll('.text-layer .selected');
+    selectedElements.forEach(element => {
+      element.classList.remove('selected');
+    });
+  } catch (error) {
+    console.error("Error clearing text highlighting:", error);
   }
 }
 
@@ -1705,3 +1955,160 @@ async function main() {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', main);
+
+// Show text selection toolbar
+function showTextSelectionToolbar(selectedText) {
+  try {
+    // Remove existing toolbar
+    hideTextSelectionToolbar();
+
+    // Create toolbar
+    const toolbar = document.createElement('div');
+    toolbar.id = 'text-selection-toolbar';
+    toolbar.className = 'fixed bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg z-50 p-2 flex items-center space-x-2';
+
+    // Position toolbar near the selection
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      toolbar.style.left = `${rect.left + window.scrollX}px`;
+      toolbar.style.top = `${rect.bottom + window.scrollY + 10}px`;
+    } else {
+      // Fallback position
+      toolbar.style.left = '50%';
+      toolbar.style.top = '20px';
+      toolbar.style.transform = 'translateX(-50%)';
+    }
+
+    // Add toolbar content
+    toolbar.innerHTML = `
+      <div class="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
+        <span class="font-medium">Selected: ${selectedText.length} chars</span>
+      </div>
+      <div class="flex items-center space-x-1">
+        <button onclick="copySelectedText()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors" title="Copy text">
+          <i class="fas fa-copy text-blue-500"></i>
+        </button>
+        <button onclick="getTextSelectionInsights()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors" title="Get insights">
+          <i class="fas fa-lightbulb text-yellow-500"></i>
+        </button>
+        <button onclick="clearTextSelection()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors" title="Clear selection">
+          <i class="fas fa-times text-red-500"></i>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(toolbar);
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      if (document.getElementById('text-selection-toolbar')) {
+        hideTextSelectionToolbar();
+      }
+    }, 5000);
+
+  } catch (error) {
+    console.error("Error showing text selection toolbar:", error);
+  }
+}
+
+// Hide text selection toolbar
+function hideTextSelectionToolbar() {
+  try {
+    const toolbar = document.getElementById('text-selection-toolbar');
+    if (toolbar) {
+      toolbar.remove();
+    }
+  } catch (error) {
+    console.error("Error hiding text selection toolbar:", error);
+  }
+}
+
+// Copy selected text to clipboard
+function copySelectedText() {
+  try {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+
+    if (selectedText) {
+      navigator.clipboard.writeText(selectedText).then(() => {
+        toast('Text copied to clipboard!', 'success');
+      }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = selectedText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast('Text copied to clipboard!', 'success');
+      });
+    }
+  } catch (error) {
+    console.error("Error copying text:", error);
+    toast('Failed to copy text', 'error');
+  }
+}
+
+// Get insights for selected text
+function getTextSelectionInsights() {
+  try {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+
+    if (selectedText && selectedText.length >= 10) {
+      processSelectedText(selectedText, currentPage);
+    } else {
+      toast('Please select some text first', 'warning');
+    }
+  } catch (error) {
+    console.error("Error getting text insights:", error);
+  }
+}
+
+// Show text selection hint
+function showTextSelectionHint() {
+  try {
+    // Remove existing hint
+    hideTextSelectionHint();
+
+    // Create hint element
+    const hint = document.createElement('div');
+    hint.id = 'text-selection-hint';
+    hint.className = 'text-selection-hint';
+    hint.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <i class="fas fa-mouse-pointer text-white"></i>
+        <span>Select text to get insights and recommendations</span>
+        <button onclick="hideTextSelectionHint()" class="ml-2 text-white/80 hover:text-white">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(hint);
+
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+      if (document.getElementById('text-selection-hint')) {
+        hideTextSelectionHint();
+      }
+    }, 8000);
+
+  } catch (error) {
+    console.error("Error showing text selection hint:", error);
+  }
+}
+
+// Hide text selection hint
+function hideTextSelectionHint() {
+  try {
+    const hint = document.getElementById('text-selection-hint');
+    if (hint) {
+      hint.remove();
+    }
+  } catch (error) {
+    console.error("Error hiding text selection hint:", error);
+  }
+}

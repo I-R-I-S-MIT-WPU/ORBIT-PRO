@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Text Selection Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .demo-section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+
+        .feature-list {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+
+        .feature-list li {
+            margin: 8px 0;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .code {
+            background: #f1f3f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📄 PDF Text Selection Implementation</h1>
+
+    <div class="demo-section">
+        <h2>🎯 What's New</h2>
+        <p>Your PDF viewer now supports <span class="highlight">full text selection</span> with enhanced features for
+            getting insights and recommendations from selected text!</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>✨ Key Features</h2>
+        <div class="feature-list">
+            <ul>
+                <li><strong>Text Selection:</strong> Click and drag to select text from any PDF page</li>
+                <li><strong>Visual Feedback:</strong> Selected text is highlighted with a blue background</li>
+                <li><strong>Floating Toolbar:</strong> Appears when text is selected with quick actions</li>
+                <li><strong>Copy to Clipboard:</strong> One-click text copying</li>
+                <li><strong>Instant Insights:</strong> Get AI-powered insights from selected text</li>
+                <li><strong>Keyboard Shortcuts:</strong> Escape to clear, Ctrl+A to select all</li>
+                <li><strong>Cross-PDF Search:</strong> Find related content across all uploaded documents</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔧 How It Works</h2>
+        <p>The implementation uses a <span class="highlight">dual-layer approach</span>:</p>
+        <div class="code">
+            1. Canvas Layer: Renders the visual PDF content
+            2. Text Layer: Invisible text overlay for selection
+        </div>
+        <p>This ensures that users can select text while maintaining the visual quality of the PDF.</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>📱 User Experience</h2>
+        <div class="feature-list">
+            <ul>
+                <li><strong>Intuitive:</strong> Works just like selecting text on any webpage</li>
+                <li><strong>Responsive:</strong> Toolbar appears near your selection</li>
+                <li><strong>Accessible:</strong> Keyboard shortcuts and visual indicators</li>
+                <li><strong>Smart:</strong> Automatically processes text for insights</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🚀 Getting Started</h2>
+        <ol>
+            <li>Upload a PDF document</li>
+            <li>Wait for the document to load</li>
+            <li>Click and drag to select text</li>
+            <li>Use the floating toolbar for actions</li>
+            <li>Get instant insights and recommendations!</li>
+        </ol>
+    </div>
+
+    <div class="demo-section">
+        <h2>💡 Pro Tips</h2>
+        <ul>
+            <li>Use <strong>Ctrl+A</strong> to select all text on the current page</li>
+            <li>Press <strong>Escape</strong> to quickly clear your selection</li>
+            <li>The toolbar auto-hides after 5 seconds to keep the interface clean</li>
+            <li>Text selection works in both single-page and continuous view modes</li>
+        </ul>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔍 Technical Details</h2>
+        <p>The text selection system integrates with your existing backend API:</p>
+        <div class="code">
+            POST /api/text-selection
+            {
+            "selected_text": "your selected text",
+            "document": "filename.pdf",
+            "page_number": 1,
+            "persona": "Student",
+            "job": "Research"
+            }
+        </div>
+        <p>This enables cross-PDF insights, contradiction detection, and related content discovery.</p>
+    </div>
+
+    <script>
+        // Add some interactivity to the demo
+        document.addEventListener('DOMContentLoaded', function () {
+            // Add click handlers to demo sections
+            const sections = document.querySelectorAll('.demo-section');
+            sections.forEach(section => {
+                section.addEventListener('click', function () {
+                    this.style.transform = 'scale(1.02)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 200);
+                });
+            });
+
+            // Add selection demo
+            const demoText = document.querySelectorAll('p, li');
+            demoText.forEach(element => {
+                element.addEventListener('mouseup', function () {
+                    const selection = window.getSelection();
+                    if (selection.toString().trim()) {
+                        // Show a simple demo of text selection
+                        this.style.backgroundColor = '#e3f2fd';
+                        setTimeout(() => {
+                            this.style.backgroundColor = '';
+                        }, 1000);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

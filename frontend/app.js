@@ -1,3 +1,12 @@
+// Theme toggle logic
+document.addEventListener('DOMContentLoaded', function() {
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function() {
+      document.body.classList.toggle('theme-light');
+    });
+  }
+});
 // PDF.js variables (replacing Adobe PDF Embed API)
 let pdfDoc = null;
 let pdfPage = null;

@@ -40,5 +40,11 @@
     "chunk_count": 13,
     "indexed_at": 1755268585.455336,
     "file_size": 57658
+  },
+  "ITCH Ques Bank.pdf": {
+    "file_hash": "5cbec20f1eb58450e6b381d273bf01f1",
+    "chunk_count": 69,
+    "indexed_at": 1755366752.3846312,
+    "file_size": 473757
   }
 }

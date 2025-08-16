@@ -1751,13 +1751,18 @@ async function analyze() {
     const data = await response.json();
     console.log('Analysis response:', data);
 
+    // Handle response structure - it may return extracted_sections and snippets
+    const sections = data.extracted_sections || data.sections || [];
+    const snippets = data.snippets || [];
+    const relatedMap = data.related_map || {};
+
     // Store the analysis results
-    currentSections = data.sections || [];
-    currentSnippets = data.snippets || [];
+    currentSections = sections;
+    currentSnippets = snippets;
 
     // Render the results - this is what the analyze button should do
-    renderSections(currentSections, data.related_map || {});
-    renderSnippets(currentSnippets);
+    renderSections(sections, relatedMap);
+    renderSnippets(snippets);
 
     // Get document recommendations (this is separate from insights/podcast)
     await getDocumentRecommendations();
@@ -1798,13 +1803,43 @@ async function getDocumentRecommendations() {
 
       // Update the recommendations panel if data is available
       if (data.recommendations && data.recommendations.length > 0) {
+        console.log('Raw recommendations data:', data.recommendations);
         updateRecommendationsPanel(data.recommendations);
+      } else {
+        console.log('No recommendations found in response');
+        // Show empty state
+        const container = document.getElementById('recommendations');
+        if (container) {
+          container.innerHTML = `
+            <div class="text-center text-xs text-slate-500 dark:text-slate-400 py-3">
+              No recommendations found for this document
+            </div>
+          `;
+        }
       }
     } else {
       console.warn('Failed to get recommendations:', response.status);
+      // Show error state
+      const container = document.getElementById('recommendations');
+      if (container) {
+        container.innerHTML = `
+          <div class="text-center text-xs text-red-500 dark:text-red-400 py-3">
+            Failed to load recommendations
+          </div>
+        `;
+      }
     }
   } catch (error) {
     console.error('Error getting document recommendations:', error);
+    // Show error state
+    const container = document.getElementById('recommendations');
+    if (container) {
+      container.innerHTML = `
+        <div class="text-center text-xs text-red-500 dark:text-red-400 py-3">
+          Error loading recommendations
+        </div>
+      `;
+    }
   }
 }
 
@@ -1823,18 +1858,37 @@ function updateRecommendationsPanel(recommendations) {
   }
 
   container.innerHTML = recommendations.slice(0, 5).map((rec, index) => {
-    // Handle different possible data structures
-    const documentName = rec.document || rec.filename || 'Unknown';
-    const pageNumber = rec.page_number || rec.page || 1;
-    const relevantText = rec.relevant_text || rec.text || rec.content || 'No text available';
+    // Handle different possible data structures from the API
+    const documentName = rec.document || rec.filename || rec.doc_name || 'Unknown';
+    const pageNumber = rec.page_number || rec.page || rec.page_num || 1;
+
+    // Handle different text field names
+    let relevantText = '';
+    if (rec.relevant_text) relevantText = rec.relevant_text;
+    else if (rec.text) relevantText = rec.text;
+    else if (rec.content) relevantText = rec.content;
+    else if (rec.section_title) relevantText = rec.section_title;
+    else if (rec.section_summary) relevantText = rec.section_summary;
+    else relevantText = 'No text available';
+
+    // Ensure we have some text to display
+    if (!relevantText || relevantText.trim() === '') {
+      relevantText = `Content from ${documentName} page ${pageNumber}`;
+    }
 
     return `
-      <div class="p-2 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4 border-emerald-500">
-        <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
-          ${documentName} (p.${pageNumber})
-        </div>
-        <div class="text-sm text-slate-700 dark:text-slate-300">
-          ${relevantText.substring(0, 80)}${relevantText.length > 80 ? '...' : ''}
+      <div class="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4 border-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors cursor-pointer group" 
+           onclick="jumpToRecommendation('${documentName}', ${pageNumber})">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            ${documentName} (p.${pageNumber})
+      </div>
+          <div class="text-xs text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+            <i class="fas fa-external-link-alt mr-1"></i>Jump
+      </div>
+    </div>
+        <div class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+          ${relevantText.substring(0, 120)}${relevantText.length > 120 ? '...' : ''}
         </div>
       </div>
     `;
@@ -2052,10 +2106,13 @@ function handleSelectionChange() {
   if (selectedText && selectedText.length > 10) {
     console.log('Text selection detected:', selectedText.substring(0, 100) + '...');
 
-    // Debounce the text selection processing
+    // Show the insights panel immediately with loading state
+    showTextSelectionInsightsInstantly(selectedText);
+
+    // Debounce the API call to avoid too many requests
     textSelectionTimeout = setTimeout(() => {
       if (!isProcessingTextSelection) {
-        handleTextSelection(selectedText, currentPage);
+        processTextSelectionAPI(selectedText, currentPage);
       }
     }, 500);
   } else if (selectedText.length === 0) {
@@ -2872,7 +2929,7 @@ async function podcast() {
     console.log('Creating enhanced podcast with data:', enhancedPodcastData);
 
     // Send to enhanced podcast endpoint for dual voice generation
-    const res = await fetch('/api/enhanced-podcast', {
+    const response = await fetch('/api/enhanced-podcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(enhancedPodcastData)
@@ -3318,14 +3375,8 @@ function formatTime(seconds) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
-// Document clustering functionality
+// Document clustering functionality - works independently of document selection
 async function clusterDocuments() {
-  const selectedDocs = getSelectedDocs();
-  if (selectedDocs.length === 0) {
-    toast('Please select at least one document to cluster', 'warning');
-    return;
-  }
-
   // Show loading state
   const clusterBtn = document.getElementById('clusterBtn');
   if (clusterBtn) {
@@ -3334,12 +3385,29 @@ async function clusterDocuments() {
     clusterBtn.disabled = true;
 
     try {
-      // Call the clustering API endpoint with proper parameters
+      // First, get all available documents for clustering
+      const docsResponse = await fetch('/api/documents');
+      if (!docsResponse.ok) {
+        throw new Error('Failed to fetch available documents');
+      }
+
+      const allDocs = await docsResponse.json();
+      const documentNames = allDocs.map(doc => doc.filename);
+
+      if (documentNames.length === 0) {
+        toast('No documents available for clustering. Please upload some PDFs first.', 'warning');
+        return;
+      }
+
+      console.log(`Clustering ${documentNames.length} available documents:`, documentNames);
+
+      // Use the existing analyze endpoint with clustering approach
+      // This will cluster all available documents based on their content
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          documents: selectedDocs,
+          documents: documentNames, // Provide all available documents
           approach: 'clustering',
           method: 'auto',
           top_k: 10,
@@ -3355,21 +3423,25 @@ async function clusterDocuments() {
       }
 
       const data = await response.json();
-      console.log('Clustering response:', data);
+      console.log('Document clustering response:', data);
+
+      // Handle clustering response structure - it returns extracted_sections and snippets
+      const sections = data.extracted_sections || data.sections || [];
+      const snippets = data.snippets || [];
+      const relatedMap = data.related_map || {};
+
+      console.log('Sections extracted:', sections);
+      console.log('Snippets extracted:', snippets);
+      console.log('Related map:', relatedMap);
 
       // Store the clustering results
-      currentSections = data.sections || [];
-      currentSnippets = data.snippets || [];
+      currentSections = sections;
+      currentSnippets = snippets;
 
-      // Render the clustered results
-      renderSections(currentSections, data.related_map || {});
-      renderSnippets(currentSnippets);
+      // Display the clustered results with clustering-specific styling
+      displayClusteredResults(sections, snippets, relatedMap);
 
-      // Get document recommendations for clustered documents
-      await getDocumentRecommendations();
-
-      HAS_ANALYSIS = true;
-      toast('Document clustering completed! Similar documents are now grouped together.', 'success');
+      toast(`Document clustering completed! ${documentNames.length} PDFs are now grouped by similarity.`, 'success');
 
     } catch (error) {
       console.error('Clustering failed:', error);
@@ -3379,6 +3451,312 @@ async function clusterDocuments() {
       clusterBtn.innerHTML = originalText;
       clusterBtn.disabled = false;
     }
+  }
+}
+
+// Display clustered results in the UI
+function displayClusteredResults(sections, snippets, relatedMap) {
+  const container = document.getElementById('clusters');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (sections.length === 0 && snippets.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-8">
+        <div class="w-16 h-16 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-users text-slate-400 dark:text-slate-500 text-xl"></i>
+        </div>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">No clusters found. Documents may not have embeddings yet.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Group sections by document to show clustering
+  const documentGroups = {};
+
+  // Process sections
+  sections.forEach((s, index) => {
+    const docName = s.document || 'Unknown';
+    if (!documentGroups[docName]) {
+      documentGroups[docName] = {
+        sections: [],
+        snippets: [],
+        document: docName
+      };
+    }
+    documentGroups[docName].sections.push({ ...s, originalIndex: index });
+  });
+
+  // Process snippets
+  snippets.forEach((s, index) => {
+    const docName = s.document || 'Unknown';
+    if (!documentGroups[docName]) {
+      documentGroups[docName] = {
+        sections: [],
+        snippets: [],
+        document: docName
+      };
+    }
+    documentGroups[docName].snippets.push({ ...s, originalIndex: index });
+  });
+
+  console.log('Document groups created:', documentGroups);
+
+  // Display each document group as a cluster
+  Object.entries(documentGroups).forEach(([docName, docData], groupIndex) => {
+    const clusterItem = document.createElement('div');
+    clusterItem.className = 'cluster-item mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-700 shadow-md';
+
+    const totalSections = docData.sections.length;
+    const totalSnippets = docData.snippets.length;
+
+    clusterItem.innerHTML = `
+      <div class="flex items-start justify-between mb-3">
+      <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-md">
+            ${groupIndex + 1}
+          </div>
+          <div>
+            <h4 class="text-sm font-semibold text-slate-800 dark:text-white flex items-center">
+              <i class="fas fa-file-pdf mr-1 text-blue-500"></i>
+              ${docName}
+            </h4>
+            <p class="text-xs text-slate-600 dark:text-slate-400">
+              ${totalSections} sections, ${totalSnippets} insights
+            </p>
+          </div>
+        </div>
+        
+        <div class="text-right">
+          <div class="text-lg font-bold text-blue-600 dark:text-blue-400">
+            ${totalSections + totalSnippets}
+          </div>
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            items
+          </div>
+        </div>
+      </div>
+      
+      ${totalSections > 0 ? `
+        <div class="mb-3">
+          <div class="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+            <i class="fas fa-chart-line mr-1 text-blue-500"></i>
+            Sections (${totalSections})
+          </div>
+          <div class="space-y-2">
+            ${docData.sections.slice(0, 2).map((s, idx) => `
+              <div class="section-item bg-white dark:bg-slate-800 rounded-lg p-2 border-l-3 border-blue-500 hover:shadow-sm transition-shadow">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center space-x-2 mb-1">
+                      <span class="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded-full">
+                        ${idx + 1}
+                      </span>
+                      <span class="text-xs text-slate-500 dark:text-slate-400">
+                        p.${s.page_number}
+                      </span>
+                    </div>
+                    <h5 class="section-title text-xs font-medium text-slate-800 dark:text-white mb-1">
+                      ${s.section_title || 'Untitled Section'}
+                    </h5>
+                    ${s.section_summary ? `
+                      <p class="section-content text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        ${s.section_summary.substring(0, 80)}${s.section_summary.length > 80 ? '...' : ''}
+                      </p>
+                    ` : ''}
+                  </div>
+                  
+                  <button class="ml-2 p-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300" 
+                          data-page="${s.page_number}" data-doc="${s.document}" title="Jump to this section">
+                    <i class="fas fa-external-link-alt text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+            ${totalSections > 2 ? `
+              <div class="text-xs text-slate-500 dark:text-slate-400 text-center py-1">
+                +${totalSections - 2} more sections
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      ` : ''}
+      
+      ${totalSnippets > 0 ? `
+        <div class="mb-3">
+          <div class="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+            <i class="fas fa-lightbulb mr-1 text-purple-500"></i>
+            Insights (${totalSnippets})
+          </div>
+          <div class="space-y-1">
+            ${docData.snippets.slice(0, 2).map((s, idx) => `
+              <div class="snippet-item bg-white dark:bg-slate-800 rounded-lg p-1 border-l-3 border-purple-500">
+                <div class="flex items-start space-x-1">
+                  <span class="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1 py-0.5 rounded-full flex-shrink-0">
+                    ${idx + 1}
+                  </span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
+                      p.${s.page_number}
+                    </div>
+                    <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                      "${s.refined_text.substring(0, 60)}${s.refined_text.length > 60 ? '...' : ''}"
+                    </p>
+                  </div>
+                  
+                  <button class="ml-1 p-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300 flex-shrink-0" 
+                          data-page="${s.page_number}" data-doc="${s.document}" title="Jump to this snippet">
+                    <i class="fas fa-external-link-alt text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+            ${totalSnippets > 2 ? `
+              <div class="text-xs text-slate-500 dark:text-slate-400 text-center py-1">
+                +${totalSnippets - 2} more insights
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      ` : ''}
+      
+      <div class="flex items-center justify-between pt-2 border-t border-blue-200 dark:border-blue-700">
+        <button class="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300 text-xs" 
+                onclick="loadDocumentFromCluster('${docName}', 1)">
+          <i class="fas fa-eye mr-1"></i>
+          View
+        </button>
+        
+        <button class="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300 text-xs" 
+                onclick="analyzeSingleDocument('${docName}')">
+          <i class="fas fa-chart-line mr-1"></i>
+          Analyze
+        </button>
+      </div>
+    `;
+
+    container.appendChild(clusterItem);
+
+    // Add click handlers for jump buttons
+    clusterItem.querySelectorAll('button[data-page]').forEach((jumpBtn) => {
+      jumpBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const page = parseInt(jumpBtn.getAttribute('data-page'), 10);
+        const doc = jumpBtn.getAttribute('data-doc');
+
+        // Load document if not already loaded
+        if (currentDoc !== `/files/${doc}`) {
+          const docObj = { filename: doc };
+          loadDocument(docObj);
+          // Wait a bit for the viewer to initialize before jumping to page
+          setTimeout(async () => {
+            const ok = await jumpToPage(page);
+            if (!ok) toast('Navigation failed.', 'error');
+          }, 1000);
+        } else {
+          // Document already loaded, jump directly to page
+          const ok = await jumpToPage(page);
+          if (!ok) toast('Navigation failed.', 'error');
+        }
+      });
+    });
+  });
+
+  // Store clusters globally for other functions to use
+  window.documentClusters = Object.keys(documentGroups);
+
+  console.log('Clusters displayed successfully. Total clusters:', Object.keys(documentGroups).length);
+}
+
+// Load a document from a cluster
+async function loadDocumentFromCluster(documentName, pageNumber = 1) {
+  if (!documentName) {
+    toast('Document name not available', 'error');
+    return;
+  }
+
+  try {
+    // Create document object
+    const docObj = { filename: documentName };
+
+    // Load the document
+    const success = await loadDocument(docObj);
+
+    if (success && pageNumber > 1) {
+      // Wait for viewer to initialize, then jump to page
+      setTimeout(async () => {
+        const ok = await jumpToPage(pageNumber);
+        if (!ok) toast('Navigation failed.', 'error');
+      }, 1500);
+    }
+
+    toast(`Loaded: ${documentName}`, 'success');
+  } catch (error) {
+    console.error('Error loading document from cluster:', error);
+    toast('Failed to load document', 'error');
+  }
+}
+
+// Analyze a single document from a cluster
+async function analyzeSingleDocument(documentName) {
+  if (!documentName) {
+    toast('Document name not available', 'error');
+    return;
+  }
+
+  try {
+    // Show loading state
+    toast('Analyzing document...', 'info');
+
+    // Call the analyze API for this specific document
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documents: [documentName],
+        approach: 'nlp',
+        method: 'auto',
+        top_k: 5,
+        persona: document.getElementById('persona')?.value?.trim() || 'General User',
+        job: document.getElementById('job')?.value?.trim() || 'Understanding document content and structure'
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Analysis failed: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Single document analysis response:', data);
+
+    // Handle response structure
+    const sections = data.extracted_sections || data.sections || [];
+    const snippets = data.snippets || [];
+    const relatedMap = data.related_map || {};
+
+    // Store the analysis results
+    currentSections = sections;
+    currentSnippets = snippets;
+
+    // Render the results
+    renderSections(sections, relatedMap);
+    renderSnippets(snippets);
+
+    // Enable insights and podcast buttons
+    const insightsBtn = document.getElementById('insightsBtn');
+    const podcastBtn = document.getElementById('podcastBtn');
+    if (insightsBtn) insightsBtn.disabled = false;
+    if (podcastBtn) podcastBtn.disabled = false;
+
+    HAS_ANALYSIS = true;
+    toast(`Analysis completed for ${documentName}!`, 'success');
+
+  } catch (error) {
+    console.error('Single document analysis failed:', error);
+    toast(`Analysis failed: ${error.message}`, 'error');
   }
 }
 
@@ -3472,4 +3850,219 @@ async function deleteSelectedDocuments() {
   // Close confirmation dialog
   const overlay = document.querySelector('.fixed.bg-black\\/50');
   if (overlay) overlay.remove();
+}
+
+// Jump to a specific recommendation
+async function jumpToRecommendation(documentName, pageNumber) {
+  if (!documentName) {
+    toast('Document name not available', 'error');
+    return;
+  }
+
+  try {
+    // Load the document if not already loaded
+    if (currentDoc !== `/files/${documentName}`) {
+      const docObj = { filename: documentName };
+      await loadDocument(docObj);
+
+      // Wait for viewer to initialize, then jump to page
+      setTimeout(() => {
+        jumpToPage(pageNumber || 1);
+      }, 1500);
+    } else {
+      // Document already loaded, jump directly to page
+      await jumpToPage(pageNumber || 1);
+    }
+
+    toast(`Jumped to ${documentName} page ${pageNumber}`, 'success');
+  } catch (error) {
+    console.error('Error jumping to recommendation:', error);
+    toast('Failed to jump to recommendation', 'error');
+  }
+}
+
+// Show text selection insights panel instantly with loading state
+function showTextSelectionInsightsInstantly(selectedText) {
+  let panel = document.getElementById('textSelectionPanel');
+
+  // Create panel if it doesn't exist
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'textSelectionPanel';
+    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40';
+    document.body.appendChild(panel);
+  }
+
+  panel.innerHTML = `
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-800 dark:text-white">Text Selection Insights</h3>
+        <button onclick="clearTextSelection()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="mb-4">
+        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Selected Text:</div>
+        <div class="bg-slate-100 dark:bg-slate-700 p-3 rounded-lg text-sm text-slate-800 dark:text-slate-200">
+          "${selectedText.substring(0, 200)}${selectedText.length > 200 ? '...' : ''}"
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Summary:</div>
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+          <div class="flex items-center space-x-2">
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            <span class="text-sm text-slate-600 dark:text-slate-400">Analyzing text...</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Related Content:</div>
+        <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
+          <div class="flex items-center space-x-2">
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            <span class="text-sm text-slate-600 dark:text-slate-400">Searching for related content...</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex space-x-2">
+        <button onclick="getTextSelectionInsights()" 
+                class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+          Get Recommendations
+        </button>
+        <button onclick="createPodcastFromTextSelection()" 
+                class="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+          Create Podcast
+        </button>
+      </div>
+    </div>
+  `;
+
+  panel.classList.remove('hidden');
+}
+
+// Process text selection API call separately
+async function processTextSelectionAPI(selectedText, pageNumber) {
+  // Set processing flag to prevent duplicate calls
+  isProcessingTextSelection = true;
+
+  try {
+    // Call the text selection API
+    const response = await fetch('/api/text-selection', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        selected_text: selectedText,
+        document: currentDoc ? currentDoc.split('/').pop() : 'unknown',
+        page_number: pageNumber,
+        persona: document.getElementById('persona')?.value || '',
+        job: document.getElementById('job')?.value || ''
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Text selection response:', data);
+
+      // Store the insights globally
+      textSelectionInsights = data;
+
+      // Update the panel with the actual data
+      updateTextSelectionPanel(data);
+
+      // Also refresh recommendations for current document
+      try {
+        getDocumentRecommendations();
+      } catch (_) { }
+
+    } else {
+      console.error('Text selection API failed:', response.status);
+      updateTextSelectionPanelWithError('Failed to analyze text selection');
+    }
+  } catch (error) {
+    console.error('Error processing text selection:', error);
+    updateTextSelectionPanelWithError('Error processing text selection');
+  } finally {
+    // Reset processing flag
+    isProcessingTextSelection = false;
+  }
+}
+
+// Update the text selection panel with actual data
+function updateTextSelectionPanel(insights) {
+  const panel = document.getElementById('textSelectionPanel');
+  if (!panel) return;
+
+  // Update the summary section
+  const summarySection = panel.querySelector('.bg-blue-50');
+  if (summarySection && insights.summary) {
+    summarySection.innerHTML = `
+      <div class="text-sm text-slate-700 dark:text-slate-300">
+        ${insights.summary}
+      </div>
+    `;
+  }
+
+  // Update the related content section
+  const relatedSection = panel.querySelector('.bg-slate-50');
+  if (relatedSection && insights.insights && insights.insights.length > 0) {
+    relatedSection.innerHTML = `
+      <div class="space-y-2 max-h-40 overflow-y-auto">
+        ${insights.insights.slice(0, 5).map((insight, idx) => `
+          <div class="bg-white dark:bg-slate-700 p-2 rounded border-l-4 border-blue-500">
+            <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
+              ${insight.document} (p.${insight.page_number}) - ${insight.insight_type}
+            </div>
+            <div class="text-sm text-slate-700 dark:text-slate-300">
+              ${insight.relevant_text.substring(0, 100)}${insight.relevant_text.length > 100 ? '...' : ''}
+            </div>
+            <button onclick="jumpToDocument('${insight.document}', ${insight.page_number})" 
+                    class="mt-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+              Jump to this section →
+            </button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else if (relatedSection) {
+    relatedSection.innerHTML = `
+      <div class="text-sm text-slate-600 dark:text-slate-400">
+        No related content found.
+      </div>
+    `;
+  }
+}
+
+// Update the text selection panel with error state
+function updateTextSelectionPanelWithError(errorMessage) {
+  const panel = document.getElementById('textSelectionPanel');
+  if (!panel) return;
+
+  // Update the summary section with error
+  const summarySection = panel.querySelector('.bg-blue-50');
+  if (summarySection) {
+    summarySection.innerHTML = `
+      <div class="text-sm text-red-600 dark:text-red-400">
+        <i class="fas fa-exclamation-circle mr-1"></i>
+        ${errorMessage}
+      </div>
+    `;
+  }
+
+  // Update the related content section with error
+  const relatedSection = panel.querySelector('.bg-slate-50');
+  if (relatedSection) {
+    relatedSection.innerHTML = `
+      <div class="text-sm text-red-600 dark:text-red-400">
+        <i class="fas fa-exclamation-circle mr-1"></i>
+        Failed to load related content
+      </div>
+    `;
+  }
 }

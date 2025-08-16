@@ -40,17 +40,5 @@
     "chunk_count": 13,
     "indexed_at": 1755268585.455336,
     "file_size": 57658
-  },
-  "Taksh_Dhabalia_Profile.pdf": {
-    "file_hash": "eee22f7660587b54c6751f533519e4e3",
-    "chunk_count": 8,
-    "indexed_at": 1755370924.0246155,
-    "file_size": 138100
-  },
-  "Taksh_Dhabalia_Resume.pdf": {
-    "file_hash": "4c181aa48a65f4849b38790fdfdd0750",
-    "chunk_count": 7,
-    "indexed_at": 1755370924.2628608,
-    "file_size": 162229
   }
 }

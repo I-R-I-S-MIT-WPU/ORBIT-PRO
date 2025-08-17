@@ -1,8 +1,8 @@
 // Theme toggle logic
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const themeToggle = document.getElementById('themeToggle');
   if (themeToggle) {
-    themeToggle.addEventListener('click', function() {
+    themeToggle.addEventListener('click', function () {
       document.body.classList.toggle('theme-light');
     });
   }
@@ -175,6 +175,15 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
       if (singlePageView && continuousView) {
         singlePageView.classList.remove('hidden');
         continuousView.classList.add('hidden');
+        // Clear continuous view container to prevent blank pages
+        continuousView.innerHTML = '';
+      }
+
+      // Update view mode toggle button state
+      viewModeToggle = document.getElementById('viewModeToggle');
+      if (viewModeToggle) {
+        viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
+        viewModeToggle.title = 'Switch to continuous view';
       }
 
       // Set canvas dimensions
@@ -199,7 +208,16 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
       hidePDFLoading();
 
       // Set up window resize handler
-      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        updateTextLayerPosition();
+      });
+
+      // Set up scroll handler for zoomed view
+      const pdfViewerContainer = document.getElementById('pdf-viewer-container');
+      if (pdfViewerContainer) {
+        pdfViewerContainer.addEventListener('scroll', updateTextLayerPosition);
+      }
 
       resolve(true);
     } catch (error) {
@@ -224,13 +242,42 @@ async function loadPage(pageNum) {
     // Get the page
     pdfPage = await pdfDoc.getPage(pageNum);
 
-    // Calculate viewport
+    // Calculate viewport with current scale
     const viewport = pdfPage.getViewport({ scale: currentScale });
     console.log(`Loading page ${pageNum} with scale: ${currentScale} (${Math.round(currentScale * 100)}%)`);
 
-    // Set canvas dimensions
+    // Set canvas dimensions to match the scaled viewport
     pdfCanvas.width = viewport.width;
     pdfCanvas.height = viewport.height;
+
+    // Update single page view container based on zoom level
+    const singlePageView = document.getElementById('single-page-view');
+    const pdfViewerContainer = document.getElementById('pdf-viewer-container');
+
+    if (singlePageView) {
+      // Set the container to accommodate the scaled content
+      singlePageView.style.width = `${viewport.width}px`;
+      singlePageView.style.height = `${viewport.height}px`;
+      singlePageView.style.minWidth = `${viewport.width}px`;
+      singlePageView.style.minHeight = `${viewport.height}px`;
+
+      if (currentScale > 1.0) {
+        singlePageView.classList.add('zoomed');
+        // Enable scrolling when zoomed
+        if (pdfViewerContainer) {
+          pdfViewerContainer.style.overflow = 'auto';
+        }
+      } else {
+        singlePageView.classList.remove('zoomed');
+        // Center the content when not zoomed
+        singlePageView.style.display = 'flex';
+        singlePageView.style.alignItems = 'center';
+        singlePageView.style.justifyContent = 'center';
+        if (pdfViewerContainer) {
+          pdfViewerContainer.style.overflow = 'hidden';
+        }
+      }
+    }
 
     // Cancel any existing render task
     if (currentRenderTask) {
@@ -246,7 +293,7 @@ async function loadPage(pageNum) {
     // Clear the canvas
     pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
 
-    // Render the page
+    // Render the page with the scaled viewport
     const renderContext = {
       canvasContext: pdfContext,
       viewport: viewport
@@ -262,6 +309,11 @@ async function loadPage(pageNum) {
     // Create or update text layer for text selection
     await createTextLayerForSinglePage(pdfPage, viewport);
 
+    // Update text layer position after a short delay to ensure canvas is rendered
+    setTimeout(() => {
+      updateTextLayerPosition();
+    }, 100);
+
     // Show text selection hint
     showTextSelectionHint();
 
@@ -274,7 +326,7 @@ async function loadPage(pageNum) {
       gotoInput.value = currentPage;
     }
 
-    console.log(`Page ${currentPage} loaded successfully`);
+    console.log(`Page ${currentPage} loaded successfully with viewport: ${viewport.width}x${viewport.height}`);
 
   } catch (error) {
     console.error('Error loading page:', error);
@@ -298,31 +350,52 @@ async function createTextLayerForSinglePage(page, viewport) {
     if (!textLayerContainer) {
       textLayerContainer = document.createElement('div');
       textLayerContainer.id = 'single-page-text-layer';
-      textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
-      textLayerContainer.style.width = `${viewport.width}px`;
-      textLayerContainer.style.height = `${viewport.height}px`;
+      textLayerContainer.className = 'text-layer absolute pointer-events-auto z-10';
       textLayerContainer.style.fontSize = '0px';
       textLayerContainer.style.lineHeight = '1';
       textLayerContainer.style.color = 'transparent';
       textLayerContainer.style.userSelect = 'text';
       textLayerContainer.style.cursor = 'text';
 
-      // Insert after canvas
-      const canvasContainer = document.getElementById('pdf-viewer-container');
-      if (canvasContainer) {
-        canvasContainer.appendChild(textLayerContainer);
+      // Insert into single page view container
+      const singlePageView = document.getElementById('single-page-view');
+      if (singlePageView) {
+        singlePageView.appendChild(textLayerContainer);
       }
     }
 
-    // Update text layer dimensions
+    // Position text layer to match canvas position and size exactly
+    textLayerContainer.style.position = 'absolute';
+    textLayerContainer.style.left = '0';
+    textLayerContainer.style.top = '0';
     textLayerContainer.style.width = `${viewport.width}px`;
     textLayerContainer.style.height = `${viewport.height}px`;
+    textLayerContainer.style.pointerEvents = 'auto';
 
     // Render text content
     await renderTextLayer(page, textLayerContainer, viewport);
 
   } catch (error) {
     console.error('Error creating text layer for single page:', error);
+  }
+}
+
+// Update text layer position to match canvas position
+function updateTextLayerPosition() {
+  try {
+    const textLayerContainer = document.getElementById('single-page-text-layer');
+    if (!textLayerContainer || !pdfCanvas) return;
+
+    // The text layer is now positioned at (0,0) relative to the single page view
+    // No need to calculate complex positioning since it's already aligned
+    // Just ensure the dimensions match the current viewport
+    if (pdfPage) {
+      const viewport = pdfPage.getViewport({ scale: currentScale });
+      textLayerContainer.style.width = `${viewport.width}px`;
+      textLayerContainer.style.height = `${viewport.height}px`;
+    }
+  } catch (error) {
+    console.error('Error updating text layer position:', error);
   }
 }
 
@@ -346,13 +419,17 @@ async function loadAllPages() {
     `;
     continuousContainer.appendChild(loadingDiv);
 
-    // Load all pages
-    const pagePromises = [];
+    // Load all pages sequentially to prevent memory issues
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      pagePromises.push(loadPageToContainer(pageNum, continuousContainer));
+      try {
+        await loadPageToContainer(pageNum, continuousContainer);
+        // Small delay to prevent overwhelming the browser
+        await new Promise(resolve => setTimeout(resolve, 10));
+      } catch (error) {
+        console.error(`Error loading page ${pageNum}:`, error);
+        // Continue loading other pages even if one fails
+      }
     }
-
-    await Promise.all(pagePromises);
 
     // Remove loading indicator
     if (loadingDiv.parentNode) {
@@ -365,7 +442,7 @@ async function loadAllPages() {
     // Show text selection hint
     showTextSelectionHint();
 
-    console.log(`All ${totalPages} pages loaded successfully`);
+    console.log(`All ${totalPages} pages loaded successfully with scale: ${currentScale}`);
 
   } catch (error) {
     console.error('Error loading all pages:', error);
@@ -379,6 +456,7 @@ async function toggleViewMode() {
     // Clean up any existing render tasks before switching modes
     cleanupRenderTasks();
 
+    // Toggle the view mode
     isContinuousView = !isContinuousView;
 
     const singlePageView = document.getElementById('single-page-view');
@@ -395,7 +473,7 @@ async function toggleViewMode() {
         viewModeToggle.title = 'Switch to single page view';
       }
 
-      // Load all pages
+      // Load all pages with current scale
       await loadAllPages();
 
       toast('Switched to continuous view - scroll to see all pages', 'info');
@@ -410,7 +488,7 @@ async function toggleViewMode() {
         viewModeToggle.title = 'Switch to continuous view';
       }
 
-      // Load current page
+      // Load current page with current scale
       await loadPage(currentPage);
 
       toast('Switched to single page view', 'info');
@@ -419,9 +497,14 @@ async function toggleViewMode() {
     // Update toolbar state
     updateToolbarState();
 
+    console.log(`View mode switched to: ${isContinuousView ? 'Continuous' : 'Single'}`);
+
   } catch (error) {
     console.error('Error toggling view mode:', error);
     toast('Failed to switch view mode', 'error');
+
+    // Revert the state on error
+    isContinuousView = !isContinuousView;
   }
 }
 
@@ -431,23 +514,28 @@ async function loadPageToContainer(pageNum, container) {
     const page = await pdfDoc.getPage(pageNum);
     const viewport = page.getViewport({ scale: currentScale });
 
-    // Create page wrapper
+    // Create page wrapper with proper dimensions for zoom
     const pageWrapper = document.createElement('div');
-    pageWrapper.className = 'page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto';
+    pageWrapper.className = 'page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto mb-4';
     pageWrapper.style.width = `${viewport.width}px`;
+    pageWrapper.style.height = `${viewport.height}px`;
+    pageWrapper.style.minWidth = `${viewport.width}px`;
+    pageWrapper.style.minHeight = `${viewport.height}px`;
     pageWrapper.style.maxWidth = '100%';
     pageWrapper.dataset.pageNumber = pageNum; // Add data attribute for easy selection
 
-    // Create canvas for this page
+    // Create canvas for this page with proper dimensions
     const canvas = document.createElement('canvas');
-    canvas.className = 'page-canvas w-full h-auto';
+    canvas.className = 'page-canvas';
     canvas.width = viewport.width;
     canvas.height = viewport.height;
+    canvas.style.width = `${viewport.width}px`;
+    canvas.style.height = `${viewport.height}px`;
     canvas.dataset.pageNumber = pageNum;
 
-    // Create text layer for text selection
+    // Create text layer for text selection with proper dimensions
     const textLayerDiv = document.createElement('div');
-    textLayerDiv.className = 'text-layer absolute inset-0 pointer-events-auto';
+    textLayerDiv.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
     textLayerDiv.style.width = `${viewport.width}px`;
     textLayerDiv.style.height = `${viewport.height}px`;
     textLayerDiv.style.fontSize = '0px'; // Hide text but keep it selectable
@@ -458,9 +546,10 @@ async function loadPageToContainer(pageNum, container) {
 
     // Create page info overlay
     const pageInfo = document.createElement('div');
-    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium z-10';
+    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium z-20';
     pageInfo.textContent = `Page ${pageNum}`;
 
+    // Append elements to page wrapper
     pageWrapper.appendChild(canvas);
     pageWrapper.appendChild(textLayerDiv);
     pageWrapper.appendChild(pageInfo);
@@ -504,6 +593,7 @@ async function loadPageToContainer(pageNum, container) {
       pageWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
+    console.log(`Page ${pageNum} loaded to container with scale: ${currentScale}, viewport: ${viewport.width}x${viewport.height}`);
     return pageWrapper;
 
   } catch (error) {
@@ -630,12 +720,12 @@ function resizeCanvas() {
     const viewport = pdfPage.getViewport({ scale: 1.0 });
     const scaleX = containerWidth / viewport.width;
     const scaleY = containerHeight / viewport.height;
-    const scale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
+    const fitScale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
 
     // Only set initial scale if no manual zoom has been applied
     // This prevents overriding user zoom operations
-    if (currentScale === 1.0 || Math.abs(currentScale - scale) < 0.1) {
-      currentScale = scale;
+    if (currentScale === 1.0 || Math.abs(currentScale - fitScale) < 0.1) {
+      currentScale = fitScale;
 
       // Only resize if not currently zooming
       if (!isZooming) {
@@ -647,7 +737,12 @@ function resizeCanvas() {
           currentRenderTask = null;
         }
 
-        loadPage(currentPage); // Reload current page with new scale
+        // Reload current page with new scale
+        if (isContinuousView) {
+          loadAllPages(); // Reload all pages with new scale
+        } else {
+          loadPage(currentPage); // Reload current page with new scale
+        }
       }
     }
   }
@@ -2586,19 +2681,24 @@ function setupToolbar() {
             currentRenderTask = null;
           }
 
+          const oldScale = currentScale;
           currentScale = Math.min(currentScale * 1.2, 3.0);
-          console.log('Zoom in clicked, new scale:', currentScale);
+          console.log(`Zoom in clicked, scale changed from ${oldScale} to ${currentScale}`);
 
           if (isContinuousView) {
-            await loadAllPages(); // Reload all pages with new scale
+            // Reload all pages with new scale
+            await loadAllPages();
           } else {
-            await loadPage(currentPage); // Reload current page with new scale
+            // Reload current page with new scale
+            await loadPage(currentPage);
           }
 
           updateToolbarState(); // Update button states after zoom
         } catch (error) {
           console.error('Error during zoom in:', error);
           toast('Zoom operation failed', 'error');
+          // Revert scale on error
+          currentScale = oldScale;
         } finally {
           isZooming = false;
         }
@@ -2626,19 +2726,24 @@ function setupToolbar() {
             currentRenderTask = null;
           }
 
+          const oldScale = currentScale;
           currentScale = Math.max(currentScale / 1.2, 0.5);
-          console.log('Zoom out clicked, new scale:', currentScale);
+          console.log(`Zoom out clicked, scale changed from ${oldScale} to ${currentScale}`);
 
           if (isContinuousView) {
-            await loadAllPages(); // Reload all pages with new scale
+            // Reload all pages with new scale
+            await loadAllPages();
           } else {
-            await loadPage(currentPage); // Reload current page with new scale
+            // Reload current page with new scale
+            await loadPage(currentPage);
           }
 
           updateToolbarState(); // Update button states after zoom
         } catch (error) {
           console.error('Error during zoom out:', error);
           toast('Zoom operation failed', 'error');
+          // Revert scale on error
+          currentScale = oldScale;
         } finally {
           isZooming = false;
         }
@@ -2667,6 +2772,7 @@ function setupToolbar() {
             currentRenderTask = null;
           }
 
+          const oldScale = currentScale;
           // Reset to fit-to-width scale
           if (pdfPage) {
             const viewport = pdfPage.getViewport({ scale: 1.0 });
@@ -2678,18 +2784,22 @@ function setupToolbar() {
           } else {
             currentScale = 1.0;
           }
-          console.log('Reset zoom clicked, new scale:', currentScale);
+          console.log(`Reset zoom clicked, scale changed from ${oldScale} to ${currentScale}`);
 
           if (isContinuousView) {
-            await loadAllPages(); // Reload all pages with new scale
+            // Reload all pages with new scale
+            await loadAllPages();
           } else {
-            await loadPage(currentPage); // Reload current page with new scale
+            // Reload current page with new scale
+            await loadPage(currentPage);
           }
 
           updateToolbarState(); // Update button states after zoom
         } catch (error) {
           console.error('Error during reset zoom:', error);
           toast('Reset zoom operation failed', 'error');
+          // Revert scale on error
+          currentScale = oldScale;
         } finally {
           isZooming = false;
         }
@@ -2723,6 +2833,20 @@ function setupToolbar() {
     // View mode toggle
     viewModeToggle = document.getElementById('viewModeToggle');
     if (viewModeToggle) {
+      // Remove any existing event listeners
+      viewModeToggle.replaceWith(viewModeToggle.cloneNode(true));
+      viewModeToggle = document.getElementById('viewModeToggle');
+
+      // Set initial state
+      if (isContinuousView) {
+        viewModeToggle.innerHTML = '<i class="fas fa-list mr-1"></i>Continuous';
+        viewModeToggle.title = 'Switch to single page view';
+      } else {
+        viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
+        viewModeToggle.title = 'Switch to continuous view';
+      }
+
+      // Add event listener
       viewModeToggle.addEventListener('click', () => {
         toggleViewMode();
       });

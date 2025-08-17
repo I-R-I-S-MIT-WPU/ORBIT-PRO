@@ -831,8 +831,48 @@ main {
 #pdf-canvas {
   display: block;
   margin: 0 auto;
-  max-width: none; /* Allow full width in continuous mode */
-  height: auto;
+  /* Remove max-width and max-height constraints to allow proper zooming */
+  /* max-width: none; Allow full width in continuous mode */
+  /* height: auto; */
+}
+
+/* PDF Viewer Container - Add proper zoom behavior */
+#pdf-viewer-container {
+  overflow: auto;
+  position: relative;
+}
+
+/* Single page view container */
+#single-page-view {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+/* When zoomed in, allow the canvas to be larger than container */
+#single-page-view.zoomed {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 10px;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* Ensure the canvas maintains its aspect ratio and proper sizing */
+#pdf-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: all 0.3s ease;
+}
+
+/* When zoomed, allow canvas to exceed container bounds */
+#single-page-view.zoomed #pdf-canvas {
+  max-width: none;
+  max-height: none;
 }
 
 /* Text Layer */
@@ -1663,4 +1703,43 @@ main {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Continuous View Container */
+#continuous-view {
+  width: 100%;
+  min-height: 100%;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Page wrapper in continuous view */
+.page-wrapper {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  margin: 0 auto;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .page-wrapper {
+  background: #1e293b;
+}
+
+/* Page canvas in continuous view */
+.page-wrapper .page-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: all 0.3s ease;
+}
+
+/* Ensure proper spacing between pages */
+.page-wrapper + .page-wrapper {
+  margin-top: 20px;
 }

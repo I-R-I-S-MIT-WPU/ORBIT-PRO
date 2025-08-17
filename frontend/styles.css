@@ -1524,6 +1524,41 @@ main {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+/* Text selection hint styles */
+#textSelectionHint {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  bottom: 2rem;
+  background-color: var(--primary);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  opacity: 0;
+  transition: all 0.3s ease-in-out;
+  white-space: nowrap;
+  max-width: 80%;
+  text-align: center;
+  font-size: 0.9em;
+}
+
+#textSelectionHint.translate-y-0 {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+#textSelectionHint .flex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 0.5rem;
+}
+
 /* Animation for toolbar */
 @keyframes slideInUp {
   from {

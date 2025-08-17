@@ -812,11 +812,18 @@ class DocumentIndex:
             for doc_name, info in doc_similarities.items():
                 if doc_name in self.document_metadata:
                     metadata = self.document_metadata[doc_name]
+                    best_chunk = info["best_chunk"]
                     recommendations.append(
                         {
                             "document": doc_name,
+                            "page_number": best_chunk.page_number,
                             "similarity_score": info["similarity_score"],
                             "reason": info["reason"],
+                            "relevant_text": (
+                                best_chunk.text[:300] + "..."
+                                if len(best_chunk.text) > 300
+                                else best_chunk.text
+                            ),
                             "metadata": {
                                 "total_pages": metadata.get("pages", 0) or 0,
                                 "total_chunks": len(

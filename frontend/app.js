@@ -1810,6 +1810,11 @@ function updateRecommendationsPanel(recommendations) {
     return;
   }
 
+  // Debug: Log the first recommendation to see the data structure
+  if (recommendations.length > 0) {
+    console.log('First recommendation data structure:', recommendations[0]);
+  }
+
   container.innerHTML = recommendations.slice(0, 5).map((rec, index) => {
     // Handle different possible data structures from the API
     const documentName = rec.document || rec.filename || rec.doc_name || 'Unknown';
@@ -1823,6 +1828,18 @@ function updateRecommendationsPanel(recommendations) {
     else if (rec.section_title) relevantText = rec.section_title;
     else if (rec.section_summary) relevantText = rec.section_summary;
     else relevantText = 'No text available';
+
+    // Debug: Log what text field was found
+    console.log(`Recommendation ${index + 1}:`, {
+      document: documentName,
+      page: pageNumber,
+      hasRelevantText: !!rec.relevant_text,
+      hasText: !!rec.text,
+      hasContent: !!rec.content,
+      hasSectionTitle: !!rec.section_title,
+      hasSectionSummary: !!rec.section_summary,
+      finalText: relevantText.substring(0, 50) + '...'
+    });
 
     // Ensure we have some text to display
     if (!relevantText || relevantText.trim() === '') {

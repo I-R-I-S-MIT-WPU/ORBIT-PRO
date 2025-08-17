@@ -22,6 +22,10 @@ let textSelectionInsights = null;
 let isProcessingTextSelection = false;
 let textSelectionTimeout = null;
 
+// Canvas management variables
+let currentRenderTask = null;
+let isRendering = false;
+
 // Toast notification system with debouncing
 let toastTimeout = null;
 let lastToastMessage = '';
@@ -124,12 +128,27 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
         return;
       }
 
+      // Cancel any ongoing render task
+      if (currentRenderTask) {
+        try {
+          currentRenderTask.cancel();
+        } catch (e) {
+          console.log('Render task already completed or cancelled');
+        }
+        currentRenderTask = null;
+      }
+
       // Set worker path for PDF.js
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
       // Get canvas and context
       pdfCanvas = document.getElementById('pdf-canvas');
       pdfContext = pdfCanvas.getContext('2d');
+
+      // Clear the canvas
+      if (pdfContext) {
+        pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+      }
 
       // Show loading state only when we have a valid URL
       showPDFLoading();
@@ -182,7 +201,7 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
   });
 }
 
-// Load a specific page
+// Load a specific page with better error handling
 async function loadPage(pageNum) {
   try {
     if (pageNum < 1 || pageNum > totalPages) {
@@ -190,10 +209,39 @@ async function loadPage(pageNum) {
       return;
     }
 
+    // Cancel any ongoing render task
+    if (currentRenderTask) {
+      try {
+        currentRenderTask.cancel();
+      } catch (e) {
+        console.log('Render task already completed or cancelled');
+      }
+      currentRenderTask = null;
+    }
+
+    // Wait a bit to ensure previous operations are cleaned up
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     currentPage = pageNum;
 
-    // Get the page
-    pdfPage = await pdfDoc.getPage(pageNum);
+    // Get the page with retry logic
+    let pdfPage = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        pdfPage = await pdfDoc.getPage(pageNum);
+        break;
+      } catch (error) {
+        retryCount++;
+        console.warn(`Failed to get page ${pageNum}, retry ${retryCount}/${maxRetries}:`, error);
+        if (retryCount >= maxRetries) {
+          throw new Error(`Failed to load page ${pageNum} after ${maxRetries} attempts`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
+      }
+    }
 
     // Calculate viewport
     const viewport = pdfPage.getViewport({ scale: currentScale });
@@ -202,13 +250,25 @@ async function loadPage(pageNum) {
     pdfCanvas.width = viewport.width;
     pdfCanvas.height = viewport.height;
 
-    // Render the page
+    // Clear the canvas before rendering
+    pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+
+    // Render the page with retry logic
     const renderContext = {
       canvasContext: pdfContext,
       viewport: viewport
     };
 
-    await pdfPage.render(renderContext).promise;
+    // Store the render task and wait for it to complete
+    currentRenderTask = pdfPage.render(renderContext);
+
+    // Add timeout to prevent hanging
+    const renderPromise = currentRenderTask.promise;
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Render timeout')), 30000); // 30 second timeout
+    });
+
+    await Promise.race([renderPromise, timeoutPromise]);
 
     // Create or update text layer for text selection
     await createTextLayerForSinglePage(pdfPage, viewport);
@@ -229,37 +289,54 @@ async function loadPage(pageNum) {
 
   } catch (error) {
     console.error('Error loading page:', error);
-    toast('Failed to load page. Please try again.', 'error');
+    toast(`Failed to load page ${pageNum}. Please try again.`, 'error');
+
+    // Show error state in the viewer
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-red-50 dark:bg-red-900/20';
+    errorDiv.innerHTML = `
+      <div class="text-center">
+        <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+        <p class="text-red-600 dark:text-red-400 text-sm">Failed to load page ${pageNum}</p>
+        <button onclick="retryLoadPage(${pageNum})" class="mt-2 px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">
+          Retry
+        </button>
+      </div>
+    `;
+
+    const container = document.getElementById('pdf-viewer-container');
+    if (container) {
+      container.appendChild(errorDiv);
+    }
   }
 }
 
 // Create text layer for single page view
 async function createTextLayerForSinglePage(page, viewport) {
   try {
-    // Get or create text layer container
-    let textLayerContainer = document.getElementById('single-page-text-layer');
-    if (!textLayerContainer) {
-      textLayerContainer = document.createElement('div');
-      textLayerContainer.id = 'single-page-text-layer';
-      textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
-      textLayerContainer.style.width = `${viewport.width}px`;
-      textLayerContainer.style.height = `${viewport.height}px`;
-      textLayerContainer.style.fontSize = '0px';
-      textLayerContainer.style.lineHeight = '1';
-      textLayerContainer.style.color = 'transparent';
-      textLayerContainer.style.userSelect = 'text';
-      textLayerContainer.style.cursor = 'text';
-
-      // Insert after canvas
-      const canvasContainer = document.getElementById('pdf-viewer-container');
-      if (canvasContainer) {
-        canvasContainer.appendChild(textLayerContainer);
-      }
+    // Remove any existing text layer first
+    let existingTextLayer = document.getElementById('single-page-text-layer');
+    if (existingTextLayer) {
+      existingTextLayer.remove();
     }
 
-    // Update text layer dimensions
+    // Create new text layer container
+    const textLayerContainer = document.createElement('div');
+    textLayerContainer.id = 'single-page-text-layer';
+    textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
     textLayerContainer.style.width = `${viewport.width}px`;
     textLayerContainer.style.height = `${viewport.height}px`;
+    textLayerContainer.style.fontSize = '0px';
+    textLayerContainer.style.lineHeight = '1';
+    textLayerContainer.style.color = 'transparent';
+    textLayerContainer.style.userSelect = 'text';
+    textLayerContainer.style.cursor = 'text';
+
+    // Insert after canvas
+    const canvasContainer = document.getElementById('pdf-viewer-container');
+    if (canvasContainer) {
+      canvasContainer.appendChild(textLayerContainer);
+    }
 
     // Render text content
     await renderTextLayer(page, textLayerContainer, viewport);
@@ -269,7 +346,7 @@ async function createTextLayerForSinglePage(page, viewport) {
   }
 }
 
-// Load all pages for continuous scrolling
+// Load all pages for continuous scrolling with better error handling
 async function loadAllPages() {
   try {
     if (!pdfDoc) return;
@@ -289,17 +366,35 @@ async function loadAllPages() {
     `;
     continuousContainer.appendChild(loadingDiv);
 
-    // Load all pages
-    const pagePromises = [];
+    // Load all pages sequentially to avoid conflicts
+    const loadedPages = [];
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      pagePromises.push(loadPageToContainer(pageNum, continuousContainer));
+      try {
+        const pageWrapper = await loadPageToContainer(pageNum, continuousContainer);
+        if (pageWrapper) {
+          loadedPages.push(pageWrapper);
+        }
+        // Add a small delay between pages to prevent conflicts
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`Error loading page ${pageNum}:`, error);
+        // Continue loading other pages even if one fails
+      }
     }
-
-    await Promise.all(pagePromises);
 
     // Remove loading indicator
     if (loadingDiv.parentNode) {
       loadingDiv.parentNode.removeChild(loadingDiv);
+    }
+
+    // Show summary of loaded pages
+    if (loadedPages.length > 0) {
+      console.log(`Successfully loaded ${loadedPages.length} out of ${totalPages} pages`);
+      if (loadedPages.length < totalPages) {
+        toast(`Loaded ${loadedPages.length} out of ${totalPages} pages. Some pages failed to load.`, 'warning');
+      }
+    } else {
+      toast('Failed to load any pages. Please try again.', 'error');
     }
 
     // Set up text selection for all pages
@@ -307,8 +402,6 @@ async function loadAllPages() {
 
     // Show text selection hint
     showTextSelectionHint();
-
-    console.log(`All ${totalPages} pages loaded successfully`);
 
   } catch (error) {
     console.error('Error loading all pages:', error);
@@ -412,7 +505,12 @@ async function loadPageToContainer(pageNum, container) {
       viewport: viewport
     };
 
-    await page.render(renderContext).promise;
+    // Clear the canvas before rendering
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Render the page and wait for completion
+    const renderTask = page.render(renderContext);
+    await renderTask.promise;
 
     // Render text layer for text selection
     await renderTextLayer(page, textLayerDiv, viewport);
@@ -569,7 +667,11 @@ function resizeCanvas() {
     const scale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
 
     currentScale = scale;
-    loadPage(currentPage); // Reload current page with new scale
+
+    // Only reload if we're in single page view
+    if (!isContinuousView) {
+      loadPage(currentPage); // Reload current page with new scale
+    }
   }
 }
 
@@ -683,6 +785,46 @@ async function fetchHealth() {
   }
 }
 
+// Handle document selection from the list
+async function selectDocument(docName) {
+  try {
+    // Cleanup current document first
+    cleanupPDFViewer();
+
+    // Create document object
+    const docObj = { filename: docName };
+
+    // Load the new document
+    const success = await loadDocument(docObj);
+
+    if (success) {
+      // Update document list selection
+      const list = document.getElementById('docList');
+      if (list) {
+        // Remove previous selections
+        list.querySelectorAll('.doc-item.selected').forEach(item => {
+          item.classList.remove('selected');
+        });
+
+        // Select the new document
+        const selectedItem = list.querySelector(`[data-filename="${docName}"]`);
+        if (selectedItem) {
+          selectedItem.classList.add('selected');
+        }
+      }
+
+      updateSelectedCount();
+    }
+
+    return success;
+  } catch (error) {
+    console.error('Error selecting document:', error);
+    toast('Error selecting document', 'error');
+    return false;
+  }
+}
+
+// Update the loadDocuments function to use the new selectDocument function
 async function loadDocuments() {
   try {
     const res = await fetch('/api/documents');
@@ -716,15 +858,16 @@ async function loadDocuments() {
         </div>
       `;
       li.dataset.filename = d.filename;
-      li.addEventListener('click', (e) => {
+      li.addEventListener('click', async (e) => {
         // Only select if not clicking delete
         if (e.target.closest('button[onclick]')) return;
+
         // Deselect all others
         document.querySelectorAll('.doc-item.selected').forEach(el => el.classList.remove('selected'));
         li.classList.add('selected');
-        if (currentDoc !== `/files/${d.filename}`) {
-          initViewer(`/files/${d.filename}`);
-        }
+
+        // Load the document
+        await selectDocument(d.filename);
         updateSelectedCount();
       });
       list.appendChild(li);
@@ -751,6 +894,7 @@ function getSelectedDocs() {
 
 function updateSelectedCount() {
   const el = document.getElementById('selectedCount');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
   if (!el) return;
   const list = document.getElementById('docList');
   if (!list) return;
@@ -758,6 +902,17 @@ function updateSelectedCount() {
   let count = 0;
   for (const li of list.children) if (li.classList.contains('selected')) count++;
   el.textContent = `${count} selected`;
+
+  // Enable/disable delete button based on selection
+  if (deleteSelectedBtn) {
+    if (count > 0) {
+      deleteSelectedBtn.disabled = false;
+      deleteSelectedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+      deleteSelectedBtn.disabled = true;
+      deleteSelectedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  }
 }
 
 function updateCurrentDocName() {
@@ -961,6 +1116,9 @@ async function loadDocument(doc) {
       return false;
     }
 
+    // Cleanup previous document
+    cleanupPDFViewer();
+
     // Update current document
     currentDoc = doc.filename;
     currentPage = 1;
@@ -1115,11 +1273,25 @@ function clampPageNumber(page) {
 
 function updateSelectedCount() {
   const el = document.getElementById('selectedCount');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
   if (!el) return;
   const list = document.getElementById('docList');
+  if (!list) return;
+
   let count = 0;
   for (const li of list.children) if (li.classList.contains('selected')) count++;
   el.textContent = `${count} selected`;
+
+  // Enable/disable delete button based on selection
+  if (deleteSelectedBtn) {
+    if (count > 0) {
+      deleteSelectedBtn.disabled = false;
+      deleteSelectedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+      deleteSelectedBtn.disabled = true;
+      deleteSelectedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  }
 }
 
 function renderSections(sections, relatedMap) {
@@ -2351,6 +2523,7 @@ function setupToolbar() {
     // Zoom buttons
     const zoomInBtn = document.getElementById('zoomInBtn');
     const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const resetZoomBtn = document.getElementById('resetZoomBtn');
 
     // Search functionality
     const searchBtn = document.getElementById('searchBtn');
@@ -2396,24 +2569,23 @@ function setupToolbar() {
 
     // Zoom event listeners
     if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', () => {
+      zoomInBtn.addEventListener('click', async () => {
         currentScale = Math.min(currentScale * 1.2, 3.0);
-        if (isContinuousView) {
-          loadAllPages(); // Reload all pages with new scale
-        } else {
-          loadPage(currentPage); // Reload current page with new scale
-        }
+        await applyZoom();
       });
     }
 
     if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', () => {
+      zoomOutBtn.addEventListener('click', async () => {
         currentScale = Math.max(currentScale / 1.2, 0.5);
-        if (isContinuousView) {
-          loadAllPages(); // Reload all pages with new scale
-        } else {
-          loadPage(currentPage); // Reload current page with new scale
-        }
+        await applyZoom();
+      });
+    }
+
+    if (resetZoomBtn) {
+      resetZoomBtn.addEventListener('click', async () => {
+        currentScale = 1.0;
+        await applyZoom();
       });
     }
 
@@ -2455,6 +2627,27 @@ function setupToolbar() {
     console.log("✅ PDF.js toolbar configured successfully");
   } catch (error) {
     console.error("Error setting up toolbar:", error);
+  }
+}
+
+// Apply zoom changes
+async function applyZoom() {
+  try {
+    // Update zoom level display
+    const zoomLevel = document.getElementById('zoomLevel');
+    if (zoomLevel) {
+      zoomLevel.textContent = `${Math.round(currentScale * 100)}%`;
+    }
+
+    if (isContinuousView) {
+      // In continuous view, reload all pages with new scale
+      await loadAllPages();
+    } else {
+      // In single page view, reload current page with new scale
+      await loadPage(currentPage);
+    }
+  } catch (error) {
+    console.error('Error applying zoom:', error);
   }
 }
 
@@ -2652,6 +2845,17 @@ async function main() {
     updateSelectedCount();
   });
   if (deleteAllBtn) deleteAllBtn.addEventListener('click', () => {
+    const selectedDocs = getSelectedDocs();
+    if (selectedDocs.length === 0) {
+      toast('Please select documents to delete', 'warning');
+      return;
+    }
+    showDeleteAllConfirmation(selectedDocs);
+  });
+
+  // Add event listener for deleteSelectedBtn
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  if (deleteSelectedBtn) deleteSelectedBtn.addEventListener('click', () => {
     const selectedDocs = getSelectedDocs();
     if (selectedDocs.length === 0) {
       toast('Please select documents to delete', 'warning');
@@ -4032,5 +4236,93 @@ function updateTextSelectionPanelWithError(errorMessage) {
         Failed to load related content
       </div>
     `;
+  }
+}
+// Cleanup function for PDF viewer
+function cleanupPDFViewer() {
+  // Cancel any ongoing render task
+  if (currentRenderTask) {
+    try {
+      currentRenderTask.cancel();
+    } catch (e) {
+      console.log('Render task already completed or cancelled');
+    }
+    currentRenderTask = null;
+  }
+
+  // Clear canvas
+  if (pdfCanvas && pdfContext) {
+    pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+  }
+
+  // Remove text layers
+  const existingTextLayer = document.getElementById('single-page-text-layer');
+  if (existingTextLayer) {
+    existingTextLayer.remove();
+  }
+
+  // Clear continuous view
+  const continuousView = document.getElementById('continuous-view');
+  if (continuousView) {
+    continuousView.innerHTML = '';
+  }
+
+  // Reset variables
+  pdfPage = null;
+  isRendering = false;
+}
+
+// Delete a single document
+async function deleteDocument(filename) {
+  try {
+    const response = await fetch(`/api/documents/${encodeURIComponent(filename)}`, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      toast(`Successfully deleted ${filename}`, 'success');
+
+      // Reload documents list
+      await loadDocuments();
+
+      // Clear current document if it was deleted
+      if (currentDoc && currentDoc.includes(filename)) {
+        currentDoc = null;
+        cleanupPDFViewer();
+        showPDFNeutral();
+      }
+
+      // Clear analysis results if the deleted document was analyzed
+      if (currentSections.some(s => s.document === filename) ||
+        currentSnippets.some(s => s.document === filename)) {
+        currentSections = [];
+        currentSnippets = [];
+        HAS_ANALYSIS = false;
+
+        // Re-render empty sections and snippets
+        renderSections([], {});
+        renderSnippets([]);
+      }
+    } else {
+      toast(`Failed to delete ${filename}`, 'error');
+    }
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    toast('Error deleting document', 'error');
+  }
+}
+
+// Retry loading a specific page
+async function retryLoadPage(pageNum) {
+  try {
+    // Remove any error overlays
+    const errorOverlays = document.querySelectorAll('.absolute.inset-0.flex.items-center.justify-center.bg-red-50');
+    errorOverlays.forEach(overlay => overlay.remove());
+
+    // Try to load the page again
+    await loadPage(pageNum);
+  } catch (error) {
+    console.error('Error retrying page load:', error);
+    toast('Failed to retry page load', 'error');
   }
 }

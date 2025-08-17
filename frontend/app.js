@@ -1,8 +1,8 @@
 // Theme toggle logic
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
   const themeToggle = document.getElementById('themeToggle');
   if (themeToggle) {
-    themeToggle.addEventListener('click', function () {
+    themeToggle.addEventListener('click', function() {
       document.body.classList.toggle('theme-light');
     });
   }
@@ -20,8 +20,6 @@ let currentSections = [];
 let currentSnippets = [];
 let HEALTH = {};
 let HAS_ANALYSIS = false;
-let currentRenderTask = null; // Track current render task for cleanup
-let isZooming = false; // Flag to prevent multiple simultaneous zoom operations
 
 // View mode variables
 let isContinuousView = false;
@@ -123,18 +121,6 @@ function removeToast(toastEl) {
   }, 300);
 }
 
-// Clean up render tasks
-function cleanupRenderTasks() {
-  if (currentRenderTask) {
-    try {
-      currentRenderTask.cancel();
-    } catch (error) {
-      // Ignore cancellation errors
-    }
-    currentRenderTask = null;
-  }
-}
-
 // Initialize PDF.js viewer
 async function initViewer(url, containerId = 'pdf-viewer-container') {
   return new Promise(async (resolve) => {
@@ -146,9 +132,6 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
         resolve(false);
         return;
       }
-
-      // Clean up any existing render tasks
-      cleanupRenderTasks();
 
       // Set worker path for PDF.js
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -175,15 +158,6 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
       if (singlePageView && continuousView) {
         singlePageView.classList.remove('hidden');
         continuousView.classList.add('hidden');
-        // Clear continuous view container to prevent blank pages
-        continuousView.innerHTML = '';
-      }
-
-      // Update view mode toggle button state
-      viewModeToggle = document.getElementById('viewModeToggle');
-      if (viewModeToggle) {
-        viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
-        viewModeToggle.title = 'Switch to continuous view';
       }
 
       // Set canvas dimensions
@@ -201,23 +175,11 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
       // Update current document name
       updateCurrentDocName();
 
-      // Update toolbar state to enable zoom buttons
-      updateToolbarState();
-
       // Hide loading state
       hidePDFLoading();
 
       // Set up window resize handler
-      window.addEventListener('resize', () => {
-        resizeCanvas();
-        updateTextLayerPosition();
-      });
-
-      // Set up scroll handler for zoomed view
-      const pdfViewerContainer = document.getElementById('pdf-viewer-container');
-      if (pdfViewerContainer) {
-        pdfViewerContainer.addEventListener('scroll', updateTextLayerPosition);
-      }
+      window.addEventListener('resize', resizeCanvas);
 
       resolve(true);
     } catch (error) {
@@ -242,77 +204,23 @@ async function loadPage(pageNum) {
     // Get the page
     pdfPage = await pdfDoc.getPage(pageNum);
 
-    // Calculate viewport with current scale
+    // Calculate viewport
     const viewport = pdfPage.getViewport({ scale: currentScale });
-    console.log(`Loading page ${pageNum} with scale: ${currentScale} (${Math.round(currentScale * 100)}%)`);
 
-    // Set canvas dimensions to match the scaled viewport
+    // Set canvas dimensions
     pdfCanvas.width = viewport.width;
     pdfCanvas.height = viewport.height;
 
-    // Update single page view container based on zoom level
-    const singlePageView = document.getElementById('single-page-view');
-    const pdfViewerContainer = document.getElementById('pdf-viewer-container');
-
-    if (singlePageView) {
-      // Set the container to accommodate the scaled content
-      singlePageView.style.width = `${viewport.width}px`;
-      singlePageView.style.height = `${viewport.height}px`;
-      singlePageView.style.minWidth = `${viewport.width}px`;
-      singlePageView.style.minHeight = `${viewport.height}px`;
-
-      if (currentScale > 1.0) {
-        singlePageView.classList.add('zoomed');
-        // Enable scrolling when zoomed
-        if (pdfViewerContainer) {
-          pdfViewerContainer.style.overflow = 'auto';
-        }
-      } else {
-        singlePageView.classList.remove('zoomed');
-        // Center the content when not zoomed
-        singlePageView.style.display = 'flex';
-        singlePageView.style.alignItems = 'center';
-        singlePageView.style.justifyContent = 'center';
-        if (pdfViewerContainer) {
-          pdfViewerContainer.style.overflow = 'hidden';
-        }
-      }
-    }
-
-    // Cancel any existing render task
-    if (currentRenderTask) {
-      try {
-        await currentRenderTask.cancel();
-      } catch (error) {
-        // Ignore cancellation errors
-        console.log('Previous render task cancelled');
-      }
-      currentRenderTask = null;
-    }
-
-    // Clear the canvas
-    pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
-
-    // Render the page with the scaled viewport
+    // Render the page
     const renderContext = {
       canvasContext: pdfContext,
       viewport: viewport
     };
 
-    // Start new render task and store reference
-    currentRenderTask = pdfPage.render(renderContext);
-    await currentRenderTask.promise;
-
-    // Clear render task reference after completion
-    currentRenderTask = null;
+    await pdfPage.render(renderContext).promise;
 
     // Create or update text layer for text selection
     await createTextLayerForSinglePage(pdfPage, viewport);
-
-    // Update text layer position after a short delay to ensure canvas is rendered
-    setTimeout(() => {
-      updateTextLayerPosition();
-    }, 100);
 
     // Show text selection hint
     showTextSelectionHint();
@@ -326,19 +234,11 @@ async function loadPage(pageNum) {
       gotoInput.value = currentPage;
     }
 
-    console.log(`Page ${currentPage} loaded successfully with viewport: ${viewport.width}x${viewport.height}`);
+    console.log(`Page ${currentPage} loaded successfully`);
 
   } catch (error) {
     console.error('Error loading page:', error);
-    // Clear render task reference on error
-    currentRenderTask = null;
-
-    // Don't show error toast for cancelled renders (this is expected behavior)
-    if (error.name !== 'RenderingCancelledException') {
-      toast('Failed to load page. Please try again.', 'error');
-    } else {
-      console.log('Render was cancelled (expected during zoom operations)');
-    }
+    toast('Failed to load page. Please try again.', 'error');
   }
 }
 
@@ -350,52 +250,31 @@ async function createTextLayerForSinglePage(page, viewport) {
     if (!textLayerContainer) {
       textLayerContainer = document.createElement('div');
       textLayerContainer.id = 'single-page-text-layer';
-      textLayerContainer.className = 'text-layer absolute pointer-events-auto z-10';
+      textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
+      textLayerContainer.style.width = `${viewport.width}px`;
+      textLayerContainer.style.height = `${viewport.height}px`;
       textLayerContainer.style.fontSize = '0px';
       textLayerContainer.style.lineHeight = '1';
       textLayerContainer.style.color = 'transparent';
       textLayerContainer.style.userSelect = 'text';
       textLayerContainer.style.cursor = 'text';
 
-      // Insert into single page view container
-      const singlePageView = document.getElementById('single-page-view');
-      if (singlePageView) {
-        singlePageView.appendChild(textLayerContainer);
+      // Insert after canvas
+      const canvasContainer = document.getElementById('pdf-viewer-container');
+      if (canvasContainer) {
+        canvasContainer.appendChild(textLayerContainer);
       }
     }
 
-    // Position text layer to match canvas position and size exactly
-    textLayerContainer.style.position = 'absolute';
-    textLayerContainer.style.left = '0';
-    textLayerContainer.style.top = '0';
+    // Update text layer dimensions
     textLayerContainer.style.width = `${viewport.width}px`;
     textLayerContainer.style.height = `${viewport.height}px`;
-    textLayerContainer.style.pointerEvents = 'auto';
 
     // Render text content
     await renderTextLayer(page, textLayerContainer, viewport);
 
   } catch (error) {
     console.error('Error creating text layer for single page:', error);
-  }
-}
-
-// Update text layer position to match canvas position
-function updateTextLayerPosition() {
-  try {
-    const textLayerContainer = document.getElementById('single-page-text-layer');
-    if (!textLayerContainer || !pdfCanvas) return;
-
-    // The text layer is now positioned at (0,0) relative to the single page view
-    // No need to calculate complex positioning since it's already aligned
-    // Just ensure the dimensions match the current viewport
-    if (pdfPage) {
-      const viewport = pdfPage.getViewport({ scale: currentScale });
-      textLayerContainer.style.width = `${viewport.width}px`;
-      textLayerContainer.style.height = `${viewport.height}px`;
-    }
-  } catch (error) {
-    console.error('Error updating text layer position:', error);
   }
 }
 
@@ -419,17 +298,13 @@ async function loadAllPages() {
     `;
     continuousContainer.appendChild(loadingDiv);
 
-    // Load all pages sequentially to prevent memory issues
+    // Load all pages
+    const pagePromises = [];
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      try {
-        await loadPageToContainer(pageNum, continuousContainer);
-        // Small delay to prevent overwhelming the browser
-        await new Promise(resolve => setTimeout(resolve, 10));
-      } catch (error) {
-        console.error(`Error loading page ${pageNum}:`, error);
-        // Continue loading other pages even if one fails
-      }
+      pagePromises.push(loadPageToContainer(pageNum, continuousContainer));
     }
+
+    await Promise.all(pagePromises);
 
     // Remove loading indicator
     if (loadingDiv.parentNode) {
@@ -442,7 +317,7 @@ async function loadAllPages() {
     // Show text selection hint
     showTextSelectionHint();
 
-    console.log(`All ${totalPages} pages loaded successfully with scale: ${currentScale}`);
+    console.log(`All ${totalPages} pages loaded successfully`);
 
   } catch (error) {
     console.error('Error loading all pages:', error);
@@ -453,10 +328,6 @@ async function loadAllPages() {
 // Toggle between single page and continuous view modes
 async function toggleViewMode() {
   try {
-    // Clean up any existing render tasks before switching modes
-    cleanupRenderTasks();
-
-    // Toggle the view mode
     isContinuousView = !isContinuousView;
 
     const singlePageView = document.getElementById('single-page-view');
@@ -473,7 +344,7 @@ async function toggleViewMode() {
         viewModeToggle.title = 'Switch to single page view';
       }
 
-      // Load all pages with current scale
+      // Load all pages
       await loadAllPages();
 
       toast('Switched to continuous view - scroll to see all pages', 'info');
@@ -488,7 +359,7 @@ async function toggleViewMode() {
         viewModeToggle.title = 'Switch to continuous view';
       }
 
-      // Load current page with current scale
+      // Load current page
       await loadPage(currentPage);
 
       toast('Switched to single page view', 'info');
@@ -497,14 +368,9 @@ async function toggleViewMode() {
     // Update toolbar state
     updateToolbarState();
 
-    console.log(`View mode switched to: ${isContinuousView ? 'Continuous' : 'Single'}`);
-
   } catch (error) {
     console.error('Error toggling view mode:', error);
     toast('Failed to switch view mode', 'error');
-
-    // Revert the state on error
-    isContinuousView = !isContinuousView;
   }
 }
 
@@ -514,28 +380,23 @@ async function loadPageToContainer(pageNum, container) {
     const page = await pdfDoc.getPage(pageNum);
     const viewport = page.getViewport({ scale: currentScale });
 
-    // Create page wrapper with proper dimensions for zoom
+    // Create page wrapper
     const pageWrapper = document.createElement('div');
-    pageWrapper.className = 'page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto mb-4';
+    pageWrapper.className = 'page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto';
     pageWrapper.style.width = `${viewport.width}px`;
-    pageWrapper.style.height = `${viewport.height}px`;
-    pageWrapper.style.minWidth = `${viewport.width}px`;
-    pageWrapper.style.minHeight = `${viewport.height}px`;
     pageWrapper.style.maxWidth = '100%';
     pageWrapper.dataset.pageNumber = pageNum; // Add data attribute for easy selection
 
-    // Create canvas for this page with proper dimensions
+    // Create canvas for this page
     const canvas = document.createElement('canvas');
-    canvas.className = 'page-canvas';
+    canvas.className = 'page-canvas w-full h-auto';
     canvas.width = viewport.width;
     canvas.height = viewport.height;
-    canvas.style.width = `${viewport.width}px`;
-    canvas.style.height = `${viewport.height}px`;
     canvas.dataset.pageNumber = pageNum;
 
-    // Create text layer for text selection with proper dimensions
+    // Create text layer for text selection
     const textLayerDiv = document.createElement('div');
-    textLayerDiv.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
+    textLayerDiv.className = 'text-layer absolute inset-0 pointer-events-auto';
     textLayerDiv.style.width = `${viewport.width}px`;
     textLayerDiv.style.height = `${viewport.height}px`;
     textLayerDiv.style.fontSize = '0px'; // Hide text but keep it selectable
@@ -546,10 +407,9 @@ async function loadPageToContainer(pageNum, container) {
 
     // Create page info overlay
     const pageInfo = document.createElement('div');
-    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium z-20';
+    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium z-10';
     pageInfo.textContent = `Page ${pageNum}`;
 
-    // Append elements to page wrapper
     pageWrapper.appendChild(canvas);
     pageWrapper.appendChild(textLayerDiv);
     pageWrapper.appendChild(pageInfo);
@@ -561,10 +421,6 @@ async function loadPageToContainer(pageNum, container) {
       viewport: viewport
     };
 
-    // Clear canvas before rendering
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Render the page
     await page.render(renderContext).promise;
 
     // Render text layer for text selection
@@ -593,7 +449,6 @@ async function loadPageToContainer(pageNum, container) {
       pageWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-    console.log(`Page ${pageNum} loaded to container with scale: ${currentScale}, viewport: ${viewport.width}x${viewport.height}`);
     return pageWrapper;
 
   } catch (error) {
@@ -720,31 +575,10 @@ function resizeCanvas() {
     const viewport = pdfPage.getViewport({ scale: 1.0 });
     const scaleX = containerWidth / viewport.width;
     const scaleY = containerHeight / viewport.height;
-    const fitScale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
+    const scale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
 
-    // Only set initial scale if no manual zoom has been applied
-    // This prevents overriding user zoom operations
-    if (currentScale === 1.0 || Math.abs(currentScale - fitScale) < 0.1) {
-      currentScale = fitScale;
-
-      // Only resize if not currently zooming
-      if (!isZooming) {
-        // Cancel any existing render task before reloading
-        if (currentRenderTask) {
-          currentRenderTask.cancel().catch(() => {
-            // Ignore cancellation errors
-          });
-          currentRenderTask = null;
-        }
-
-        // Reload current page with new scale
-        if (isContinuousView) {
-          loadAllPages(); // Reload all pages with new scale
-        } else {
-          loadPage(currentPage); // Reload current page with new scale
-        }
-      }
-    }
+    currentScale = scale;
+    loadPage(currentPage); // Reload current page with new scale
   }
 }
 
@@ -890,6 +724,9 @@ async function loadDocuments() {
           <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0" title="View document">
             <i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>
           </button>
+          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0" title="Delete document" onclick="deleteDocument('${d.filename}')">
+            <i class="fas fa-trash text-red-600 dark:text-red-400 text-xs"></i>
+          </button>
           <div class="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-all duration-300"></div>
         </div>
       `;
@@ -897,7 +734,7 @@ async function loadDocuments() {
       li.dataset.filename = d.filename;
 
       // Add click handlers
-      li.addEventListener('click', (e) => {
+      li.addEventListener('click', () => {
         // Toggle selection
         li.classList.toggle('selected');
 
@@ -918,21 +755,12 @@ async function loadDocuments() {
         }
 
         // Load document if not already loaded
-        if (li.classList.contains('selected') && currentDoc !== d.filename) {
-          loadDocument(d);
+        if (li.classList.contains('selected') && currentDoc !== `/files/${d.filename}`) {
+          initViewer(`/files/${d.filename}`);
         }
 
         updateSelectedCount();
       });
-
-      // Add delete button event listener
-      const deleteBtn = li.querySelector('.delete-btn');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation(); // Prevent triggering the parent click event
-          deleteDocument(d.filename);
-        });
-      }
 
       list.appendChild(li);
     });
@@ -958,7 +786,6 @@ function getSelectedDocs() {
 
 function updateSelectedCount() {
   const el = document.getElementById('selectedCount');
-  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
   if (!el) return;
   const list = document.getElementById('docList');
   if (!list) return;
@@ -966,11 +793,6 @@ function updateSelectedCount() {
   let count = 0;
   for (const li of list.children) if (li.classList.contains('selected')) count++;
   el.textContent = `${count} selected`;
-
-  // Update delete button state
-  if (deleteSelectedBtn) {
-    deleteSelectedBtn.disabled = count === 0;
-  }
 }
 
 function updateCurrentDocName() {
@@ -1174,9 +996,6 @@ async function loadDocument(doc) {
       return false;
     }
 
-    // Clean up any existing render tasks
-    cleanupRenderTasks();
-
     // Update current document
     currentDoc = doc.filename;
     currentPage = 1;
@@ -1268,7 +1087,7 @@ async function loadDocuments() {
     li.dataset.filename = d.filename;
 
     // Add click handlers
-    li.addEventListener('click', (e) => {
+    li.addEventListener('click', () => {
       // Toggle selection
       li.classList.toggle('selected');
 
@@ -1295,15 +1114,6 @@ async function loadDocuments() {
 
       updateSelectedCount();
     });
-
-    // Add delete button event listener
-    const deleteBtn = li.querySelector('.delete-btn');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent triggering the parent click event
-        deleteDocument(d.filename);
-      });
-    }
 
     list.appendChild(li);
   });
@@ -1340,19 +1150,11 @@ function clampPageNumber(page) {
 
 function updateSelectedCount() {
   const el = document.getElementById('selectedCount');
-  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
   if (!el) return;
   const list = document.getElementById('docList');
-  if (!list) return;
-
   let count = 0;
   for (const li of list.children) if (li.classList.contains('selected')) count++;
   el.textContent = `${count} selected`;
-
-  // Update delete button state
-  if (deleteSelectedBtn) {
-    deleteSelectedBtn.disabled = count === 0;
-  }
 }
 
 function renderSections(sections, relatedMap) {
@@ -1371,18 +1173,7 @@ function renderSections(sections, relatedMap) {
     return;
   }
 
-  // Create header
-  const header = document.createElement('div');
-  header.className = 'mb-4';
-  header.innerHTML = `
-    <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center">
-      <div class="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mr-3">
-        <i class="fas fa-chart-line text-white text-xs"></i>
-      </div>
-      Top Sections (${sections.length})
-    </h3>
-  `;
-  container.appendChild(header);
+  // No header inside the card
 
   currentSections = sections;
 
@@ -1519,18 +1310,7 @@ function renderSnippets(snippets) {
     return;
   }
 
-  // Create header
-  const header = document.createElement('div');
-  header.className = 'mb-4';
-  header.innerHTML = `
-    <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center">
-      <div class="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mr-3">
-        <i class="fas fa-quote-left text-white text-xs"></i>
-      </div>
-      Key Insights (${snippets.length})
-    </h3>
-  `;
-  container.appendChild(header);
+  // No header inside the card
 
   currentSnippets = snippets;
 
@@ -2340,32 +2120,6 @@ function handleTextSelectionKeyboard(event) {
       selectAllTextOnCurrentPage();
       event.preventDefault();
     }
-
-    // Zoom keyboard shortcuts
-    if (event.ctrlKey) {
-      if (event.key === '=' || event.key === '+') {
-        // Zoom in
-        event.preventDefault();
-        const zoomInBtn = document.getElementById('zoomInBtn');
-        if (zoomInBtn && !zoomInBtn.disabled) {
-          zoomInBtn.click();
-        }
-      } else if (event.key === '-') {
-        // Zoom out
-        event.preventDefault();
-        const zoomOutBtn = document.getElementById('zoomOutBtn');
-        if (zoomOutBtn && !zoomOutBtn.disabled) {
-          zoomOutBtn.click();
-        }
-      } else if (event.key === '0') {
-        // Reset zoom
-        event.preventDefault();
-        const resetZoomBtn = document.getElementById('resetZoomBtn');
-        if (resetZoomBtn && !resetZoomBtn.disabled) {
-          resetZoomBtn.click();
-        }
-      }
-    }
   } catch (error) {
     console.error("Error handling text selection keyboard:", error);
   }
@@ -2614,8 +2368,6 @@ function setupToolbar() {
     // Zoom buttons
     const zoomInBtn = document.getElementById('zoomInBtn');
     const zoomOutBtn = document.getElementById('zoomOutBtn');
-    const zoomLevel = document.getElementById('zoomLevel');
-    const resetZoomBtn = document.getElementById('resetZoomBtn');
 
     // Search functionality
     const searchBtn = document.getElementById('searchBtn');
@@ -2661,147 +2413,23 @@ function setupToolbar() {
 
     // Zoom event listeners
     if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', async () => {
-        // Prevent multiple simultaneous zoom operations
-        if (isZooming) {
-          console.log('Zoom operation already in progress, ignoring click');
-          return;
-        }
-
-        isZooming = true;
-
-        try {
-          // Cancel any existing render task
-          if (currentRenderTask) {
-            try {
-              await currentRenderTask.cancel();
-            } catch (error) {
-              // Ignore cancellation errors
-            }
-            currentRenderTask = null;
-          }
-
-          const oldScale = currentScale;
-          currentScale = Math.min(currentScale * 1.2, 3.0);
-          console.log(`Zoom in clicked, scale changed from ${oldScale} to ${currentScale}`);
-
-          if (isContinuousView) {
-            // Reload all pages with new scale
-            await loadAllPages();
-          } else {
-            // Reload current page with new scale
-            await loadPage(currentPage);
-          }
-
-          updateToolbarState(); // Update button states after zoom
-        } catch (error) {
-          console.error('Error during zoom in:', error);
-          toast('Zoom operation failed', 'error');
-          // Revert scale on error
-          currentScale = oldScale;
-        } finally {
-          isZooming = false;
+      zoomInBtn.addEventListener('click', () => {
+        currentScale = Math.min(currentScale * 1.2, 3.0);
+        if (isContinuousView) {
+          loadAllPages(); // Reload all pages with new scale
+        } else {
+          loadPage(currentPage); // Reload current page with new scale
         }
       });
     }
 
     if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', async () => {
-        // Prevent multiple simultaneous zoom operations
-        if (isZooming) {
-          console.log('Zoom operation already in progress, ignoring click');
-          return;
-        }
-
-        isZooming = true;
-
-        try {
-          // Cancel any existing render task
-          if (currentRenderTask) {
-            try {
-              await currentRenderTask.cancel();
-            } catch (error) {
-              // Ignore cancellation errors
-            }
-            currentRenderTask = null;
-          }
-
-          const oldScale = currentScale;
-          currentScale = Math.max(currentScale / 1.2, 0.5);
-          console.log(`Zoom out clicked, scale changed from ${oldScale} to ${currentScale}`);
-
-          if (isContinuousView) {
-            // Reload all pages with new scale
-            await loadAllPages();
-          } else {
-            // Reload current page with new scale
-            await loadPage(currentPage);
-          }
-
-          updateToolbarState(); // Update button states after zoom
-        } catch (error) {
-          console.error('Error during zoom out:', error);
-          toast('Zoom operation failed', 'error');
-          // Revert scale on error
-          currentScale = oldScale;
-        } finally {
-          isZooming = false;
-        }
-      });
-    }
-
-    // Reset zoom event listener
-    if (resetZoomBtn) {
-      resetZoomBtn.addEventListener('click', async () => {
-        // Prevent multiple simultaneous zoom operations
-        if (isZooming) {
-          console.log('Zoom operation already in progress, ignoring click');
-          return;
-        }
-
-        isZooming = true;
-
-        try {
-          // Cancel any existing render task
-          if (currentRenderTask) {
-            try {
-              await currentRenderTask.cancel();
-            } catch (error) {
-              // Ignore cancellation errors
-            }
-            currentRenderTask = null;
-          }
-
-          const oldScale = currentScale;
-          // Reset to fit-to-width scale
-          if (pdfPage) {
-            const viewport = pdfPage.getViewport({ scale: 1.0 });
-            const container = document.getElementById('pdf-viewer-container');
-            const containerRect = container.getBoundingClientRect();
-            const scaleX = containerRect.width / viewport.width;
-            const scaleY = containerRect.height / viewport.height;
-            currentScale = Math.min(scaleX, scaleY, 2.0);
-          } else {
-            currentScale = 1.0;
-          }
-          console.log(`Reset zoom clicked, scale changed from ${oldScale} to ${currentScale}`);
-
-          if (isContinuousView) {
-            // Reload all pages with new scale
-            await loadAllPages();
-          } else {
-            // Reload current page with new scale
-            await loadPage(currentPage);
-          }
-
-          updateToolbarState(); // Update button states after zoom
-        } catch (error) {
-          console.error('Error during reset zoom:', error);
-          toast('Reset zoom operation failed', 'error');
-          // Revert scale on error
-          currentScale = oldScale;
-        } finally {
-          isZooming = false;
+      zoomOutBtn.addEventListener('click', () => {
+        currentScale = Math.max(currentScale / 1.2, 0.5);
+        if (isContinuousView) {
+          loadAllPages(); // Reload all pages with new scale
+        } else {
+          loadPage(currentPage); // Reload current page with new scale
         }
       });
     }
@@ -2833,20 +2461,6 @@ function setupToolbar() {
     // View mode toggle
     viewModeToggle = document.getElementById('viewModeToggle');
     if (viewModeToggle) {
-      // Remove any existing event listeners
-      viewModeToggle.replaceWith(viewModeToggle.cloneNode(true));
-      viewModeToggle = document.getElementById('viewModeToggle');
-
-      // Set initial state
-      if (isContinuousView) {
-        viewModeToggle.innerHTML = '<i class="fas fa-list mr-1"></i>Continuous';
-        viewModeToggle.title = 'Switch to single page view';
-      } else {
-        viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
-        viewModeToggle.title = 'Switch to continuous view';
-      }
-
-      // Add event listener
       viewModeToggle.addEventListener('click', () => {
         toggleViewMode();
       });
@@ -2867,27 +2481,6 @@ function updateToolbarState() {
   const nextPageBtn = document.getElementById('nextPageBtn');
   const gotoPageInput = document.getElementById('gotoPageInput');
   const gotoPageBtn = document.getElementById('gotoPageBtn');
-  const zoomInBtn = document.getElementById('zoomInBtn');
-  const zoomOutBtn = document.getElementById('zoomOutBtn');
-  const zoomLevel = document.getElementById('zoomLevel');
-  const resetZoomBtn = document.getElementById('resetZoomBtn');
-
-  // Update zoom level indicator
-  if (zoomLevel) {
-    const zoomPercentage = Math.round(currentScale * 100);
-    zoomLevel.textContent = `${zoomPercentage}%`;
-  }
-
-  // Update zoom button states
-  if (zoomInBtn) {
-    zoomInBtn.disabled = !pdfDoc || currentScale >= 3.0;
-  }
-  if (zoomOutBtn) {
-    zoomOutBtn.disabled = !pdfDoc || currentScale <= 0.5;
-  }
-  if (resetZoomBtn) {
-    resetZoomBtn.disabled = !pdfDoc;
-  }
 
   // Update navigation buttons based on view mode
   if (isContinuousView) {
@@ -3064,7 +2657,6 @@ async function main() {
   const selectAllBtn = document.getElementById('selectAllBtn');
   const clearSelectionBtn = document.getElementById('clearSelectionBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
-  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
 
   if (selectAllBtn) selectAllBtn.addEventListener('click', () => {
     const list = document.getElementById('docList');
@@ -3075,14 +2667,6 @@ async function main() {
     const list = document.getElementById('docList');
     for (const li of list.children) li.classList.remove('selected');
     updateSelectedCount();
-  });
-  if (deleteSelectedBtn) deleteSelectedBtn.addEventListener('click', () => {
-    const selectedDocs = getSelectedDocs();
-    if (selectedDocs.length === 0) {
-      toast('Please select documents to delete', 'warning');
-      return;
-    }
-    showDeleteSelectedConfirmation(selectedDocs);
   });
   if (deleteAllBtn) deleteAllBtn.addEventListener('click', () => {
     const selectedDocs = getSelectedDocs();
@@ -4466,185 +4050,4 @@ function updateTextSelectionPanelWithError(errorMessage) {
       </div>
     `;
   }
-}
-
-// Delete a single document
-async function deleteDocument(filename) {
-  if (!filename) {
-    toast('Document name not available', 'error');
-    return;
-  }
-
-  // Show confirmation dialog
-  const confirmed = await showDeleteConfirmation(filename);
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    // Show loading state
-    toast('Deleting document...', 'info');
-
-    const response = await fetch(`/api/documents/${encodeURIComponent(filename)}`, {
-      method: 'DELETE'
-    });
-
-    if (response.ok) {
-      toast(`Successfully deleted "${filename}"`, 'success');
-
-      // Reload documents list
-      await loadDocuments();
-
-      // Clear current document if it was deleted
-      if (currentDoc === `/files/${filename}`) {
-        currentDoc = null;
-        showPDFNeutral();
-      }
-
-      // Clear analysis results if the deleted document was part of the analysis
-      if (currentSections.some(s => s.document === filename) ||
-        currentSnippets.some(s => s.document === filename)) {
-        currentSections = [];
-        currentSnippets = [];
-        HAS_ANALYSIS = false;
-
-        // Re-render empty sections and snippets
-        renderSections([], {});
-        renderSnippets([]);
-      }
-
-    } else {
-      const errorText = await response.text();
-      console.error('Delete failed:', response.status, errorText);
-      toast(`Failed to delete "${filename}": ${response.status}`, 'error');
-    }
-
-  } catch (error) {
-    console.error('Error deleting document:', error);
-    toast(`Error deleting "${filename}": ${error.message}`, 'error');
-  }
-}
-
-// Show delete confirmation dialog
-function showDeleteConfirmation(filename) {
-  return new Promise((resolve) => {
-    const overlay = document.createElement('div');
-    overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
-    overlay.innerHTML = `
-      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-        <div class="text-center">
-          <div class="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
-          </div>
-          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Delete Document?</h3>
-          <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">
-            Are you sure you want to delete <strong>"${filename}"</strong>? This action cannot be undone.
-          </p>
-          <div class="flex space-x-3">
-            <button onclick="this.closest('.fixed').remove(); resolve(false)" 
-                    class="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
-              Cancel
-            </button>
-            <button onclick="this.closest('.fixed').remove(); resolve(true)" 
-                    class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    // Close on outside click
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        overlay.remove();
-        resolve(false);
-      }
-    });
-  });
-}
-
-// Show delete selected confirmation dialog
-function showDeleteSelectedConfirmation(selectedDocs) {
-  const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
-  overlay.innerHTML = `
-    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-      <div class="text-center">
-        <div class="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
-        </div>
-        <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Delete Selected Documents?</h3>
-        <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-          Are you sure you want to delete ${selectedDocs.length} selected document(s)? This action cannot be undone.
-        </p>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mb-6 max-h-20 overflow-y-auto">
-          ${selectedDocs.map(doc => `• ${doc}`).join('<br>')}
-        </div>
-        <div class="flex space-x-3">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
-            Cancel
-          </button>
-          <button onclick="deleteSelectedDocuments()" 
-                  class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  // Close on outside click
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) {
-      overlay.remove();
-    }
-  });
-}
-
-// Debounced zoom function to handle rapid clicks
-let zoomTimeout = null;
-async function performZoom(newScale, operation) {
-  // Clear any existing timeout
-  if (zoomTimeout) {
-    clearTimeout(zoomTimeout);
-  }
-
-  // Set a small delay to prevent rapid clicking issues
-  return new Promise((resolve) => {
-    zoomTimeout = setTimeout(async () => {
-      try {
-        // Cancel any existing render task
-        if (currentRenderTask) {
-          try {
-            await currentRenderTask.cancel();
-          } catch (error) {
-            // Ignore cancellation errors
-          }
-          currentRenderTask = null;
-        }
-
-        currentScale = newScale;
-        console.log(`${operation} clicked, new scale:`, currentScale);
-
-        if (isContinuousView) {
-          await loadAllPages(); // Reload all pages with new scale
-        } else {
-          await loadPage(currentPage); // Reload current page with new scale
-        }
-
-        updateToolbarState(); // Update button states after zoom
-        resolve();
-      } catch (error) {
-        console.error(`Error during ${operation}:`, error);
-        toast(`${operation} operation failed`, 'error');
-        resolve();
-      }
-    }, 100); // 100ms delay
-  });
 }

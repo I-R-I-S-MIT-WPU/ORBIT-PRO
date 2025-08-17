@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  adobe-hackathon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: adobe-hackathon-finale
+    ports:
+      - "8080:8080"
+    environment:
+      # LLM Configuration
+      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama2}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
+      
+      # TTS Configuration
+      - TTS_PROVIDER=${TTS_PROVIDER:-azure_speech}
+      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
+      - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION}
+      - GCP_TTS_CREDENTIALS_FILE=${GCP_TTS_CREDENTIALS_FILE}
+      
+      # Adobe Configuration
+      - ADOBE_EMBED_API_KEY=${ADOBE_EMBED_API_KEY}
+      
+      # Server Configuration
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-8080}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      
+      # Development Configuration
+      - NODE_ENV=${NODE_ENV:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-true}
+      
+      # Performance Configuration
+      - CHUNK_SIZE=${CHUNK_SIZE:-1000}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-200}
+      - TOP_K_RESULTS=${TOP_K_RESULTS:-10}
+      - SIMILARITY_THRESHOLD=${SIMILARITY_THRESHOLD:-0.3}
+      
+      # Storage Configuration
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS:-pdf}
+      
+      # Security Configuration
+      - SECRET_KEY=${SECRET_KEY}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-100}
+      
+      # Experimental Features
+      - ENABLE_LITEAVATAR=${ENABLE_LITEAVATAR:-false}
+      - LITEAVATAR_API_KEY=${LITEAVATAR_API_KEY}
+      - LITEAVATAR_API_URL=${LITEAVATAR_API_URL}
+      
+      # Monitoring & Analytics
+      - ENABLE_MONITORING=${ENABLE_MONITORING:-true}
+      - METRICS_INTERVAL=${METRICS_INTERVAL:-60}
+      
+      # Backup & Recovery
+      - ENABLE_BACKUPS=${ENABLE_BACKUPS:-false}
+      - BACKUP_INTERVAL=${BACKUP_INTERVAL:-24}
+      - BACKUP_RETENTION=${BACKUP_RETENTION:-7}
+    
+    volumes:
+      # Persistent storage for document index
+      - ./document_index:/app/document_index
+      
+      # Static assets and generated content
+      - ./static:/app/static
+      
+      # Temporary files
+      - ./temp:/app/temp
+      
+      # Logs (optional)
+      - ./logs:/app/logs
+      
+      # Environment file
+      - ./.env:/app/.env:ro
+    
+    networks:
+      - adobe-hackathon-network
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+networks:
+  adobe-hackathon-network:
+    driver: bridge
+
+volumes:
+  document_index:
+    driver: local
+  static_assets:
+    driver: local
+  temp_files:
+    driver: local
+  logs:
+    driver: local 

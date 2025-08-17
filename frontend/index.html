@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -28,108 +28,117 @@
       class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-emerald-400/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000">
     </div>
   </div>
-
   <!-- Header -->
   <header
     class="relative bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 sticky top-0 z-50 shadow-lg">
-    <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-4">
-      <div class="flex flex-col items-center justify-center w-full">
-        <!-- Logo and Headings in a row, responsive -->
-        <div class="flex flex-row flex-wrap items-center justify-center mb-4 w-full gap-2 sm:gap-4">
-          <a href="https://www.adobe.com/" target="_blank" rel="noopener noreferrer" tabindex="-1">
-            <img id="adobeLogo" src="./download.png" alt="Adobe Logo"
-              onerror="this.onerror=null;this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Adobe_Corporate_Logo.png/320px-Adobe_Corporate_Logo.png';this.style.background='#fff';" />
-            <noscript>Adobe</noscript>
-          </a>
-          <div class="flex flex-col items-start justify-center min-w-0">
-            <h1 class="text-lg sm:text-2xl md:text-3xl font-bold text-red-600 leading-tight whitespace-nowrap">Document
-              Intelligence</h1>
-            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium mt-1 truncate">Adobe Hackathon
-              Finale 2025 · Team: Ctrl‑Alt‑Complete</p>
+  <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-4 flex flex-col gap-2">
+
+      <!-- Row 1: Logo and Document Intelligence -->
+      <div class="flex flex-row flex-wrap items-center justify-center mb-4 w-full gap-2 sm:gap-4">
+        <a href="https://www.adobe.com/" target="_blank" rel="noopener noreferrer" tabindex="-1">
+          <!-- Adobe Logo SVG -->
+          <svg id="adobeLogo" width="40" height="40" viewBox="0 0 240 234" xmlns="http://www.w3.org/2000/svg"
+            alt="Adobe Logo">
+            <path fill="#FA0F00" d="M42.5 0h155L239 234H0L42.5 0z" />
+            <path fill="#FA0F00" d="M132.5 0H239L197.5 234H85L132.5 0z" />
+            <path fill="#FA0F00" d="M85 234h57L97 130.5 85 234z" />
+            <path fill="#FFFFFF" d="M85 234h57L97 130.5 85 234z" />
+            <path fill="#FA0F00" d="M151.5 135.5L184 234h-32l-13-32h-24l13-32h23.5z" />
+            <text x="50%" y="50%" text-anchor="middle" dy=".35em" font-family="Arial, sans-serif" font-size="160"
+              fill="#FFFFFF" font-weight="bold">A</text>
+          </svg>
+        </a>
+        <div class="flex flex-col items-start justify-center min-w-0">
+          <h1 class="text-lg sm:text-2xl md:text-3xl font-bold text-red-600 leading-tight whitespace-nowrap">Document
+            Intelligence</h1>
+        </div>
+      </div>
+
+      <!-- Row 2: Optional fields, inputs, badges, and theme toggle -->
+      <div class="flex flex-row items-center justify-between gap-4 w-full mb-4">
+  <span class="text-base font-semibold text-slate-800 dark:text-white optional-inputs-label whitespace-nowrap flex-shrink-0">Optional Inputs:</span>
+        <!-- Persona Input -->
+        <div class="relative group flex-1 min-w-[160px] max-w-xs mx-2">
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+          <div class="relative w-full">
+            <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input id="persona" list="persona-options"
+              class="pl-12 pr-6 py-2 sm:py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-xl text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 w-full shadow-lg hover:shadow-xl overflow-x-auto whitespace-nowrap text-ellipsis appearance-auto"
+              style="overflow-x:auto; white-space:nowrap; text-overflow:ellipsis;" 
+              placeholder="Persona (e.g. Undergraduate Chemistry Student)" />
+            <datalist id="persona-options">
+              <option value="Undergraduate Chemistry Student">
+              <option value="Researcher">
+              <option value="Business Analyst">
+              <option value="High School Teacher">
+              <option value="General User">
+            </datalist>
           </div>
         </div>
-        <!-- Main Controls, responsive wrap -->
-        <div class="flex flex-wrap md:flex-nowrap items-center justify-center md:justify-between gap-3 md:gap-6 w-full">
-          <!-- Persona Input -->
-          <div class="relative group flex-1 min-w-[180px] max-w-xs">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-0 group-hover:opacity-20 transition-opacity duration-300">
-            </div>
-            <div class="relative">
-              <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
-              <input id="persona"
-                class="pl-12 pr-6 py-2 sm:py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 w-full shadow-lg hover:shadow-xl"
-                placeholder="Persona (e.g., Undergraduate Chemistry Student)" />
-            </div>
+        <!-- Job Input -->
+        <div class="relative group flex-1 min-w-[160px] max-w-xs mx-2">
+          <div class="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+          <div class="relative w-full">
+            <i class="fas fa-tasks absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input id="job" list="job-options"
+              class="pl-12 pr-6 py-2 sm:py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-xl text-base focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300 w-full shadow-lg hover:shadow-xl overflow-x-auto whitespace-nowrap text-ellipsis appearance-auto"
+              style="overflow-x:auto; white-space:nowrap; text-overflow:ellipsis;" 
+              placeholder="Job to be Done (e.g. Identify key concepts)" />
+            <datalist id="job-options">
+              <option value="Identify key concepts">
+              <option value="Summarize document">
+              <option value="Extract data">
+              <option value="Find main arguments">
+              <option value="Create quiz">
+            </datalist>
           </div>
-
-          <!-- Job Input -->
-          <div class="relative group flex-1 min-w-[180px] max-w-xs">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-0 group-hover:opacity-20 transition-opacity duration-300">
-            </div>
-            <div class="relative">
-              <i class="fas fa-tasks absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
-              <input id="job"
-                class="pl-12 pr-6 py-2 sm:py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300 w-full shadow-lg hover:shadow-xl"
-                placeholder="Job to be Done (e.g., Identify key concepts...)" />
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex items-center space-x-2">
-            <button id="analyzeBtn"
-              class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 text-sm sm:text-base">
-              <i class="fas fa-search text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
-              <span>Analyze</span>
-            </button>
-            <button id="insightsBtn"
-              class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
-              disabled>
-              <i
-                class="fas fa-lightbulb text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
-              <span>Insights</span>
-            </button>
-            <button id="podcastBtn"
-              class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 hover:from-rose-600 hover:via-pink-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
-              disabled>
-              <i
-                class="fas fa-podcast text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
-              <span>Podcast</span>
-            </button>
-          </div>
-
-          <!-- Status Badges -->
-          <div class="flex items-center space-x-3">
-            <div class="relative group">
-              <span id="llmBadge"
-                class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg cursor-pointer transform hover:scale-105 transition-all duration-300">
-                <i class="fas fa-robot mr-2 text-blue-200"></i>
-                <span id="llmStatus">Gemini</span>
-                <div
-                  class="absolute inset-0 bg-white/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                </div>
-              </span>
-            </div>
-            <div class="relative group">
-              <span id="ttsBadge"
-                class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg cursor-pointer transform hover:scale-105 transition-all duration-300">
-                <i class="fas fa-microphone mr-2 text-emerald-200"></i>
-                <span id="ttsStatus">Azure</span>
-                <div
-                  class="absolute inset-0 bg-white/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                </div>
-              </span>
-            </div>
-          </div>
-
-          <!-- Theme Toggle -->
-          <button id="themeToggle"
-            class="relative p-3 rounded-xl border border-slate-200/50 dark:border-slate-600/50 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-            title="Toggle theme">
-            <i class="fas fa-moon text-slate-600 dark:text-slate-400 text-lg"></i>
-          </button>
         </div>
+        <!-- Status Badges -->
+        <div class="flex items-center space-x-3 flex-shrink-0 mx-2">
+          <div class="relative group">
+            <span id="llmBadge"
+              class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
+              <i class="fas fa-robot mr-2 text-blue-200"></i>
+              <span id="llmStatus">Gemini</span>
+              <!-- No hover effect -->
+            </span>
+          </div>
+          <div class="relative group">
+            <span id="ttsBadge"
+              class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg">
+              <i class="fas fa-microphone mr-2 text-emerald-200"></i>
+              <span id="ttsStatus">Azure</span>
+              <!-- No hover effect -->
+            </span>
+          </div>
+        </div>
+        <!-- Theme Toggle -->
+        <button id="themeToggle"
+          class="relative p-3 rounded-xl border border-slate-200/50 dark:border-slate-600/50 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex-shrink-0 mx-2"
+          title="Toggle theme">
+          <i class="fas fa-sun text-slate-600 dark:text-slate-400 text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Row 3: Action Buttons -->
+      <div class="flex items-center justify-center space-x-2">
+        <button id="analyzeBtn"
+          class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 text-sm sm:text-base">
+          <i class="fas fa-search text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
+          <span>Analyze</span>
+        </button>
+        <button id="insightsBtn"
+          class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
+          disabled>
+          <i class="fas fa-lightbulb text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
+          <span>Insights</span>
+        </button>
+        <button id="podcastBtn"
+          class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 hover:from-rose-600 hover:via-pink-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
+          disabled>
+          <i class="fas fa-podcast text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
+          <span>Podcast</span>
+        </button>
       </div>
     </div>
   </header>
@@ -161,12 +170,12 @@
       <!-- Left Sidebar - Documents Only -->
       <div class="xl:col-span-3 space-y-4 w-full">
         <!-- Documents Section -->
-        <div class="group relative">
+    <div class="group relative">
           <div
             class="absolute inset-0 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[500px]">
             <div
               class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20">
               <h2 class="text-lg font-bold text-slate-800 dark:text-white flex items-center">
@@ -240,17 +249,17 @@
               </div>
 
               <!-- Document List -->
-              <div class="max-h-40 overflow-y-auto custom-scrollbar">
-                <ul id="docList" class="space-y-2"></ul>
+              <div class="max-h-96 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <ul id="docList" class="space-y-2 custom-scrollbar"></ul>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Center - PDF Viewer -->
-      <div class="xl:col-span-6 w-full">
-        <div class="relative">
+      <!-- Center - PDF Viewer (centered and largest card) -->
+  <div class="xl:col-span-6 w-full flex justify-center">
+        <div class="relative w-full max-w-3xl mx-auto">
           <div
             class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden">
             <!-- Enhanced PDF Toolbar -->
@@ -358,7 +367,7 @@
 
             <!-- PDF Viewer Container -->
             <div id="pdf-viewer-container"
-              class="w-full h-[65vh] min-h-[450px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl overflow-auto shadow-2xl border border-slate-300 dark:border-slate-600 relative">
+              class="w-full h-[65vh] min-h-[450px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl overflow-auto custom-scrollbar shadow-2xl border border-slate-300 dark:border-slate-600 relative">
               <!-- Single Page View -->
               <div id="single-page-view" class="w-full h-full flex items-center justify-center">
                 <canvas id="pdf-canvas"></canvas>
@@ -403,12 +412,12 @@
 
       <!-- Text Selection Insights (Cross-PDF Insights) on rightmost side of first row -->
       <div class="xl:col-span-3 w-full">
-        <div id="textSelectionPanel" class="group relative"> <!-- Cross-PDF Insights -->
+  <div id="textSelectionPanel" class="group relative min-h-[500px]"> <!-- Cross-PDF Insights -->
           <div
             class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[500px]">
             <div
               class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
               <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
@@ -429,12 +438,12 @@
     <div class="max-w-7xl mx-auto mt-8 px-2 sm:px-4 md:px-6">
       <!-- 2x3 grid of cards, responsive -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 auto-rows-fr">
-        <div class="group relative"> <!-- Document Clusters -->
+  <div class="group relative"> <!-- Document Clusters -->
           <div
             class="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px]">
             <div
               class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20">
               <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
@@ -452,7 +461,7 @@
               </div>
             </div>
             <div class="p-3">
-              <div id="clusters" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+              <div id="clusters" class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full">
                 <div class="text-center text-xs text-slate-500 dark:text-slate-400 py-3">Click "Cluster" to group
                   similar documents</div>
               </div>
@@ -464,7 +473,7 @@
             class="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px]">
             <div
               class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
               <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
@@ -478,7 +487,7 @@
               </p>
             </div>
             <div class="p-3">
-              <div id="recommendations" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+              <div id="recommendations" class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full">
                 <div class="text-center text-xs text-slate-500 dark:text-slate-400 py-3">Select a document to see
                   recommendations</div>
               </div>
@@ -491,19 +500,17 @@
             class="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px] flex flex-col">
+            <div class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
               <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
+                <div class="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
                   <i class="fas fa-chart-line text-white text-xs"></i>
                 </div>
                 Top Sections
               </h2>
             </div>
             <div class="p-3">
-              <div id="sections" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar"></div>
+              <div id="sections" class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full"></div>
             </div>
           </div>
         </div>
@@ -512,19 +519,17 @@
             class="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px] flex flex-col">
+            <div class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
               <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
+                <div class="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
                   <i class="fas fa-quote-left text-white text-xs"></i>
                 </div>
                 Key Insights
               </h2>
             </div>
             <div class="p-3">
-              <div id="snippets" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar"></div>
+              <div id="snippets" class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full"></div>
             </div>
           </div>
         </div>
@@ -533,7 +538,7 @@
             class="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 flex flex-col gap-4">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 flex flex-col gap-4 min-h-[340px]">
             <div>
               <div
                 class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20">
@@ -547,7 +552,7 @@
               </div>
               <div class="p-3">
                 <pre id="insights"
-                  class="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-700 p-2 rounded-xl border border-slate-200 dark:border-slate-600 min-h-[80px] max-h-32 overflow-y-auto custom-scrollbar"></pre>
+                  class="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-700 p-2 rounded-xl border border-slate-200 dark:border-slate-600 min-h-[80px] max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full"></pre>
               </div>
             </div>
           </div>
@@ -557,7 +562,7 @@
             class="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           </div>
           <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500">
+            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px]">
             <div
               class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
               <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
@@ -633,6 +638,18 @@
   </div>
 
   <script src="/app.js"></script>
+
+  <!-- Footer -->
+  <footer class="w-full bg-white/80 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-700/50 py-4 mt-12 text-center text-xs text-slate-600 dark:text-slate-400">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 px-4">
+      <div>
+        Adobe Hackathon Finale 2025 · Team: Ctrl‑Alt‑Complete
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="https://www.adobe.com/" target="_blank" rel="noopener noreferrer" class="text-red-600 hover:underline font-semibold">Contact Adobe</a>
+      </div>
+    </div>
+  </footer>
 
 
 </html>

@@ -1,12 +1,3 @@
-// Theme toggle logic
-document.addEventListener('DOMContentLoaded', function() {
-  const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle) {
-    themeToggle.addEventListener('click', function() {
-      document.body.classList.toggle('theme-light');
-    });
-  }
-});
 // PDF.js variables (replacing Adobe PDF Embed API)
 let pdfDoc = null;
 let pdfPage = null;
@@ -645,7 +636,7 @@ function initTheme() {
   const saved = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
   const t = document.getElementById('themeToggle');
-  if (t) t.textContent = saved === 'dark' ? '☀️' : '🌙';
+  if (t) t.textContent = saved === 'dark' ? '🌙' : '☀️';
 }
 
 function toggleTheme() {
@@ -654,7 +645,7 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
   const t = document.getElementById('themeToggle');
-  if (t) t.textContent = next === 'dark' ? '☀️' : '🌙';
+  if (t) t.textContent = next === 'dark' ? '🌙' : '☀️';
 }
 
 async function fetchConfig() {
@@ -703,16 +694,11 @@ async function loadDocuments() {
 
     docs.forEach((d) => {
       const li = document.createElement('li');
-      li.className = 'doc-item group';
-
-      // Create a beautiful document item
+      li.className = 'doc-item group cursor-pointer';
       li.innerHTML = `
         <div class="flex items-center space-x-3 flex-1">
-          <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-            <i class="fas fa-file-pdf text-white text-sm"></i>
-          </div>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors duration-300">
+            <div class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
               ${d.filename}
             </div>
             <div class="text-xs text-slate-500 dark:text-slate-400">
@@ -721,47 +707,26 @@ async function loadDocuments() {
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0" title="View document">
+          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200 opacity-100" title="View document">
             <i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>
           </button>
-          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0" title="Delete document" onclick="deleteDocument('${d.filename}')">
+          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 opacity-100" title="Delete document" onclick="deleteDocument('${d.filename}')">
             <i class="fas fa-trash text-red-600 dark:text-red-400 text-xs"></i>
           </button>
-          <div class="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-all duration-300"></div>
         </div>
       `;
-
       li.dataset.filename = d.filename;
-
-      // Add click handlers
-      li.addEventListener('click', () => {
-        // Toggle selection
-        li.classList.toggle('selected');
-
-        // Update visual state
-        const indicator = li.querySelector('.w-3.h-3');
-        const viewBtn = li.querySelector('button');
-
-        if (li.classList.contains('selected')) {
-          indicator.className = 'w-3 h-3 rounded-full bg-blue-500 animate-pulse';
-          viewBtn.className = 'p-2 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-lg transition-all duration-300 opacity-100 transform translate-x-0';
-          viewBtn.innerHTML = '<i class="fas fa-check text-blue-600 dark:text-blue-400 text-xs"></i>';
-          viewBtn.title = 'Document selected';
-        } else {
-          indicator.className = 'w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-all duration-300';
-          viewBtn.className = 'p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0';
-          viewBtn.innerHTML = '<i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>';
-          viewBtn.title = 'View document';
-        }
-
-        // Load document if not already loaded
-        if (li.classList.contains('selected') && currentDoc !== `/files/${d.filename}`) {
+      li.addEventListener('click', (e) => {
+        // Only select if not clicking delete
+        if (e.target.closest('button[onclick]')) return;
+        // Deselect all others
+        document.querySelectorAll('.doc-item.selected').forEach(el => el.classList.remove('selected'));
+        li.classList.add('selected');
+        if (currentDoc !== `/files/${d.filename}`) {
           initViewer(`/files/${d.filename}`);
         }
-
         updateSelectedCount();
       });
-
       list.appendChild(li);
     });
 
@@ -1173,7 +1138,7 @@ function renderSections(sections, relatedMap) {
     return;
   }
 
-  // No header inside the card
+  // Remove repeated header inside card body
 
   currentSections = sections;
 
@@ -1310,7 +1275,8 @@ function renderSnippets(snippets) {
     return;
   }
 
-  // No header inside the card
+  // Create header
+  // Remove repeated header inside card body
 
   currentSnippets = snippets;
 
@@ -1516,7 +1482,7 @@ function displayTextSelectionInsights(insights) {
       </div>
       
       <div class="mb-4">
-        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Selected Text:</div>
+        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 text-selection-label">Selected Text:</div>
         <div class="bg-slate-100 dark:bg-slate-700 p-3 rounded-lg text-sm text-slate-800 dark:text-slate-200">
           "${insights.selected_text.substring(0, 200)}${insights.selected_text.length > 200 ? '...' : ''}"
         </div>
@@ -1524,7 +1490,7 @@ function displayTextSelectionInsights(insights) {
       
       ${insights.summary ? `
         <div class="mb-4">
-          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Summary:</div>
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 text-selection-label">Summary:</div>
           <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm text-slate-700 dark:text-slate-300">
             ${insights.summary}
           </div>
@@ -1533,7 +1499,7 @@ function displayTextSelectionInsights(insights) {
       
       ${insights.insights && insights.insights.length > 0 ? `
         <div class="mb-4">
-          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Related Content (${insights.insights.length}):</div>
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 text-selection-label">Related Content (${insights.insights.length}):</div>
           <div class="space-y-2 max-h-40 overflow-y-auto">
             ${insights.insights.slice(0, 5).map((insight, idx) => `
               <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded border-l-4 border-blue-500">
@@ -2775,7 +2741,7 @@ function showTextSelectionHint() {
   if (!hint) {
     hint = document.createElement('div');
     hint.id = 'textSelectionHint';
-    hint.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-y-full opacity-0 transition-all duration-300';
+    hint.className = 'fixed top-6 right-8 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-y-[-120%] opacity-0 transition-all duration-300';
     hint.innerHTML = `
       <div class="flex items-center space-x-2">
         <i class="fas fa-mouse-pointer text-sm"></i>
@@ -2787,13 +2753,13 @@ function showTextSelectionHint() {
 
   // Show the hint with animation
   setTimeout(() => {
-    hint.classList.remove('translate-y-full', 'opacity-0');
+    hint.classList.remove('translate-y-[-120%]', 'opacity-0');
     hint.classList.add('translate-y-0', 'opacity-100');
   }, 100);
 
   // Hide the hint after 5 seconds
   setTimeout(() => {
-    hint.classList.add('translate-y-full', 'opacity-0');
+    hint.classList.add('translate-y-[-120%]', 'opacity-0');
   }, 5000);
 }
 

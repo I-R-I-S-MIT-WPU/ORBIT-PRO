@@ -483,6 +483,42 @@ main {
   transition: transform 0.2s ease;
 }
 
+/* Delete button specific styles */
+.delete-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.delete-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent);
+  transition: left 0.3s ease;
+}
+
+.delete-btn:hover::before {
+  left: 100%;
+}
+
+.delete-btn:hover {
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+}
+
+.delete-btn:active {
+  transform: translateY(0) scale(1.02);
+}
+
+/* Ensure delete button is visible on hover */
+.doc-item:hover .delete-btn {
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+}
+
 /* Drag and drop styles for the upload area */
 .group\/upload.dragover {
   border-color: var(--primary);

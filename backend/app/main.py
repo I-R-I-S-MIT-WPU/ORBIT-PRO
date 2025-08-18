@@ -52,6 +52,11 @@ from .services import (
 )
 from .services.llm import get_llm_service
 
+
+class ResetIndexRequest(BaseModel):
+    delete_files: bool = True
+
+
 # Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
@@ -289,12 +294,66 @@ def get_document_recommendations(
         result = document_index.get_document_index().get_document_recommendations(
             filename, top_k
         )
+        # Filter out recommendations for files that do not exist on this system
+        try:
+            recs = result.get("recommendations", [])
+            filtered = [
+                r
+                for r in recs
+                if os.path.exists(os.path.join(FILES_DIR, r.get("document", "")))
+            ]
+            result["recommendations"] = filtered
+            if len(filtered) < len(recs):
+                result["message"] = (
+                    result.get("message", "")
+                    + (" " if result.get("message") else "")
+                    + "Some recommendations were filtered because the files are not present on this system."
+                )
+        except Exception:
+            pass
         # Return the result directly since it already has the correct structure
         return result
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get recommendations: {e}"
         )
+
+
+@app.post("/api/index/reset")
+def reset_index(req: ResetIndexRequest):
+    """Clear the semantic index and optionally delete all uploaded files on this system."""
+    try:
+        idx = document_index.get_document_index()
+        ok = idx.clear_index()
+        # Reset the global singleton so future calls reload a fresh, empty index
+        try:
+            document_index.reset_global_index()
+        except Exception:
+            pass
+
+        deleted_files = 0
+        errors: list[str] = []
+        if req.delete_files:
+            try:
+                for name in os.listdir(FILES_DIR):
+                    path = os.path.join(FILES_DIR, name)
+                    # Delete only files, ignore subdirs just in case
+                    if os.path.isfile(path):
+                        try:
+                            os.remove(path)
+                            deleted_files += 1
+                        except Exception as fe:
+                            errors.append(f"{name}: {fe}")
+            except Exception as e:
+                errors.append(str(e))
+
+        return {
+            "index_cleared": bool(ok),
+            "files_deleted": deleted_files,
+            "errors": errors,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset index: {e}")
 
 
 @app.get("/api/index/incremental-status")

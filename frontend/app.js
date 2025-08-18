@@ -2609,7 +2609,7 @@ function setupToolbar() {
     // Text selection button (now shows manual text input as fallback)
     if (textSelectionBtn) {
       textSelectionBtn.addEventListener('click', () => {
-        showManualTextInput();
+        showTextInputModal();
       });
     }
 
@@ -2833,6 +2833,7 @@ async function main() {
   const selectAllBtn = document.getElementById('selectAllBtn');
   const clearSelectionBtn = document.getElementById('clearSelectionBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
+  const resetIndexBtn = document.getElementById('resetIndexBtn');
 
   if (selectAllBtn) selectAllBtn.addEventListener('click', () => {
     const list = document.getElementById('docList');
@@ -2852,6 +2853,7 @@ async function main() {
     }
     showDeleteAllConfirmation(selectedDocs);
   });
+  if (resetIndexBtn) resetIndexBtn.addEventListener('click', showResetIndexConfirmation);
 
   // Add event listener for deleteSelectedBtn
   const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
@@ -4324,5 +4326,161 @@ async function retryLoadPage(pageNum) {
   } catch (error) {
     console.error('Error retrying page load:', error);
     toast('Failed to retry page load', 'error');
+  }
+}
+
+// Show manual text input as fallback
+function showTextInputModal() {
+  closeTextInputModal();
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.id = 'textInputModal';
+
+  const curPage = Math.max(1, currentPage || 1);
+
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 transform transition-all">
+      <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+            <i class="fas fa-highlighter text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white">Text Selection Analysis</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Enter the text you want to analyze</p>
+          </div>
+        </div>
+        <button onclick="closeTextInputModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Selected Text from PDF</label>
+          <textarea id="textInputArea" placeholder="Paste or type the text you selected from the PDF here... (10+ characters suggested for better analysis)" class="w-full h-32 p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-200 resize-none" autocomplete="off" spellcheck="false"></textarea>
+          <div class="flex items-center justify-between mt-2">
+            <span id="textCharCount" class="text-xs text-slate-500 dark:text-slate-400">0 characters</span>
+            <span class="text-xs text-slate-500 dark:text-slate-400">Suggested: 10+ characters</span>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Page Number (Optional)</label>
+          <input type="number" id="pageInput" min="1" value="${curPage}" class="w-24 p-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-200">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Current page: ${curPage}</div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-700">
+        <div class="flex space-x-3">
+          <button onclick="closeTextInputModal()" class="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Cancel</button>
+          <button id="analyzeTextBtn" onclick="analyzeSelectedText()" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105">
+            <i class="fas fa-search mr-2"></i>Analyze Text
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const area = modal.querySelector('#textInputArea');
+  const counter = modal.querySelector('#textCharCount');
+  if (area && counter) {
+    area.addEventListener('input', () => {
+      counter.textContent = `${area.value.length} characters`;
+    });
+  }
+
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeTextInputModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+function closeTextInputModal() {
+  const existing = document.getElementById('textInputModal');
+  if (existing) existing.remove();
+}
+
+async function analyzeSelectedText() {
+  const modal = document.getElementById('textInputModal');
+  if (!modal) return;
+  const text = modal.querySelector('#textInputArea')?.value?.trim() || '';
+  const page = parseInt(modal.querySelector('#pageInput')?.value || `${currentPage || 1}`, 10);
+  if (!text) {
+    toast('Please enter some text to analyze', 'warning');
+    return;
+  }
+  // Show the insights panel immediately with loading state
+  showTextSelectionInsightsInstantly(text);
+  // Close the modal right away
+  closeTextInputModal();
+  // Store selection in globals
+  selectedText = text;
+  // Trigger processing asynchronously (no await) so UI remains responsive
+  try {
+    processTextSelectionAPI(text, page);
+  } catch (e) {
+    console.error('Error starting text selection processing:', e);
+  }
+}
+
+// Reset Index confirmation and API call
+function showResetIndexConfirmation() {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  overlay.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-3">Reset Index and Delete Files?</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          This will clear the semantic index (chunks and metadata) and delete all currently uploaded PDF files on this system. This action cannot be undone.
+        </p>
+        <div class="flex space-x-3">
+          <button class="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors" onclick="this.closest('.fixed').remove()">Cancel</button>
+          <button class="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors" onclick="confirmResetIndex(this)">Reset</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function confirmResetIndex(btn) {
+  try {
+    if (btn) btn.disabled = true;
+    toast('Resetting index and deleting files...', 'info');
+    const res = await fetch('/api/index/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delete_files: true })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    cleanupPDFViewer();
+    showPDFNeutral();
+    currentDoc = null;
+    currentSections = [];
+    currentSnippets = [];
+    HAS_ANALYSIS = false;
+
+    renderSections([], {});
+    renderSnippets([]);
+    await loadDocuments();
+
+    toast(`Index cleared. Deleted ${data.files_deleted} file(s).`, 'success');
+  } catch (e) {
+    toast(`Reset failed: ${e.message || e}`, 'error');
+  } finally {
+    const overlay = document.querySelector('.fixed.inset-0.bg-black\\/50');
+    if (overlay) overlay.remove();
   }
 }

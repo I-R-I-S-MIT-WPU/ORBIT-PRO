@@ -1,6 +1,27 @@
 # Adobe Hackathon Finale - Intelligent PDF Analysis Platform
 
 A sophisticated PDF analysis platform that provides intelligent insights, cross-document connections, and interactive features for research and document analysis. Built with Python 3.11.9 and modern AI technologies.
+## POWERSHELL COMMANDS
+
+```powershell
+docker build --platform linux/amd64 -t adobe-hackathon-finale .
+
+docker run -d --name adobe-hackathon `
+  -p 8080:8080 `
+  -e LLM_PROVIDER=gemini `
+  -e GEMINI_MODEL=gemini-2.0-flash `
+  -e GOOGLE_API_KEY=AIzaSyCQyM9hfqmLXgnjhxS8PzfrAzk0RjZR4H4 `
+  -e TTS_PROVIDER=azure_speech `
+  -e AZURE_TTS_KEY=3Hjeod2UDdc0pLNh6Js5TyuG14cawwqbCceL3ARN56tDjmqiVal7JQQJ99BHACGhslBXJ3w3AAAYACOGH3Bu `
+  -e AZURE_SPEECH_REGION=centralindia `
+  -e ADOBE_EMBED_API_KEY=8fa6dfb2e75241cb9b270b3be9200651 `
+  adobe-hackathon-finale
+```
+
+**See live logs (PowerShell):**
+```powershell
+docker logs -f adobe-hackathon
+```
 
 ## 🚀 Key Features
 

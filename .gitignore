@@ -11,7 +11,7 @@ temp/
 
 # Data
 files/
-static/
+# static/
 backend/document_index/
 
 # OS

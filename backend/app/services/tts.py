@@ -20,24 +20,24 @@ def _azure_speech_tts(text: str, output_file: str, voice: str | None = None) -> 
     """Azure Cognitive Services Speech TTS (Free tier available).
 
     Env vars:
-      - AZURE_SPEECH_KEY
+      - AZURE_TTS_KEY
       - AZURE_SPEECH_REGION (e.g., eastus, centralindia)
-      - AZURE_SPEECH_VOICE (e.g., en-US-AriaNeural)
+      - AZURE_TTS_VOICE (e.g., en-US-AriaNeural)
       - AZURE_SPEECH_FORMAT (optional, default: audio-24khz-48kbitrate-mono-mp3)
     """
-    key = os.getenv("AZURE_SPEECH_KEY")
+    key = os.getenv("AZURE_TTS_KEY")
     # Accept either region or endpoint override (supports common aliases + typo)
     region = os.getenv("AZURE_SPEECH_REGION")
     endpoint_override = (
         os.getenv("AZURE_SPEECH_ENDPOINT")
-        or os.getenv("AZURE_ENDPOINT")
+        or os.getenv("AZURE_TTS_ENDPOINT")
         or os.getenv("AZURE_ENPOINT")  # tolerate common typo
     )
-    voice = voice or os.getenv("AZURE_SPEECH_VOICE", "en-US-AriaNeural")
+    voice = voice or os.getenv("AZURE_TTS_VOICE", "en-US-AriaNeural")
     audio_format = os.getenv("AZURE_SPEECH_FORMAT", "audio-24khz-48kbitrate-mono-mp3")
 
     if not key:
-        raise ValueError("AZURE_SPEECH_KEY must be set for Azure Speech TTS")
+        raise ValueError("AZURE_TTS_KEY must be set for Azure Speech TTS")
 
     # If endpoint override is provided, try derive region from host like 'centralindia.api.cognitive.microsoft.com'
     if not region and endpoint_override:
@@ -52,7 +52,7 @@ def _azure_speech_tts(text: str, output_file: str, voice: str | None = None) -> 
 
     if not region:
         raise ValueError(
-            "Provide AZURE_SPEECH_REGION (e.g., 'centralindia') or set AZURE_SPEECH_ENDPOINT/AZURE_ENDPOINT"
+            "Provide AZURE_SPEECH_REGION (e.g., 'centralindia') or set AZURE_SPEECH_ENDPOINT/AZURE_TTS_ENDPOINT"
         )
 
     # 1) Get OAuth token
@@ -165,7 +165,7 @@ def generate_speech(text: str, output_file: str, voice: str = None) -> dict:
             "url": file_path,
             "duration": estimated_duration,
             "word_count": word_count,
-            "voice_used": voice or os.getenv("AZURE_SPEECH_VOICE", "default"),
+            "voice_used": voice or os.getenv("AZURE_TTS_VOICE", "default"),
             "success": True,
         }
 
@@ -207,7 +207,7 @@ class TTSService:
                 "url": file_path,
                 "duration": estimated_duration,
                 "word_count": word_count,
-                "voice_used": voice or os.getenv("AZURE_SPEECH_VOICE", "default"),
+                "voice_used": voice or os.getenv("AZURE_TTS_VOICE", "default"),
                 "success": True,
             }
 

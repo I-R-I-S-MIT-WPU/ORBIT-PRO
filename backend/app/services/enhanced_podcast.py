@@ -32,16 +32,16 @@ def get_azure_voices() -> List[str]:
     voices = []
 
     # Primary voice
-    if os.getenv("AZURE_SPEECH_VOICE"):
-        voices.append(os.getenv("AZURE_SPEECH_VOICE"))
+    if os.getenv("AZURE_TTS_VOICE"):
+        voices.append(os.getenv("AZURE_TTS_VOICE"))
 
     # Secondary voice
-    if os.getenv("AZURE_SPEECH_VOICE_2"):
-        voices.append(os.getenv("AZURE_SPEECH_VOICE_2"))
+    if os.getenv("AZURE_TTS_VOICE_2"):
+        voices.append(os.getenv("AZURE_TTS_VOICE_2"))
 
     # Tertiary voice (if needed)
-    if os.getenv("AZURE_SPEECH_VOICE_3"):
-        voices.append(os.getenv("AZURE_SPEECH_VOICE_3"))
+    if os.getenv("AZURE_TTS_VOICE_3"):
+        voices.append(os.getenv("AZURE_TTS_VOICE_3"))
 
     # Fallback voices if none configured
     if len(voices) < 2:

@@ -74,7 +74,7 @@ if os.path.exists(env_path):
     print(f"✅ .env file loaded successfully")
     print(f"🔑 GOOGLE_API_KEY loaded: {'Yes' if os.getenv('GOOGLE_API_KEY') else 'No'}")
     print(
-        f"🔑 AZURE_SPEECH_KEY loaded: {'Yes' if os.getenv('AZURE_SPEECH_KEY') else 'No'}"
+        f"🔑 AZURE_TTS_KEY loaded: {'Yes' if os.getenv('AZURE_TTS_KEY') else 'No'}"
     )
 else:
     print(f"❌ .env file not found at: {env_path}")
@@ -147,10 +147,10 @@ def health_check():
         "llm_provider": os.getenv("LLM_PROVIDER", "not_set"),
         "tts_provider": os.getenv("TTS_PROVIDER", "not_set"),
         "google_api_key": "set" if os.getenv("GOOGLE_API_KEY") else "not_set",
-        "azure_speech_key": "set" if os.getenv("AZURE_SPEECH_KEY") else "not_set",
-        "azure_speech_voice": os.getenv("AZURE_SPEECH_VOICE", "not_set"),
-        "azure_speech_voice_2": os.getenv("AZURE_SPEECH_VOICE_2", "not_set"),
-        "azure_speech_voice_3": os.getenv("AZURE_SPEECH_VOICE_3", "not_set"),
+        "AZURE_TTS_KEY": "set" if os.getenv("AZURE_TTS_KEY") else "not_set",
+        "AZURE_TTS_VOICE": os.getenv("AZURE_TTS_VOICE", "not_set"),
+        "AZURE_TTS_VOICE_2": os.getenv("AZURE_TTS_VOICE_2", "not_set"),
+        "AZURE_TTS_VOICE_3": os.getenv("AZURE_TTS_VOICE_3", "not_set"),
         "env_file_path": os.path.join(ROOT_DIR, ".env"),
         "env_file_exists": os.path.exists(os.path.join(ROOT_DIR, ".env")),
         "current_working_dir": os.getcwd(),

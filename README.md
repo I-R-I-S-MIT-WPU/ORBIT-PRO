@@ -222,7 +222,7 @@ A sophisticated PDF analysis platform that provides intelligent insights, cross-
      -p 8080:8080 \
      -e LLM_PROVIDER=gemini \
      -e GOOGLE_API_KEY=your_google_api_key \
-     -e AZURE_SPEECH_KEY=your_azure_speech_key \
+     -e AZURE_TTS_KEY=your_AZURE_TTS_KEY \
      -e AZURE_SPEECH_REGION=your_azure_region \
      -e ADOBE_EMBED_API_KEY=your_adobe_api_key \
      adobe-hackathon-finale
@@ -260,7 +260,7 @@ OLLAMA_MODEL=llama2
 TTS_PROVIDER=azure_speech
 
 # Azure Speech Services Configuration
-AZURE_SPEECH_KEY=your_azure_speech_key_here
+AZURE_TTS_KEY=your_AZURE_TTS_KEY_here
 AZURE_SPEECH_REGION=centralindia
 
 # =============================================================================
@@ -350,7 +350,7 @@ BACKUP_RETENTION=7
 
 **Required Variables for Basic Operation:**
 - `GOOGLE_API_KEY` - For LLM features
-- `AZURE_SPEECH_KEY` - For text-to-speech
+- `AZURE_TTS_KEY` - For text-to-speech
 - `AZURE_SPEECH_REGION` - For Azure Speech Services
 - `ADOBE_EMBED_API_KEY` - For PDF viewing
 
@@ -555,7 +555,7 @@ python -m app.main --reload --llm gemini --gemini-model gemini-2.0-flash
    
    # Verify environment variables
    echo $GOOGLE_API_KEY
-   echo $AZURE_SPEECH_KEY
+   echo $AZURE_TTS_KEY
    ```
 
 ### **Logs & Debugging**

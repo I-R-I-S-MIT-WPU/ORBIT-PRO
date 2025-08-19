@@ -735,7 +735,7 @@ function showPDFNeutral() {
 
 // Theme handling (light/dark)
 function initTheme() {
-  const saved = localStorage.getItem('theme') || 'light';
+  const saved = localStorage.getItem('theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
   const t = document.getElementById('themeToggle');
   if (t) t.textContent = saved === 'dark' ? '🌙' : '☀️';
@@ -2255,9 +2255,6 @@ function handleSelectionChange() {
         processTextSelectionAPI(selectedText, currentPage);
       }
     }, 500);
-  } else if (selectedText.length === 0) {
-    // Clear selection when no text is selected
-    hideTextSelectionUI();
   }
 }
 

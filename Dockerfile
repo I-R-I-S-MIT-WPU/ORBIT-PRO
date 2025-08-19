@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    libgomp1 \
     libgcc-s1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -39,9 +39,6 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
 COPY backend /app/backend
 COPY frontend /app/frontend
 COPY static /app/static
-
-# Download sentence-transformers model into services/models
-RUN python /app/backend/app/services/download_allminilml6v2.py || true
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/document_index /app/temp /app/static \

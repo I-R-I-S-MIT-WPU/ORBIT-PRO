@@ -23,11 +23,24 @@ def get_embedding_model():
     try:
         from sentence_transformers import SentenceTransformer
 
-        # Try to load the model from Hugging Face Hub
+        # Prefer local bundled model to avoid network downloads inside container
+        here = os.path.dirname(__file__)
+        local_model_dir = os.path.join(here, "all-MiniLM-L6-v2")
+        if os.path.isdir(local_model_dir):
+            try:
+                print(f"Loading embedding model from local path: {local_model_dir}")
+                _EMBEDDING_MODEL = SentenceTransformer(local_model_dir)
+                _MODEL_LOADED = True
+                print("✅ Embedding model loaded from local directory")
+                return _EMBEDDING_MODEL
+            except Exception as e:
+                print(f"⚠️ Failed to load local embedding model, will try hub: {e}")
+
+        # Fallback to Hugging Face Hub
         print("Loading embedding model from Hugging Face Hub...")
         _EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
         _MODEL_LOADED = True
-        print("✅ Embedding model loaded successfully")
+        print("✅ Embedding model loaded successfully from hub")
         return _EMBEDDING_MODEL
 
     except ImportError as e:

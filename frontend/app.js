@@ -4672,3 +4672,60 @@ function hideUploadProgress() {
     progressModal.classList.add('hidden');
   }
 }
+
+// Podcast Animation Video Controls
+document.addEventListener('DOMContentLoaded', function () {
+  const video = document.getElementById('podcastAnimationVideo');
+  const playPauseBtn = document.getElementById('podcastAnimPlayPauseBtn');
+  const playPauseIcon = document.getElementById('podcastAnimPlayPauseIcon');
+  const progress = document.getElementById('podcastAnimProgress');
+  const currentTimeEl = document.getElementById('podcastAnimCurrentTime');
+  const totalTimeEl = document.getElementById('podcastAnimTotalTime');
+  if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl) return;
+
+  function formatTime(sec) {
+    sec = Math.floor(sec);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  video.addEventListener('loadedmetadata', function () {
+    progress.max = Math.floor(video.duration);
+    totalTimeEl.textContent = formatTime(video.duration);
+  });
+
+  video.addEventListener('timeupdate', function () {
+    progress.value = Math.floor(video.currentTime);
+    currentTimeEl.textContent = formatTime(video.currentTime);
+  });
+
+  playPauseBtn.addEventListener('click', function () {
+    if (video.paused) {
+      video.play();
+    } else {
+      video.pause();
+    }
+  });
+
+  video.addEventListener('play', function () {
+    playPauseIcon.classList.remove('fa-play');
+    playPauseIcon.classList.add('fa-pause');
+  });
+  video.addEventListener('pause', function () {
+    playPauseIcon.classList.remove('fa-pause');
+    playPauseIcon.classList.add('fa-play');
+  });
+
+  progress.addEventListener('input', function () {
+    video.currentTime = progress.value;
+  });
+
+  // Keyboard accessibility: Space/Enter toggles play/pause
+  playPauseBtn.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'Enter') {
+      playPauseBtn.click();
+      e.preventDefault();
+    }
+  });
+});

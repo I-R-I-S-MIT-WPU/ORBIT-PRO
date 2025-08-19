@@ -6,7 +6,7 @@ Creates engaging audio discussions that compare, contrast, and explore connectio
 import os
 import re
 import time
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -32,16 +32,16 @@ def get_azure_voices() -> List[str]:
     voices = []
 
     # Primary voice
-    if os.getenv("AZURE_SPEECH_VOICE"):
-        voices.append(os.getenv("AZURE_SPEECH_VOICE"))
+    if os.getenv("AZURE_TTS_VOICE"):
+        voices.append(os.getenv("AZURE_TTS_VOICE"))
 
     # Secondary voice
-    if os.getenv("AZURE_SPEECH_VOICE_2"):
-        voices.append(os.getenv("AZURE_SPEECH_VOICE_2"))
+    if os.getenv("AZURE_TTS_VOICE_2"):
+        voices.append(os.getenv("AZURE_TTS_VOICE_2"))
 
     # Tertiary voice (if needed)
-    if os.getenv("AZURE_SPEECH_VOICE_3"):
-        voices.append(os.getenv("AZURE_SPEECH_VOICE_3"))
+    if os.getenv("AZURE_TTS_VOICE_3"):
+        voices.append(os.getenv("AZURE_TTS_VOICE_3"))
 
     # Fallback voices if none configured
     if len(voices) < 2:
@@ -539,7 +539,10 @@ def generate_single_voice_podcast(script: str, output_file: str) -> Dict:
 
 
 def create_enhanced_podcast(
-    request: EnhancedPodcastRequest, output_file: str, static_dir: str
+    request: EnhancedPodcastRequest,
+    output_file: str,
+    static_dir: str,
+    progress_cb: Optional[Callable[[str, dict], None]] = None,
 ) -> EnhancedPodcastResponse:
     """
     Create an enhanced podcast with two-person conversation based on different scenarios.
@@ -564,15 +567,21 @@ def create_enhanced_podcast(
         print(f"Job: {request.job}")
 
         # Determine the scenario and generate appropriate script
+        if progress_cb:
+            progress_cb("script_started", {})
         script = generate_scenario_based_script(request)
 
         if not script:
             raise Exception("Failed to generate conversation script")
 
         print(f"Generated script length: {len(script)} characters")
+        if progress_cb:
+            progress_cb("script_done", {"length": len(script)})
 
         # Generate dual voice podcast with Azure voices
-        dual_result = generate_dual_voice_podcast_azure(script, output_file)
+        dual_result = generate_dual_voice_podcast_azure(
+            script, output_file, progress_cb=progress_cb
+        )
 
         if dual_result and dual_result.get("url"):
             print("✅ Dual voice podcast generated successfully!")
@@ -738,7 +747,11 @@ def _safe_filename_component(text: str) -> str:
     return text or "segment"
 
 
-def generate_dual_voice_podcast_azure(script: str, output_file: str) -> Dict:
+def generate_dual_voice_podcast_azure(
+    script: str,
+    output_file: str,
+    progress_cb: Optional[Callable[[str, dict], None]] = None,
+) -> Dict:
     """
     Generate a podcast with two different Azure voices for the conversation.
     Uses en-US-AriaNeural (female) and en-US-DavisNeural (male).
@@ -827,6 +840,8 @@ def generate_dual_voice_podcast_azure(script: str, output_file: str) -> Dict:
             raise Exception("No speaker segments found in script")
 
         print(f"Generated {len(speaker_segments)} speaker segments")
+        if progress_cb:
+            progress_cb("segments_parsed", {"total": len(speaker_segments)})
 
         # Generate audio for each segment
         audio_segments = []
@@ -887,6 +902,8 @@ def generate_dual_voice_podcast_azure(script: str, output_file: str) -> Dict:
                     print(
                         f"✅ Generated audio for {segment['speaker']}: {segment_audio.get('duration', 0):.1f}s"
                     )
+                    if progress_cb:
+                        progress_cb("segment_generated", {"done": len(audio_segments)})
                 else:
                     print(
                         f"❌ Failed to generate audio for segment {i}: {segment_audio.get('error', 'Unknown error') if segment_audio else 'No response'}"
@@ -901,6 +918,8 @@ def generate_dual_voice_podcast_azure(script: str, output_file: str) -> Dict:
             raise Exception("No audio segments generated")
 
         # Combine audio segments using proper audio mixing
+        if progress_cb:
+            progress_cb("combining", {})
         combined_audio = combine_audio_segments_properly(audio_segments, output_file)
 
         # NO CLEANUP - Keep temp files forever as requested

@@ -12,6 +12,7 @@ temp/
 # Data
 files/
 static/
+backend/document_index/
 
 # OS
 .DS_Store

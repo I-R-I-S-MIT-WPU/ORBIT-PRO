@@ -19,7 +19,7 @@ services:
       
       # TTS Configuration
       - TTS_PROVIDER=${TTS_PROVIDER:-azure_speech}
-      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
+      - AZURE_TTS_KEY=${AZURE_TTS_KEY}
       - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION}
       - GCP_TTS_CREDENTIALS_FILE=${GCP_TTS_CREDENTIALS_FILE}
       

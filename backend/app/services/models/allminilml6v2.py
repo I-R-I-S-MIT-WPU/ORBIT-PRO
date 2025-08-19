@@ -23,11 +23,76 @@ def get_embedding_model():
     try:
         from sentence_transformers import SentenceTransformer
 
-        # Try to load the model from Hugging Face Hub
+        # Prefer local bundled model to avoid network downloads inside container
+        here = os.path.dirname(__file__)
+        local_model_dir = os.path.join(here, "all-MiniLM-L6-v2")
+        if os.path.isdir(local_model_dir):
+            try:
+                print(f"Loading embedding model from local path: {local_model_dir}")
+                _EMBEDDING_MODEL = SentenceTransformer(local_model_dir)
+                _MODEL_LOADED = True
+                print("✅ Embedding model loaded from local directory")
+                return _EMBEDDING_MODEL
+            except Exception as e:
+                # Known issue: older sentence-transformers versions may not accept
+                # certain Pooling kwargs stored in local config (e.g. weightedmean tokens)
+                print(
+                    f"⚠️ Failed to load local embedding model with SentenceTransformer: {e}"
+                )
+                # Try local Transformers-based loading as a fallback (offline-safe)
+                try:
+                    print("Attempting local Transformers load for embeddings...")
+                    import torch
+                    from transformers import AutoModel, AutoTokenizer
+
+                    tokenizer = AutoTokenizer.from_pretrained(local_model_dir)
+                    model = AutoModel.from_pretrained(local_model_dir)
+
+                    class SimpleEmbeddingModel:
+                        def __init__(self, model, tokenizer):
+                            self.model = model
+                            self.tokenizer = tokenizer
+                            self.device = torch.device(
+                                "cuda" if torch.cuda.is_available() else "cpu"
+                            )
+                            self.model.to(self.device)
+
+                        def encode(self, texts, **kwargs):
+                            if isinstance(texts, str):
+                                texts = [texts]
+                            inputs = self.tokenizer(
+                                texts,
+                                padding=True,
+                                truncation=True,
+                                return_tensors="pt",
+                            )
+                            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                            with torch.no_grad():
+                                outputs = self.model(**inputs)
+                                # Mean pooling over tokens
+                                embeddings = outputs.last_hidden_state.mean(dim=1)
+                                return embeddings.cpu().numpy()
+
+                    _EMBEDDING_MODEL = SimpleEmbeddingModel(model, tokenizer)
+                    _MODEL_LOADED = True
+                    print(
+                        "✅ Embedding model loaded locally using Transformers (mean pooling)"
+                    )
+                    return _EMBEDDING_MODEL
+                except Exception as local_tf_error:
+                    print(f"⚠️ Local Transformers load also failed: {local_tf_error}")
+
+        # Fallback to Hugging Face Hub
         print("Loading embedding model from Hugging Face Hub...")
-        _EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+        # Try both canonical and short names if needed
+        try:
+            _EMBEDDING_MODEL = SentenceTransformer(
+                "sentence-transformers/all-MiniLM-L6-v2"
+            )
+        except Exception:
+            _EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
         _MODEL_LOADED = True
-        print("✅ Embedding model loaded successfully")
+        print("✅ Embedding model loaded successfully from hub")
         return _EMBEDDING_MODEL
 
     except ImportError as e:
@@ -37,9 +102,9 @@ def get_embedding_model():
     except Exception as e:
         print(f"❌ Error loading embedding model: {e}")
 
-        # Try alternative approach
+        # Try alternative approach (hub) using Transformers directly
         try:
-            print("Trying alternative model loading approach...")
+            print("Trying alternative model loading approach from hub...")
             import torch
             from transformers import AutoModel, AutoTokenizer
 
@@ -47,7 +112,6 @@ def get_embedding_model():
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             model = AutoModel.from_pretrained(model_name)
 
-            # Create a simple wrapper
             class SimpleEmbeddingModel:
                 def __init__(self, model, tokenizer):
                     self.model = model
@@ -60,16 +124,12 @@ def get_embedding_model():
                 def encode(self, texts, **kwargs):
                     if isinstance(texts, str):
                         texts = [texts]
-
-                    # Tokenize and get embeddings
                     inputs = self.tokenizer(
                         texts, padding=True, truncation=True, return_tensors="pt"
                     )
                     inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
                     with torch.no_grad():
                         outputs = self.model(**inputs)
-                        # Use mean pooling
                         embeddings = outputs.last_hidden_state.mean(dim=1)
                         return embeddings.cpu().numpy()
 

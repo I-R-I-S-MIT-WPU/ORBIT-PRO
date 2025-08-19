@@ -78,6 +78,10 @@ let textSelectionInsights = null;
 let isProcessingTextSelection = false;
 let textSelectionTimeout = null;
 
+// Canvas management variables
+let currentRenderTask = null;
+let isRendering = false;
+
 // Toast notification system with debouncing
 let toastTimeout = null;
 let lastToastMessage = '';
@@ -180,12 +184,27 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
         return;
       }
 
+      // Cancel any ongoing render task
+      if (currentRenderTask) {
+        try {
+          currentRenderTask.cancel();
+        } catch (e) {
+          console.log('Render task already completed or cancelled');
+        }
+        currentRenderTask = null;
+      }
+
       // Set worker path for PDF.js
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
       // Get canvas and context
       pdfCanvas = document.getElementById('pdf-canvas');
       pdfContext = pdfCanvas.getContext('2d');
+
+      // Clear the canvas
+      if (pdfContext) {
+        pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+      }
 
       // Show loading state only when we have a valid URL
       showPDFLoading();
@@ -238,7 +257,7 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
   });
 }
 
-// Load a specific page
+// Load a specific page with better error handling
 async function loadPage(pageNum) {
   try {
     if (pageNum < 1 || pageNum > totalPages) {
@@ -246,10 +265,39 @@ async function loadPage(pageNum) {
       return;
     }
 
+    // Cancel any ongoing render task
+    if (currentRenderTask) {
+      try {
+        currentRenderTask.cancel();
+      } catch (e) {
+        console.log('Render task already completed or cancelled');
+      }
+      currentRenderTask = null;
+    }
+
+    // Wait a bit to ensure previous operations are cleaned up
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     currentPage = pageNum;
 
-    // Get the page
-    pdfPage = await pdfDoc.getPage(pageNum);
+    // Get the page with retry logic
+    let pdfPage = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        pdfPage = await pdfDoc.getPage(pageNum);
+        break;
+      } catch (error) {
+        retryCount++;
+        console.warn(`Failed to get page ${pageNum}, retry ${retryCount}/${maxRetries}:`, error);
+        if (retryCount >= maxRetries) {
+          throw new Error(`Failed to load page ${pageNum} after ${maxRetries} attempts`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
+      }
+    }
 
     // Calculate viewport
     const viewport = pdfPage.getViewport({ scale: currentScale });
@@ -258,13 +306,25 @@ async function loadPage(pageNum) {
     pdfCanvas.width = viewport.width;
     pdfCanvas.height = viewport.height;
 
-    // Render the page
+    // Clear the canvas before rendering
+    pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+
+    // Render the page with retry logic
     const renderContext = {
       canvasContext: pdfContext,
       viewport: viewport
     };
 
-    await pdfPage.render(renderContext).promise;
+    // Store the render task and wait for it to complete
+    currentRenderTask = pdfPage.render(renderContext);
+
+    // Add timeout to prevent hanging
+    const renderPromise = currentRenderTask.promise;
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Render timeout')), 30000); // 30 second timeout
+    });
+
+    await Promise.race([renderPromise, timeoutPromise]);
 
     // Create or update text layer for text selection
     await createTextLayerForSinglePage(pdfPage, viewport);
@@ -285,37 +345,54 @@ async function loadPage(pageNum) {
 
   } catch (error) {
     console.error('Error loading page:', error);
-    toast('Failed to load page. Please try again.', 'error');
+    // toast(`Failed to load page ${pageNum}. Please try again.`, 'error');
+
+    // Show error state in the viewer
+    // const errorDiv = document.createElement('div');
+    // errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-red-50 dark:bg-red-900/20';
+    // errorDiv.innerHTML = `
+    //   <div class="text-center">
+    //     <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+    //     <p class="text-red-600 dark:text-red-400 text-sm">Failed to load page ${pageNum}</p>
+    //     <button onclick="retryLoadPage(${pageNum})" class="mt-2 px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">
+    //       Retry
+    //     </button>
+    //   </div>
+    // `;
+
+    const container = document.getElementById('pdf-viewer-container');
+    if (container) {
+      container.appendChild(errorDiv);
+    }
   }
 }
 
 // Create text layer for single page view
 async function createTextLayerForSinglePage(page, viewport) {
   try {
-    // Get or create text layer container
-    let textLayerContainer = document.getElementById('single-page-text-layer');
-    if (!textLayerContainer) {
-      textLayerContainer = document.createElement('div');
-      textLayerContainer.id = 'single-page-text-layer';
-      textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
-      textLayerContainer.style.width = `${viewport.width}px`;
-      textLayerContainer.style.height = `${viewport.height}px`;
-      textLayerContainer.style.fontSize = '0px';
-      textLayerContainer.style.lineHeight = '1';
-      textLayerContainer.style.color = 'transparent';
-      textLayerContainer.style.userSelect = 'text';
-      textLayerContainer.style.cursor = 'text';
-
-      // Insert after canvas
-      const canvasContainer = document.getElementById('pdf-viewer-container');
-      if (canvasContainer) {
-        canvasContainer.appendChild(textLayerContainer);
-      }
+    // Remove any existing text layer first
+    let existingTextLayer = document.getElementById('single-page-text-layer');
+    if (existingTextLayer) {
+      existingTextLayer.remove();
     }
 
-    // Update text layer dimensions
+    // Create new text layer container
+    const textLayerContainer = document.createElement('div');
+    textLayerContainer.id = 'single-page-text-layer';
+    textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
     textLayerContainer.style.width = `${viewport.width}px`;
     textLayerContainer.style.height = `${viewport.height}px`;
+    textLayerContainer.style.fontSize = '0px';
+    textLayerContainer.style.lineHeight = '1';
+    textLayerContainer.style.color = 'transparent';
+    textLayerContainer.style.userSelect = 'text';
+    textLayerContainer.style.cursor = 'text';
+
+    // Insert after canvas
+    const canvasContainer = document.getElementById('pdf-viewer-container');
+    if (canvasContainer) {
+      canvasContainer.appendChild(textLayerContainer);
+    }
 
     // Render text content
     await renderTextLayer(page, textLayerContainer, viewport);
@@ -325,7 +402,7 @@ async function createTextLayerForSinglePage(page, viewport) {
   }
 }
 
-// Load all pages for continuous scrolling
+// Load all pages for continuous scrolling with better error handling
 async function loadAllPages() {
   try {
     if (!pdfDoc) return;
@@ -345,17 +422,35 @@ async function loadAllPages() {
     `;
     continuousContainer.appendChild(loadingDiv);
 
-    // Load all pages
-    const pagePromises = [];
+    // Load all pages sequentially to avoid conflicts
+    const loadedPages = [];
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      pagePromises.push(loadPageToContainer(pageNum, continuousContainer));
+      try {
+        const pageWrapper = await loadPageToContainer(pageNum, continuousContainer);
+        if (pageWrapper) {
+          loadedPages.push(pageWrapper);
+        }
+        // Add a small delay between pages to prevent conflicts
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`Error loading page ${pageNum}:`, error);
+        // Continue loading other pages even if one fails
+      }
     }
-
-    await Promise.all(pagePromises);
 
     // Remove loading indicator
     if (loadingDiv.parentNode) {
       loadingDiv.parentNode.removeChild(loadingDiv);
+    }
+
+    // Show summary of loaded pages
+    if (loadedPages.length > 0) {
+      console.log(`Successfully loaded ${loadedPages.length} out of ${totalPages} pages`);
+      if (loadedPages.length < totalPages) {
+        toast(`Loaded ${loadedPages.length} out of ${totalPages} pages. Some pages failed to load.`, 'warning');
+      }
+    } else {
+      toast('Failed to load any pages. Please try again.', 'error');
     }
 
     // Set up text selection for all pages
@@ -363,8 +458,6 @@ async function loadAllPages() {
 
     // Show text selection hint
     showTextSelectionHint();
-
-    console.log(`All ${totalPages} pages loaded successfully`);
 
   } catch (error) {
     console.error('Error loading all pages:', error);
@@ -468,7 +561,12 @@ async function loadPageToContainer(pageNum, container) {
       viewport: viewport
     };
 
-    await page.render(renderContext).promise;
+    // Clear the canvas before rendering
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Render the page and wait for completion
+    const renderTask = page.render(renderContext);
+    await renderTask.promise;
 
     // Render text layer for text selection
     await renderTextLayer(page, textLayerDiv, viewport);
@@ -625,7 +723,11 @@ function resizeCanvas() {
     const scale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
 
     currentScale = scale;
-    loadPage(currentPage); // Reload current page with new scale
+
+    // Only reload if we're in single page view
+    if (!isContinuousView) {
+      loadPage(currentPage); // Reload current page with new scale
+    }
   }
 }
 
@@ -689,7 +791,7 @@ function showPDFNeutral() {
 
 // Theme handling (light/dark)
 function initTheme() {
-  const saved = localStorage.getItem('theme') || 'light';
+  const saved = localStorage.getItem('theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
   const t = document.getElementById('themeToggle');
   if (t) t.textContent = saved === 'dark' ? '🌙' : '☀️';
@@ -739,6 +841,46 @@ async function fetchHealth() {
   }
 }
 
+// Handle document selection from the list
+async function selectDocument(docName) {
+  try {
+    // Cleanup current document first
+    cleanupPDFViewer();
+
+    // Create document object
+    const docObj = { filename: docName };
+
+    // Load the new document
+    const success = await loadDocument(docObj);
+
+    if (success) {
+      // Update document list selection
+      const list = document.getElementById('docList');
+      if (list) {
+        // Remove previous selections
+        list.querySelectorAll('.doc-item.selected').forEach(item => {
+          item.classList.remove('selected');
+        });
+
+        // Select the new document
+        const selectedItem = list.querySelector(`[data-filename="${docName}"]`);
+        if (selectedItem) {
+          selectedItem.classList.add('selected');
+        }
+      }
+
+      updateSelectedCount();
+    }
+
+    return success;
+  } catch (error) {
+    console.error('Error selecting document:', error);
+    toast('Error selecting document', 'error');
+    return false;
+  }
+}
+
+// Update the loadDocuments function to use the new selectDocument function
 async function loadDocuments() {
   try {
     const res = await fetch('/api/documents');
@@ -772,15 +914,16 @@ async function loadDocuments() {
         </div>
       `;
       li.dataset.filename = d.filename;
-      li.addEventListener('click', (e) => {
+      li.addEventListener('click', async (e) => {
         // Only select if not clicking delete
         if (e.target.closest('button[onclick]')) return;
+
         // Deselect all others
         document.querySelectorAll('.doc-item.selected').forEach(el => el.classList.remove('selected'));
         li.classList.add('selected');
-        if (currentDoc !== `/files/${d.filename}`) {
-          initViewer(`/files/${d.filename}`);
-        }
+
+        // Load the document
+        await selectDocument(d.filename);
         updateSelectedCount();
       });
       list.appendChild(li);
@@ -807,6 +950,7 @@ function getSelectedDocs() {
 
 function updateSelectedCount() {
   const el = document.getElementById('selectedCount');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
   if (!el) return;
   const list = document.getElementById('docList');
   if (!list) return;
@@ -814,6 +958,17 @@ function updateSelectedCount() {
   let count = 0;
   for (const li of list.children) if (li.classList.contains('selected')) count++;
   el.textContent = `${count} selected`;
+
+  // Enable/disable delete button based on selection
+  if (deleteSelectedBtn) {
+    if (count > 0) {
+      deleteSelectedBtn.disabled = false;
+      deleteSelectedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+      deleteSelectedBtn.disabled = true;
+      deleteSelectedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  }
 }
 
 function updateCurrentDocName() {
@@ -870,10 +1025,17 @@ async function uploadFiles() {
         // Reload documents list
         await loadDocuments();
 
-        // Hide progress after a short delay
+        // Start indexing progress polling
+        try {
+          startIndexingStatusPolling();
+        } catch (e) {
+          console.warn('Indexing status polling failed to start:', e);
+        }
+
+        // Hide upload modal after a short delay
         setTimeout(() => {
           hideUploadProgress();
-        }, 1500);
+        }, 1200);
       } else {
         updateUploadProgress(0, 'Upload failed', 'error');
         toast(`Upload failed: ${xhr.statusText || 'Unknown error'}`, 'error');
@@ -908,103 +1070,102 @@ async function uploadFiles() {
   }
 }
 
-// Show upload progress UI
-function showUploadProgress() {
-  // Create or show upload progress modal
-  let progressModal = document.getElementById('uploadProgressModal');
-  if (!progressModal) {
-    progressModal = document.createElement('div');
-    progressModal.id = 'uploadProgressModal';
-    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
-    progressModal.innerHTML = `
-      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-        <div class="text-center">
-          <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-cloud-upload-alt text-white text-lg"></i>
-          </div>
-          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Uploading Files...</h3>
-          
-          <!-- Progress Bar -->
-          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
-            <div id="uploadProgressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
-          </div>
-          
-          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">
-            <div id="uploadProgressText">Preparing upload...</div>
-          </div>
-          
-          <div class="text-xs text-slate-500 dark:text-slate-400">
-            <span id="uploadProgressPercent">0%</span> complete
-          </div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(progressModal);
+// --- Indexing progress UI ---
+function ensureIndexingProgressUI() {
+  let el = document.getElementById('indexingProgressBarContainer');
+  if (el) {
+    // Ensure it sits bottom-left even if it already exists
+    el.classList.remove('right-6');
+    el.classList.add('left-6');
+    return el;
   }
-
-  progressModal.classList.remove('hidden');
+  el = document.createElement('div');
+  el.id = 'indexingProgressBarContainer';
+  el.className = 'fixed bottom-6 left-6 bg-white dark:bg-slate-800 shadow-xl rounded-xl p-4 w-80 z-40 hidden';
+  el.innerHTML = `
+    <div class="flex items-center mb-2">
+      <div class="w-3 h-3 rounded-full bg-emerald-500 mr-2" id="indexingStatusDot"></div>
+      <div class="text-sm font-semibold text-slate-700 dark:text-slate-100">Indexing</div>
+      <button id="indexingCloseBtn" class="ml-auto w-6 h-6 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white flex items-center justify-center" title="Dismiss">
+        <i class="fas fa-times text-xs"></i>
+      </button>
+    </div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mb-2" id="indexingStatusText">Preparing...</div>
+    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+      <div id="indexingProgressBar" class="bg-gradient-to-r from-emerald-500 to-blue-500 h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  return el;
 }
 
-// Update upload progress
-function updateUploadProgress(percent, status, state = 'uploading') {
-  const progressBar = document.getElementById('uploadProgressBar');
-  const progressText = document.getElementById('uploadProgressText');
-  const progressPercent = document.getElementById('uploadProgressPercent');
-  const progressModal = document.getElementById('uploadProgressModal');
+let indexingPollTimer = null;
+function startIndexingStatusPolling() {
+  const container = ensureIndexingProgressUI();
+  container.classList.remove('hidden');
 
-  if (progressBar) {
-    progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+  const progressBar = document.getElementById('indexingProgressBar');
+  const statusText = document.getElementById('indexingStatusText');
+  const statusDot = document.getElementById('indexingStatusDot');
+  const closeBtn = document.getElementById('indexingCloseBtn');
 
-    // Update progress bar appearance based on state
-    progressBar.classList.remove('success', 'error');
-    if (state === 'success') {
-      progressBar.classList.add('success');
-    } else if (state === 'error') {
-      progressBar.classList.add('error');
-    }
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      if (indexingPollTimer) clearInterval(indexingPollTimer);
+      indexingPollTimer = null;
+      container.classList.add('hidden');
+    };
   }
 
-  if (progressText) {
-    progressText.textContent = status;
-  }
+  const updateUI = (state) => {
+    const {
+      running,
+      phase,
+      total_docs,
+      docs_done,
+      current_doc,
+      message
+    } = state || {};
 
-  if (progressPercent) {
-    progressPercent.textContent = `${Math.round(percent)}%`;
-  }
-
-  // Update modal icon based on state
-  if (progressModal) {
-    const icon = progressModal.querySelector('.fas');
-    if (icon) {
-      if (state === 'success') {
-        icon.className = 'fas fa-check-circle text-white text-lg';
-      } else if (state === 'error') {
-        icon.className = 'fas fa-exclamation-circle text-white text-lg';
-      } else {
-        icon.className = 'fas fa-cloud-upload-alt text-white text-lg';
-      }
+    if (!running && (!phase || phase === 'done')) {
+      progressBar.style.width = '100%';
+      statusText.textContent = 'Indexing complete';
+      statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500 mr-2';
+      setTimeout(() => container.classList.add('hidden'), 1200);
+      if (indexingPollTimer) clearInterval(indexingPollTimer);
+      indexingPollTimer = null;
+      return;
     }
 
-    // Update modal title based on state
-    const title = progressModal.querySelector('h3');
-    if (title) {
-      if (state === 'success') {
-        title.textContent = 'Upload Complete!';
-      } else if (state === 'error') {
-        title.textContent = 'Upload Failed';
-      } else {
-        title.textContent = 'Uploading Files...';
-      }
-    }
-  }
-}
+    const total = Math.max(1, total_docs || 0);
+    const done = Math.min(total, docs_done || 0);
+    const percent = Math.round((done / total) * 100);
 
-// Hide upload progress
-function hideUploadProgress() {
-  const progressModal = document.getElementById('uploadProgressModal');
-  if (progressModal) {
-    progressModal.classList.add('hidden');
-  }
+    progressBar.style.width = percent + '%';
+    statusText.textContent = message || (phase === 'rebuild' ? 'Rebuilding index...' : 'Indexing documents...');
+    statusDot.className = running ? 'w-3 h-3 rounded-full bg-amber-500 mr-2 animate-pulse' : 'w-3 h-3 rounded-full bg-slate-400 mr-2';
+
+    // Keep visible while running
+    container.classList.remove('hidden');
+  };
+
+  const poll = async () => {
+    try {
+      const res = await fetch('/api/indexing-status');
+      if (!res.ok) throw new Error('status not ok');
+      const state = await res.json();
+      updateUI(state);
+    } catch (e) {
+      // Stop polling silently on errors
+      if (indexingPollTimer) clearInterval(indexingPollTimer);
+      indexingPollTimer = null;
+    }
+  };
+
+  // Kick and poll
+  poll();
+  if (indexingPollTimer) clearInterval(indexingPollTimer);
+  indexingPollTimer = setInterval(poll, 800);
 }
 
 // ... existing code ...
@@ -1016,6 +1177,9 @@ async function loadDocument(doc) {
       console.error('Invalid document:', doc);
       return false;
     }
+
+    // Cleanup previous document
+    cleanupPDFViewer();
 
     // Update current document
     currentDoc = doc.filename;
@@ -1063,7 +1227,7 @@ async function loadDocument(doc) {
 }
 
 // Handle file uploads
-async function uploadFiles() {
+async function uploadFiles_legacy() {
   const input = document.getElementById('fileInput');
   if (!input.files.length) return;
   const form = new FormData();
@@ -1072,7 +1236,7 @@ async function uploadFiles() {
   await loadDocuments();
 }
 
-async function loadDocuments() {
+async function loadDocuments_legacy() {
   const res = await fetch('/api/documents');
   const docs = await res.json();
   const list = document.getElementById('docList');
@@ -1142,7 +1306,7 @@ async function loadDocuments() {
   updateSelectedCount();
 }
 
-function getSelectedDocs() {
+function getSelectedDocs_legacy() {
   const list = document.getElementById('docList');
   const docs = [];
   for (const li of list.children) {
@@ -1151,6 +1315,29 @@ function getSelectedDocs() {
     }
   }
   return docs;
+}
+
+function updateSelectedCount_legacy() {
+  const el = document.getElementById('selectedCount');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  if (!el) return;
+  const list = document.getElementById('docList');
+  if (!list) return;
+
+  let count = 0;
+  for (const li of list.children) if (li.classList.contains('selected')) count++;
+  el.textContent = `${count} selected`;
+
+  // Enable/disable delete button based on selection
+  if (deleteSelectedBtn) {
+    if (count > 0) {
+      deleteSelectedBtn.disabled = false;
+      deleteSelectedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+      deleteSelectedBtn.disabled = true;
+      deleteSelectedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  }
 }
 
 // Update the page count display in the UI
@@ -1167,15 +1354,6 @@ function updatePageCount() {
 // Validate and clamp a page number to the valid range
 function clampPageNumber(page) {
   return Math.max(1, Math.min(Math.floor(page || 1), totalPages));
-}
-
-function updateSelectedCount() {
-  const el = document.getElementById('selectedCount');
-  if (!el) return;
-  const list = document.getElementById('docList');
-  let count = 0;
-  for (const li of list.children) if (li.classList.contains('selected')) count++;
-  el.textContent = `${count} selected`;
 }
 
 function renderSections(sections, relatedMap) {
@@ -1628,15 +1806,14 @@ async function createPodcastFromTextSelection() {
     return;
   }
 
-  // Show podcast generation progress
   showPodcastGenerationProgress();
+  updatePodcastProgressUI(5, 'Generating script...');
 
   try {
-    const response = await fetch('/api/enhanced-podcast', {
+    // Start
+    const startRes = await fetch('/api/podcast/start', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         selected_text: textSelectionInsights.selected_text,
         related_insights: textSelectionInsights.insights || [],
@@ -1645,77 +1822,62 @@ async function createPodcastFromTextSelection() {
         conversation_style: 'academic',
       }),
     });
+    if (!startRes.ok) throw new Error('Failed to start podcast');
+    const { task_id } = await startRes.json();
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Poll status
+    let finalUrl = null;
+    const pollStatus = async () => {
+      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
+      if (!res.ok) throw new Error('Status polling failed');
+      return res.json();
+    };
+
+    const statusToText = (state) => {
+      if (state.phase === 'script') return 'Generating script...';
+      if (state.phase === 'prepare_segments') return 'Preparing segments...';
+      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'combining') return 'Combining audio...';
+      if (state.phase === 'done') return 'Finalizing...';
+      if (state.phase === 'error') return 'Failed';
+      return 'Working...';
+    };
+
+    let keepPolling = true;
+    while (keepPolling) {
+      const state = await pollStatus();
+      updatePodcastProgressUI(state.progress || 0, statusToText(state));
+      if (state.status === 'completed' && state.url) {
+        finalUrl = state.url;
+        keepPolling = false;
+        break;
+      }
+      if (state.status === 'failed') {
+        throw new Error(state.error || 'Podcast generation failed');
+      }
+      await new Promise(r => setTimeout(r, 800));
     }
 
-    const result = await response.json();
-
-    // Hide progress and show success
     hidePodcastGenerationProgress();
 
-    if (result.url) {
+    if (finalUrl) {
       toast('Podcast generated successfully!', 'success');
-
-      // Set up the audio player with new source
       const player = document.getElementById('player');
-      const audioUrl = result.url + '?t=' + Date.now(); // Add timestamp to prevent caching
-
+      const audioUrl = finalUrl + '?t=' + Date.now();
       player.src = audioUrl;
-      player.setAttribute('title', `Podcast: ${textSelectionInsights.selected_text.substring(0, 50)}...`);
-
-      // Reset audio player initialization to ensure proper setup
       resetAudioPlayerInitialization();
-
-      // Initialize audio player UI before loading
       initializeAudioPlayer();
-
-      // Clear any existing audio info
-      const audioInfo = document.getElementById('audioInfo');
-      const audioTitle = document.getElementById('audioTitle');
-      if (audioInfo) audioInfo.classList.add('hidden');
-      if (audioTitle) audioTitle.textContent = 'Loading podcast...';
-
-      // Wait for audio to load metadata
       await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Audio loading timeout'));
-        }, 15000); // 15 second timeout
-
-        player.addEventListener('loadedmetadata', () => {
-          clearTimeout(timeout);
-          resolve();
-        }, { once: true });
-
-        player.addEventListener('error', (e) => {
-          clearTimeout(timeout);
-          reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
-        }, { once: true });
-
-        player.load(); // Force load
+        const timeout = setTimeout(() => reject(new Error('Audio loading timeout')), 15000);
+        player.addEventListener('loadedmetadata', () => { clearTimeout(timeout); resolve(); }, { once: true });
+        player.addEventListener('error', (e) => { clearTimeout(timeout); reject(new Error('Audio loading failed')); }, { once: true });
+        player.load();
       });
-
-      // Play the podcast
-      await player.play();
-
-      // Update UI to show it's playing
-      const playPauseBtn = document.getElementById('playPauseBtn');
-      if (playPauseBtn) {
-        const icon = playPauseBtn.querySelector('i');
-        if (icon) icon.className = 'fas fa-pause text-sm';
-      }
-
-      if (audioInfo) audioInfo.classList.remove('hidden');
-      if (audioTitle) audioTitle.textContent = `Podcast: ${textSelectionInsights.selected_text.substring(0, 50)}...`;
-
-    } else {
-      toast('Failed to generate podcast', 'error');
+      await player.play().catch(() => { });
     }
   } catch (error) {
-    console.error('Error creating podcast:', error);
     hidePodcastGenerationProgress();
-    toast(`Error creating podcast: ${error.message}`, 'error');
+    toast(error.message || 'Failed to generate podcast', 'error');
   }
 }
 
@@ -2011,25 +2173,59 @@ async function getDocumentPodcast() {
 
     console.log('Creating enhanced podcast with data:', enhancedPodcastData);
 
-    // Send to enhanced podcast endpoint for dual voice generation
-    const response = await fetch('/api/enhanced-podcast', {
+    // Use async podcast with progress polling
+    showPodcastGenerationProgress();
+    updatePodcastProgressUI(5, 'Generating script...');
+
+    // Start
+    const startRes = await fetch('/api/podcast/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(enhancedPodcastData)
     });
+    if (!startRes.ok) throw new Error(await startRes.text());
+    const { task_id } = await startRes.json();
 
-    if (!response.ok) throw new Error(await response.text());
+    const pollStatus = async () => {
+      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
+      if (!res.ok) throw new Error('Status polling failed');
+      return res.json();
+    };
 
-    const data = await response.json();
-    const player = document.getElementById('player');
+    const statusToText = (state) => {
+      if (state.phase === 'script') return 'Generating script...';
+      if (state.phase === 'prepare_segments') return 'Preparing segments...';
+      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'combining') return 'Combining audio...';
+      if (state.phase === 'done') return 'Finalizing...';
+      if (state.phase === 'error') return 'Failed';
+      return 'Working...';
+    };
 
-    console.log('Enhanced podcast response:', data);
-    console.log('Audio URL from API:', data.url);
+    let finalUrl = null;
+    let keepPolling = true;
+    while (keepPolling) {
+      const state = await pollStatus();
+      updatePodcastProgressUI(state.progress || 0, statusToText(state));
+      if (state.status === 'completed' && state.url) {
+        finalUrl = state.url;
+        keepPolling = false;
+        break;
+      }
+      if (state.status === 'failed') {
+        throw new Error(state.error || 'Podcast generation failed');
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
 
-    // Set up the audio player with new source
-    const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+    hidePodcastGenerationProgress();
+
+    if (!finalUrl) throw new Error('No URL produced');
+
+    const audioUrl = finalUrl + '?t=' + Date.now(); // Add timestamp to prevent caching
     console.log('Final audio URL:', audioUrl);
 
+    const player = document.getElementById('player');
     player.src = audioUrl;
     player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
 
@@ -2058,7 +2254,7 @@ async function getDocumentPodcast() {
 
       player.addEventListener('error', (e) => {
         clearTimeout(timeout);
-        reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+        reject(new Error(`Audio loading failed`));
       }, { once: true });
 
       player.load(); // Force load
@@ -2139,9 +2335,6 @@ function handleSelectionChange() {
         processTextSelectionAPI(selectedText, currentPage);
       }
     }, 500);
-  } else if (selectedText.length === 0) {
-    // Clear selection when no text is selected
-    hideTextSelectionUI();
   }
 }
 
@@ -2407,6 +2600,7 @@ function setupToolbar() {
     // Zoom buttons
     const zoomInBtn = document.getElementById('zoomInBtn');
     const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const resetZoomBtn = document.getElementById('resetZoomBtn');
 
     // Search functionality
     const searchBtn = document.getElementById('searchBtn');
@@ -2452,24 +2646,23 @@ function setupToolbar() {
 
     // Zoom event listeners
     if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', () => {
+      zoomInBtn.addEventListener('click', async () => {
         currentScale = Math.min(currentScale * 1.2, 3.0);
-        if (isContinuousView) {
-          loadAllPages(); // Reload all pages with new scale
-        } else {
-          loadPage(currentPage); // Reload current page with new scale
-        }
+        await applyZoom();
       });
     }
 
     if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', () => {
+      zoomOutBtn.addEventListener('click', async () => {
         currentScale = Math.max(currentScale / 1.2, 0.5);
-        if (isContinuousView) {
-          loadAllPages(); // Reload all pages with new scale
-        } else {
-          loadPage(currentPage); // Reload current page with new scale
-        }
+        await applyZoom();
+      });
+    }
+
+    if (resetZoomBtn) {
+      resetZoomBtn.addEventListener('click', async () => {
+        currentScale = 1.0;
+        await applyZoom();
       });
     }
 
@@ -2493,7 +2686,7 @@ function setupToolbar() {
     // Text selection button (now shows manual text input as fallback)
     if (textSelectionBtn) {
       textSelectionBtn.addEventListener('click', () => {
-        showManualTextInput();
+        showTextInputModal();
       });
     }
 
@@ -2511,6 +2704,27 @@ function setupToolbar() {
     console.log("✅ PDF.js toolbar configured successfully");
   } catch (error) {
     console.error("Error setting up toolbar:", error);
+  }
+}
+
+// Apply zoom changes
+async function applyZoom() {
+  try {
+    // Update zoom level display
+    const zoomLevel = document.getElementById('zoomLevel');
+    if (zoomLevel) {
+      zoomLevel.textContent = `${Math.round(currentScale * 100)}%`;
+    }
+
+    if (isContinuousView) {
+      // In continuous view, reload all pages with new scale
+      await loadAllPages();
+    } else {
+      // In single page view, reload current page with new scale
+      await loadPage(currentPage);
+    }
+  } catch (error) {
+    console.error('Error applying zoom:', error);
   }
 }
 
@@ -2696,6 +2910,7 @@ async function main() {
   const selectAllBtn = document.getElementById('selectAllBtn');
   const clearSelectionBtn = document.getElementById('clearSelectionBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
+  const resetIndexBtn = document.getElementById('resetIndexBtn');
 
   if (selectAllBtn) selectAllBtn.addEventListener('click', () => {
     const list = document.getElementById('docList');
@@ -2708,6 +2923,18 @@ async function main() {
     updateSelectedCount();
   });
   if (deleteAllBtn) deleteAllBtn.addEventListener('click', () => {
+    const selectedDocs = getSelectedDocs();
+    if (selectedDocs.length === 0) {
+      toast('Please select documents to delete', 'warning');
+      return;
+    }
+    showDeleteAllConfirmation(selectedDocs);
+  });
+  if (resetIndexBtn) resetIndexBtn.addEventListener('click', showResetIndexConfirmation);
+
+  // Add event listener for deleteSelectedBtn
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  if (deleteSelectedBtn) deleteSelectedBtn.addEventListener('click', () => {
     const selectedDocs = getSelectedDocs();
     if (selectedDocs.length === 0) {
       toast('Please select documents to delete', 'warning');
@@ -2952,25 +3179,59 @@ async function podcast() {
 
     console.log('Creating enhanced podcast with data:', enhancedPodcastData);
 
-    // Send to enhanced podcast endpoint for dual voice generation
-    const response = await fetch('/api/enhanced-podcast', {
+    // Use async podcast with progress polling
+    showPodcastGenerationProgress();
+    updatePodcastProgressUI(5, 'Generating script...');
+
+    // Start
+    const startRes = await fetch('/api/podcast/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(enhancedPodcastData)
     });
+    if (!startRes.ok) throw new Error(await startRes.text());
+    const { task_id } = await startRes.json();
 
-    if (!response.ok) throw new Error(await response.text());
+    const pollStatus = async () => {
+      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
+      if (!res.ok) throw new Error('Status polling failed');
+      return res.json();
+    };
 
-    const data = await response.json();
-    const player = document.getElementById('player');
+    const statusToText = (state) => {
+      if (state.phase === 'script') return 'Generating script...';
+      if (state.phase === 'prepare_segments') return 'Preparing segments...';
+      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'combining') return 'Combining audio...';
+      if (state.phase === 'done') return 'Finalizing...';
+      if (state.phase === 'error') return 'Failed';
+      return 'Working...';
+    };
 
-    console.log('Enhanced podcast response:', data);
-    console.log('Audio URL from API:', data.url);
+    let finalUrl = null;
+    let keepPolling = true;
+    while (keepPolling) {
+      const state = await pollStatus();
+      updatePodcastProgressUI(state.progress || 0, statusToText(state));
+      if (state.status === 'completed' && state.url) {
+        finalUrl = state.url;
+        keepPolling = false;
+        break;
+      }
+      if (state.status === 'failed') {
+        throw new Error(state.error || 'Podcast generation failed');
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
 
-    // Set up the audio player with new source
-    const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+    hidePodcastGenerationProgress();
+
+    if (!finalUrl) throw new Error('No URL produced');
+
+    const audioUrl = finalUrl + '?t=' + Date.now(); // Add timestamp to prevent caching
     console.log('Final audio URL:', audioUrl);
 
+    const player = document.getElementById('player');
     player.src = audioUrl;
     player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
 
@@ -2999,7 +3260,7 @@ async function podcast() {
 
       player.addEventListener('error', (e) => {
         clearTimeout(timeout);
-        reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+        reject(new Error(`Audio loading failed`));
       }, { once: true });
 
       player.load(); // Force load
@@ -3135,16 +3396,12 @@ function showPodcastGenerationProgress() {
           <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Generating Podcast...</h3>
           
           <!-- Progress Bar -->
-          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-2">
             <div id="podcastProgress" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
           </div>
-          
-          <div class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            <div id="podcastStatus">Initializing podcast generation...</div>
-          </div>
-          
-          <div class="text-xs text-slate-500 dark:text-slate-400">
-            This may take a few minutes for high-quality audio
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3">
+            <div id="podcastStatus">Initializing...</div>
+            <div id="podcastPercent">0%</div>
           </div>
         </div>
       </div>
@@ -3153,38 +3410,20 @@ function showPodcastGenerationProgress() {
   }
 
   progressModal.classList.remove('hidden');
+}
 
-  // Simulate progress updates
-  let progress = 0;
-  const progressBar = document.getElementById('podcastProgress');
+function updatePodcastProgressUI(percent, text) {
+  const bar = document.getElementById('podcastProgress');
   const status = document.getElementById('podcastStatus');
-
-  const progressInterval = setInterval(() => {
-    progress += Math.random() * 8;
-    if (progress > 85) progress = 85;
-
-    if (progressBar) progressBar.style.width = progress + '%';
-    if (status) {
-      if (progress < 20) status.textContent = 'Analyzing selected text...';
-      else if (progress < 40) status.textContent = 'Generating conversation script...';
-      else if (progress < 60) status.textContent = 'Creating voice segments...';
-      else if (progress < 80) status.textContent = 'Mixing audio...';
-      else status.textContent = 'Finalizing podcast...';
-    }
-  }, 300);
-
-  // Store interval for cleanup
-  progressModal.dataset.progressInterval = progressInterval;
+  const pct = document.getElementById('podcastPercent');
+  if (bar) bar.style.width = Math.max(0, Math.min(100, percent)) + '%';
+  if (pct) pct.textContent = `${Math.round(Math.max(0, Math.min(100, percent)))}%`;
+  if (status && text) status.textContent = text;
 }
 
 function hidePodcastGenerationProgress() {
   const progressModal = document.getElementById('podcastProgressModal');
   if (progressModal) {
-    // Clear progress interval
-    const interval = progressModal.dataset.progressInterval;
-    if (interval) clearInterval(parseInt(interval));
-
-    // Hide modal
     progressModal.classList.add('hidden');
   }
 }
@@ -4088,5 +4327,348 @@ function updateTextSelectionPanelWithError(errorMessage) {
         Failed to load related content
       </div>
     `;
+  }
+}
+// Cleanup function for PDF viewer
+function cleanupPDFViewer() {
+  // Cancel any ongoing render task
+  if (currentRenderTask) {
+    try {
+      currentRenderTask.cancel();
+    } catch (e) {
+      console.log('Render task already completed or cancelled');
+    }
+    currentRenderTask = null;
+  }
+
+  // Clear canvas
+  if (pdfCanvas && pdfContext) {
+    pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+  }
+
+  // Remove text layers
+  const existingTextLayer = document.getElementById('single-page-text-layer');
+  if (existingTextLayer) {
+    existingTextLayer.remove();
+  }
+
+  // Clear continuous view
+  const continuousView = document.getElementById('continuous-view');
+  if (continuousView) {
+    continuousView.innerHTML = '';
+  }
+
+  // Reset variables
+  pdfPage = null;
+  isRendering = false;
+}
+
+// Delete a single document
+async function deleteDocument(filename) {
+  try {
+    const response = await fetch(`/api/documents/${encodeURIComponent(filename)}`, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      toast(`Successfully deleted ${filename}`, 'success');
+
+      // Reload documents list
+      await loadDocuments();
+
+      // Clear current document if it was deleted
+      if (currentDoc && currentDoc.includes(filename)) {
+        currentDoc = null;
+        cleanupPDFViewer();
+        showPDFNeutral();
+      }
+
+      // Clear analysis results if the deleted document was analyzed
+      if (currentSections.some(s => s.document === filename) ||
+        currentSnippets.some(s => s.document === filename)) {
+        currentSections = [];
+        currentSnippets = [];
+        HAS_ANALYSIS = false;
+
+        // Re-render empty sections and snippets
+        renderSections([], {});
+        renderSnippets([]);
+      }
+    } else {
+      toast(`Failed to delete ${filename}`, 'error');
+    }
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    toast('Error deleting document', 'error');
+  }
+}
+
+// Retry loading a specific page
+async function retryLoadPage(pageNum) {
+  try {
+    // Remove any error overlays
+    const errorOverlays = document.querySelectorAll('.absolute.inset-0.flex.items-center.justify-center.bg-red-50');
+    errorOverlays.forEach(overlay => overlay.remove());
+
+    // Try to load the page again
+    await loadPage(pageNum);
+  } catch (error) {
+    console.error('Error retrying page load:', error);
+    toast('Failed to retry page load', 'error');
+  }
+}
+
+// Show manual text input as fallback
+function showTextInputModal() {
+  closeTextInputModal();
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.id = 'textInputModal';
+
+  const curPage = Math.max(1, currentPage || 1);
+
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 transform transition-all">
+      <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+            <i class="fas fa-highlighter text-white text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white">Text Selection Analysis</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Enter the text you want to analyze</p>
+          </div>
+        </div>
+        <button onclick="closeTextInputModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Selected Text from PDF</label>
+          <textarea id="textInputArea" placeholder="Paste or type the text you selected from the PDF here... (10+ characters suggested for better analysis)" class="w-full h-32 p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-200 resize-none" autocomplete="off" spellcheck="false"></textarea>
+          <div class="flex items-center justify-between mt-2">
+            <span id="textCharCount" class="text-xs text-slate-500 dark:text-slate-400">0 characters</span>
+            <span class="text-xs text-slate-500 dark:text-slate-400">Suggested: 10+ characters</span>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Page Number (Optional)</label>
+          <input type="number" id="pageInput" min="1" value="${curPage}" class="w-24 p-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-200">
+          <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Current page: ${curPage}</div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-700">
+        <div class="flex space-x-3">
+          <button onclick="closeTextInputModal()" class="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Cancel</button>
+          <button id="analyzeTextBtn" onclick="analyzeSelectedText()" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105">
+            <i class="fas fa-search mr-2"></i>Analyze Text
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const area = modal.querySelector('#textInputArea');
+  const counter = modal.querySelector('#textCharCount');
+  if (area && counter) {
+    area.addEventListener('input', () => {
+      counter.textContent = `${area.value.length} characters`;
+    });
+  }
+
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeTextInputModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+function closeTextInputModal() {
+  const existing = document.getElementById('textInputModal');
+  if (existing) existing.remove();
+}
+
+async function analyzeSelectedText() {
+  const modal = document.getElementById('textInputModal');
+  if (!modal) return;
+  const text = modal.querySelector('#textInputArea')?.value?.trim() || '';
+  const page = parseInt(modal.querySelector('#pageInput')?.value || `${currentPage || 1}`, 10);
+  if (!text) {
+    toast('Please enter some text to analyze', 'warning');
+    return;
+  }
+  // Show the insights panel immediately with loading state
+  showTextSelectionInsightsInstantly(text);
+  // Close the modal right away
+  closeTextInputModal();
+  // Store selection in globals
+  selectedText = text;
+  // Trigger processing asynchronously (no await) so UI remains responsive
+  try {
+    processTextSelectionAPI(text, page);
+  } catch (e) {
+    console.error('Error starting text selection processing:', e);
+  }
+}
+
+// Reset Index confirmation and API call
+function showResetIndexConfirmation() {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  overlay.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-3">Reset Index and Delete Files?</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          This will clear the semantic index (chunks and metadata) and delete all currently uploaded PDF files on this system. This action cannot be undone.
+        </p>
+        <div class="flex space-x-3">
+          <button class="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors" onclick="this.closest('.fixed').remove()">Cancel</button>
+          <button class="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors" onclick="confirmResetIndex(this)">Reset</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function confirmResetIndex(btn) {
+  try {
+    if (btn) btn.disabled = true;
+    toast('Resetting index and deleting files...', 'info');
+    const res = await fetch('/api/index/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delete_files: true })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    cleanupPDFViewer();
+    showPDFNeutral();
+    currentDoc = null;
+    currentSections = [];
+    currentSnippets = [];
+    HAS_ANALYSIS = false;
+
+    renderSections([], {});
+    renderSnippets([]);
+    await loadDocuments();
+
+    toast(`Index cleared. Deleted ${data.files_deleted} file(s).`, 'success');
+  } catch (e) {
+    toast(`Reset failed: ${e.message || e}`, 'error');
+  } finally {
+    const overlay = document.querySelector('.fixed.inset-0.bg-black\\/50');
+    if (overlay) overlay.remove();
+  }
+}
+
+// Show upload progress UI
+function showUploadProgress() {
+  // Create or show upload progress modal
+  let progressModal = document.getElementById('uploadProgressModal');
+  if (!progressModal) {
+    progressModal = document.createElement('div');
+    progressModal.id = 'uploadProgressModal';
+    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    progressModal.innerHTML = `
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div class="text-center">
+          <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-cloud-upload-alt text-white text-lg"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Uploading Files...</h3>
+          
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+            <div id="uploadProgressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">
+            <div id="uploadProgressText">Preparing upload...</div>
+          </div>
+          
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            <span id="uploadProgressPercent">0%</span> complete
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(progressModal);
+  }
+
+  progressModal.classList.remove('hidden');
+}
+
+// Update upload progress
+function updateUploadProgress(percent, status, state = 'uploading') {
+  const progressBar = document.getElementById('uploadProgressBar');
+  const progressText = document.getElementById('uploadProgressText');
+  const progressPercent = document.getElementById('uploadProgressPercent');
+  const progressModal = document.getElementById('uploadProgressModal');
+
+  if (progressBar) {
+    progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+
+    // Update progress bar appearance based on state
+    progressBar.classList.remove('success', 'error');
+    if (state === 'success') {
+      progressBar.classList.add('success');
+    } else if (state === 'error') {
+      progressBar.classList.add('error');
+    }
+  }
+
+  if (progressText) {
+    progressText.textContent = status;
+  }
+
+  if (progressPercent) {
+    progressPercent.textContent = `${Math.round(percent)}%`;
+  }
+
+  // Update modal icon based on state
+  if (progressModal) {
+    const icon = progressModal.querySelector('.fas');
+    if (icon) {
+      if (state === 'success') {
+        icon.className = 'fas fa-check-circle text-white text-lg';
+      } else if (state === 'error') {
+        icon.className = 'fas fa-exclamation-circle text-white text-lg';
+      } else {
+        icon.className = 'fas fa-cloud-upload-alt text-white text-lg';
+      }
+    }
+
+    // Update modal title based on state
+    const title = progressModal.querySelector('h3');
+    if (title) {
+      if (state === 'success') {
+        title.textContent = 'Upload Complete!';
+      } else if (state === 'error') {
+        title.textContent = 'Upload Failed';
+      } else {
+        title.textContent = 'Uploading Files...';
+      }
+    }
+  }
+}
+
+// Hide upload progress
+function hideUploadProgress() {
+  const progressModal = document.getElementById('uploadProgressModal');
+  if (progressModal) {
+    progressModal.classList.add('hidden');
   }
 }

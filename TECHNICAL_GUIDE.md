@@ -259,7 +259,7 @@ cp .env.example .env
 # Required environment variables
 LLM_PROVIDER=gemini
 GOOGLE_API_KEY=your_google_api_key
-AZURE_SPEECH_KEY=your_azure_speech_key
+AZURE_TTS_KEY=your_AZURE_TTS_KEY
 AZURE_SPEECH_REGION=your_azure_region
 ADOBE_EMBED_API_KEY=your_adobe_api_key
 ```
@@ -932,7 +932,7 @@ services:
     environment:
       - LLM_PROVIDER=gemini
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
+      - AZURE_TTS_KEY=${AZURE_TTS_KEY}
       - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION}
       - ADOBE_EMBED_API_KEY=${ADOBE_EMBED_API_KEY}
     volumes:

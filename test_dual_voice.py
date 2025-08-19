@@ -103,9 +103,9 @@ def test_voice_configuration():
 
             # Check environment variables (this would be visible in server logs)
             print("\n📋 Expected Voice Configuration:")
-            print("   AZURE_SPEECH_VOICE: en-US-AriaNeural")
-            print("   AZURE_SPEECH_VOICE_2: en-US-DavisNeural")
-            print("   AZURE_SPEECH_VOICE_3: en-US-JennyNeural")
+            print("   AZURE_TTS_VOICE: en-US-AriaNeural")
+            print("   AZURE_TTS_VOICE_2: en-US-DavisNeural")
+            print("   AZURE_TTS_VOICE_3: en-US-JennyNeural")
 
             print("\n💡 The server should automatically pick these voices for:")
             print("   Speaker A: en-US-AriaNeural (Female)")

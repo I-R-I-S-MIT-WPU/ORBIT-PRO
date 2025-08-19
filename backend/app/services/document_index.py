@@ -121,6 +121,35 @@ class DocumentIndex:
         except Exception as e:
             print(f"Error saving metadata: {e}")
 
+    def clear_index(self) -> bool:
+        """Clear all index data from memory and disk, recreating a clean directory."""
+        try:
+            # Clear in-memory
+            self.chunks = []
+            self.document_metadata = {}
+
+            # Remove on-disk index dir
+            try:
+                import shutil
+
+                if os.path.exists(self.index_dir):
+                    shutil.rmtree(self.index_dir)
+            except Exception as e:
+                print(f"Error removing index directory: {e}")
+                # continue to try recreating
+
+            # Recreate directory and write empty files
+            os.makedirs(self.index_dir, exist_ok=True)
+            try:
+                self._save_index()
+            except Exception as e:
+                print(f"Error saving cleared index: {e}")
+
+            return True
+        except Exception as e:
+            print(f"Failed to clear index: {e}")
+            return False
+
     def _extract_document_chunks(
         self, document_path: str, document_name: str
     ) -> List[DocumentChunk]:
@@ -796,15 +825,15 @@ class DocumentIndex:
 
             # Sort by similarity and group by document
             similarities.sort(key=lambda x: x[0], reverse=True)
-
-            # Group by document and get best similarity per document
             doc_similarities = {}
             for similarity, chunk in similarities:
                 if chunk.document not in doc_similarities:
                     doc_similarities[chunk.document] = {
-                        "similarity_score": similarity,
+                        "similarity_score": float(
+                            similarity
+                        ),  # Convert numpy.float32 to Python float
                         "best_chunk": chunk,
-                        "reason": f"High semantic similarity ({similarity:.3f}) with current document",
+                        "reason": f"High semantic similarity ({float(similarity):.3f}) with current document",
                     }
 
             # Convert to list and sort
@@ -1068,6 +1097,12 @@ def get_document_index() -> DocumentIndex:
     if _document_index is None:
         _document_index = DocumentIndex()
     return _document_index
+
+
+def reset_global_index() -> None:
+    """Reset the global index instance after clearing on disk to ensure a fresh load."""
+    global _document_index
+    _document_index = None
 
 
 def index_documents(files_dir: str, document_names: List[str] = None) -> Dict:

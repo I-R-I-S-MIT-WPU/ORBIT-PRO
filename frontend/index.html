@@ -18,7 +18,7 @@
     rel="stylesheet">
 </head>
 
-<body class="min-h-screen font-['Inter'] antialiased">
+<body class="min-h-screen font-['Inter'] antialiased" style="background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);">
   <!-- Animated Background Elements -->
   <div class="fixed inset-0 overflow-hidden pointer-events-none">
     <div
@@ -49,7 +49,7 @@
           </svg>
         </a>
         <div class="flex flex-col items-start justify-center min-w-0">
-          <h1 class="text-lg sm:text-2xl md:text-3xl font-bold text-red-600 leading-tight whitespace-nowrap">Document
+          <h1 class="text-lg sm:text-2xl md:text-3xl font-bold text-red-600 leading-tight whitespace-nowrap">Adobe Document
             Intelligence</h1>
         </div>
       </div>
@@ -131,7 +131,7 @@
           class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
           disabled>
           <i class="fas fa-lightbulb text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
-          <span>Insights</span>
+          <span>AI Insights</span>
         </button>
         <button id="podcastBtn"
           class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 hover:from-rose-600 hover:via-pink-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
@@ -573,11 +573,11 @@
                 AI Podcast
               </h2>
             </div>
-            <div class="p-2">
+            <div class="p-2 flex flex-col items-center justify-center">
               <!-- Enhanced Audio Player -->
-              <div class="space-y-2">
+              <div class="space-y-2 w-full flex flex-col items-center justify-center">
                 <!-- Audio Controls -->
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center justify-center space-x-2 w-full">
                   <button id="playPauseBtn" title="Play/Pause"
                     class="w-10 h-10 bg-purple-500 hover:bg-purple-600 text-white rounded-full flex items-center justify-center transition-colors"><i
                       class="fas fa-play text-sm"></i></button>
@@ -623,6 +623,40 @@
     </div>
   </main>
 
+  <!-- AI Podcast Animation Card (Experimental Feature) - Standalone Last Row -->
+  <div class="max-w-7xl mx-auto mt-8 px-2 sm:px-4 md:px-6">
+    <div class="flex justify-center">
+      <div class="group relative w-full max-w-2xl"> <!-- AI Podcast Animation -->
+  <div class="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+  <div class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[440px] flex flex-col">
+          <div class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+            <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
+              <div class="w-6 h-6 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
+                <i class="fas fa-wave-square text-white text-xs"></i>
+              </div>
+              Podcast Animation
+            </h2>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">       </p>
+            <p class="text-sm mb-4">Automatically animate characters from your audio recordings with realistic lip-sync and
+              gestures.</p>
+          </div>
+          <div class="p-3 flex-1 flex flex-col items-center justify-center">
+      <div class="rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 mb-4 w-full max-w-xs mx-auto flex items-center justify-center" style="height:240px;">
+        <video controls poster="/download.png" class="w-full h-full object-contain max-w-xs" title="AI Podcast Animation" style="background:#000;">
+          <source src="/static/PodcastAnimation.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+            <p class="text-xs text-center text-yellow-600 dark:text-yellow-400 font-semibold" role="note">
+                <i data-lucide="alert-triangle" class="inline-block w-4 h-4 mr-1" aria-hidden="true"></i>
+                Experimental feature. Performance may vary.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notifications -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
 
@@ -637,17 +671,82 @@
     </div>
   </div>
 
+
   <script src="/app.js"></script>
+  <script>
+    // Podcast Animation Video Controls
+    document.addEventListener('DOMContentLoaded', function () {
+      const video = document.getElementById('podcastAnimationVideo');
+      const playPauseBtn = document.getElementById('podcastAnimPlayPauseBtn');
+      const playPauseIcon = document.getElementById('podcastAnimPlayPauseIcon');
+      const progress = document.getElementById('podcastAnimProgress');
+      const currentTimeEl = document.getElementById('podcastAnimCurrentTime');
+      const totalTimeEl = document.getElementById('podcastAnimTotalTime');
+      if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl) return;
+
+      function formatTime(sec) {
+        sec = Math.floor(sec);
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      }
+
+      video.addEventListener('loadedmetadata', function () {
+        progress.max = Math.floor(video.duration);
+        totalTimeEl.textContent = formatTime(video.duration);
+      });
+
+      video.addEventListener('timeupdate', function () {
+        progress.value = Math.floor(video.currentTime);
+        currentTimeEl.textContent = formatTime(video.currentTime);
+      });
+
+      playPauseBtn.addEventListener('click', function () {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
+        }
+      });
+
+      video.addEventListener('play', function () {
+        playPauseIcon.classList.remove('fa-play');
+        playPauseIcon.classList.add('fa-pause');
+      });
+      video.addEventListener('pause', function () {
+        playPauseIcon.classList.remove('fa-pause');
+        playPauseIcon.classList.add('fa-play');
+      });
+
+      progress.addEventListener('input', function () {
+        video.currentTime = progress.value;
+      });
+
+      // Keyboard accessibility: Space/Enter toggles play/pause
+      playPauseBtn.addEventListener('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          playPauseBtn.click();
+          e.preventDefault();
+        }
+      });
+    });
+  </script>
 
   <!-- Footer -->
-  <footer class="w-full bg-white/80 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-700/50 py-4 mt-12 text-center text-xs text-slate-600 dark:text-slate-400">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 px-4">
-      <div>
-        Adobe Hackathon Finale 2025 · Team: Ctrl‑Alt‑Complete
-      </div>
-      <div class="flex items-center gap-4">
-        <a href="https://www.adobe.com/" target="_blank" rel="noopener noreferrer" class="text-red-600 hover:underline font-semibold">Contact Adobe</a>
-      </div>
+    <footer class="bg-white dark:bg-slate-900 mt-8 py-6 transition-colors duration-300">
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 dark:text-gray-400">
+      <p class="text-sm">&copy; 2025 Adobe. All rights reserved.</p>
+      <p class="text-sm mt-2">
+        Built by Team Ctrl-Alt-Complete
+        <a href="https://github.com/kushagra-a-singh/Adobe-Hackathon-2025_Team-Ctrl-Alt-Complete_Finale" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-500 hover:underline">
+          Link to GitHub
+        </a>
+        <span class="mx-2">|</span>
+        <a href="https://www.adobe.com/" target="_blank" rel="noopener noreferrer" class="font-semibold text-red-600 hover:underline">
+          Adobe
+        </a>
+      </p>
     </div>
   </footer>
 

@@ -1017,14 +1017,22 @@ async function uploadFiles() {
 // --- Indexing progress UI ---
 function ensureIndexingProgressUI() {
   let el = document.getElementById('indexingProgressBarContainer');
-  if (el) return el;
+  if (el) {
+    // Ensure it sits bottom-left even if it already exists
+    el.classList.remove('right-6');
+    el.classList.add('left-6');
+    return el;
+  }
   el = document.createElement('div');
   el.id = 'indexingProgressBarContainer';
-  el.className = 'fixed bottom-6 right-6 bg-white dark:bg-slate-800 shadow-xl rounded-xl p-4 w-80 z-40 hidden';
+  el.className = 'fixed bottom-6 left-6 bg-white dark:bg-slate-800 shadow-xl rounded-xl p-4 w-80 z-40 hidden';
   el.innerHTML = `
     <div class="flex items-center mb-2">
       <div class="w-3 h-3 rounded-full bg-emerald-500 mr-2" id="indexingStatusDot"></div>
       <div class="text-sm font-semibold text-slate-700 dark:text-slate-100">Indexing</div>
+      <button id="indexingCloseBtn" class="ml-auto w-6 h-6 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white flex items-center justify-center" title="Dismiss">
+        <i class="fas fa-times text-xs"></i>
+      </button>
     </div>
     <div class="text-xs text-slate-500 dark:text-slate-400 mb-2" id="indexingStatusText">Preparing...</div>
     <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
@@ -1043,6 +1051,15 @@ function startIndexingStatusPolling() {
   const progressBar = document.getElementById('indexingProgressBar');
   const statusText = document.getElementById('indexingStatusText');
   const statusDot = document.getElementById('indexingStatusDot');
+  const closeBtn = document.getElementById('indexingCloseBtn');
+
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      if (indexingPollTimer) clearInterval(indexingPollTimer);
+      indexingPollTimer = null;
+      container.classList.add('hidden');
+    };
+  }
 
   const updateUI = (state) => {
     const {
@@ -1154,7 +1171,7 @@ async function loadDocument(doc) {
 }
 
 // Handle file uploads
-async function uploadFiles() {
+async function uploadFiles_legacy() {
   const input = document.getElementById('fileInput');
   if (!input.files.length) return;
   const form = new FormData();
@@ -1163,7 +1180,7 @@ async function uploadFiles() {
   await loadDocuments();
 }
 
-async function loadDocuments() {
+async function loadDocuments_legacy() {
   const res = await fetch('/api/documents');
   const docs = await res.json();
   const list = document.getElementById('docList');
@@ -1233,7 +1250,7 @@ async function loadDocuments() {
   updateSelectedCount();
 }
 
-function getSelectedDocs() {
+function getSelectedDocs_legacy() {
   const list = document.getElementById('docList');
   const docs = [];
   for (const li of list.children) {
@@ -1244,23 +1261,7 @@ function getSelectedDocs() {
   return docs;
 }
 
-// Update the page count display in the UI
-function updatePageCount() {
-  const pageCountEl = document.getElementById('pageCount');
-  if (pageCountEl) {
-    pageCountEl.textContent = ` / ${totalPages}`;
-  }
-
-  // Update toolbar state
-  updateToolbarState();
-}
-
-// Validate and clamp a page number to the valid range
-function clampPageNumber(page) {
-  return Math.max(1, Math.min(Math.floor(page || 1), totalPages));
-}
-
-function updateSelectedCount() {
+function updateSelectedCount_legacy() {
   const el = document.getElementById('selectedCount');
   const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
   if (!el) return;
@@ -1281,6 +1282,22 @@ function updateSelectedCount() {
       deleteSelectedBtn.classList.add('opacity-50', 'cursor-not-allowed');
     }
   }
+}
+
+// Update the page count display in the UI
+function updatePageCount() {
+  const pageCountEl = document.getElementById('pageCount');
+  if (pageCountEl) {
+    pageCountEl.textContent = ` / ${totalPages}`;
+  }
+
+  // Update toolbar state
+  updateToolbarState();
+}
+
+// Validate and clamp a page number to the valid range
+function clampPageNumber(page) {
+  return Math.max(1, Math.min(Math.floor(page || 1), totalPages));
 }
 
 function renderSections(sections, relatedMap) {
@@ -1763,7 +1780,7 @@ async function createPodcastFromTextSelection() {
     const statusToText = (state) => {
       if (state.phase === 'script') return 'Generating script...';
       if (state.phase === 'prepare_segments') return 'Preparing segments...';
-      if (state.phase === 'segments') return `Generating audio segments (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
       if (state.phase === 'combining') return 'Combining audio...';
       if (state.phase === 'done') return 'Finalizing...';
       if (state.phase === 'error') return 'Failed';
@@ -2122,7 +2139,7 @@ async function getDocumentPodcast() {
     const statusToText = (state) => {
       if (state.phase === 'script') return 'Generating script...';
       if (state.phase === 'prepare_segments') return 'Preparing segments...';
-      if (state.phase === 'segments') return `Generating audio segments (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
       if (state.phase === 'combining') return 'Combining audio...';
       if (state.phase === 'done') return 'Finalizing...';
       if (state.phase === 'error') return 'Failed';
@@ -3128,7 +3145,7 @@ async function podcast() {
     const statusToText = (state) => {
       if (state.phase === 'script') return 'Generating script...';
       if (state.phase === 'prepare_segments') return 'Preparing segments...';
-      if (state.phase === 'segments') return `Generating audio segments (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
       if (state.phase === 'combining') return 'Combining audio...';
       if (state.phase === 'done') return 'Finalizing...';
       if (state.phase === 'error') return 'Failed';
@@ -4500,8 +4517,6 @@ async function confirmResetIndex(btn) {
     if (overlay) overlay.remove();
   }
 }
-
-// ... existing code ...
 
 // Show upload progress UI
 function showUploadProgress() {

@@ -969,10 +969,17 @@ async function uploadFiles() {
         // Reload documents list
         await loadDocuments();
 
-        // Hide progress after a short delay
+        // Start indexing progress polling
+        try {
+          startIndexingStatusPolling();
+        } catch (e) {
+          console.warn('Indexing status polling failed to start:', e);
+        }
+
+        // Hide upload modal after a short delay
         setTimeout(() => {
           hideUploadProgress();
-        }, 1500);
+        }, 1200);
       } else {
         updateUploadProgress(0, 'Upload failed', 'error');
         toast(`Upload failed: ${xhr.statusText || 'Unknown error'}`, 'error');
@@ -1007,103 +1014,85 @@ async function uploadFiles() {
   }
 }
 
-// Show upload progress UI
-function showUploadProgress() {
-  // Create or show upload progress modal
-  let progressModal = document.getElementById('uploadProgressModal');
-  if (!progressModal) {
-    progressModal = document.createElement('div');
-    progressModal.id = 'uploadProgressModal';
-    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
-    progressModal.innerHTML = `
-      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-        <div class="text-center">
-          <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-cloud-upload-alt text-white text-lg"></i>
-          </div>
-          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Uploading Files...</h3>
-          
-          <!-- Progress Bar -->
-          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
-            <div id="uploadProgressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
-          </div>
-          
-          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">
-            <div id="uploadProgressText">Preparing upload...</div>
-          </div>
-          
-          <div class="text-xs text-slate-500 dark:text-slate-400">
-            <span id="uploadProgressPercent">0%</span> complete
-          </div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(progressModal);
-  }
-
-  progressModal.classList.remove('hidden');
+// --- Indexing progress UI ---
+function ensureIndexingProgressUI() {
+  let el = document.getElementById('indexingProgressBarContainer');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'indexingProgressBarContainer';
+  el.className = 'fixed bottom-6 right-6 bg-white dark:bg-slate-800 shadow-xl rounded-xl p-4 w-80 z-40 hidden';
+  el.innerHTML = `
+    <div class="flex items-center mb-2">
+      <div class="w-3 h-3 rounded-full bg-emerald-500 mr-2" id="indexingStatusDot"></div>
+      <div class="text-sm font-semibold text-slate-700 dark:text-slate-100">Indexing</div>
+    </div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mb-2" id="indexingStatusText">Preparing...</div>
+    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+      <div id="indexingProgressBar" class="bg-gradient-to-r from-emerald-500 to-blue-500 h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  return el;
 }
 
-// Update upload progress
-function updateUploadProgress(percent, status, state = 'uploading') {
-  const progressBar = document.getElementById('uploadProgressBar');
-  const progressText = document.getElementById('uploadProgressText');
-  const progressPercent = document.getElementById('uploadProgressPercent');
-  const progressModal = document.getElementById('uploadProgressModal');
+let indexingPollTimer = null;
+function startIndexingStatusPolling() {
+  const container = ensureIndexingProgressUI();
+  container.classList.remove('hidden');
 
-  if (progressBar) {
-    progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+  const progressBar = document.getElementById('indexingProgressBar');
+  const statusText = document.getElementById('indexingStatusText');
+  const statusDot = document.getElementById('indexingStatusDot');
 
-    // Update progress bar appearance based on state
-    progressBar.classList.remove('success', 'error');
-    if (state === 'success') {
-      progressBar.classList.add('success');
-    } else if (state === 'error') {
-      progressBar.classList.add('error');
-    }
-  }
+  const updateUI = (state) => {
+    const {
+      running,
+      phase,
+      total_docs,
+      docs_done,
+      current_doc,
+      message
+    } = state || {};
 
-  if (progressText) {
-    progressText.textContent = status;
-  }
-
-  if (progressPercent) {
-    progressPercent.textContent = `${Math.round(percent)}%`;
-  }
-
-  // Update modal icon based on state
-  if (progressModal) {
-    const icon = progressModal.querySelector('.fas');
-    if (icon) {
-      if (state === 'success') {
-        icon.className = 'fas fa-check-circle text-white text-lg';
-      } else if (state === 'error') {
-        icon.className = 'fas fa-exclamation-circle text-white text-lg';
-      } else {
-        icon.className = 'fas fa-cloud-upload-alt text-white text-lg';
-      }
+    if (!running && (!phase || phase === 'done')) {
+      progressBar.style.width = '100%';
+      statusText.textContent = 'Indexing complete';
+      statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500 mr-2';
+      setTimeout(() => container.classList.add('hidden'), 1200);
+      if (indexingPollTimer) clearInterval(indexingPollTimer);
+      indexingPollTimer = null;
+      return;
     }
 
-    // Update modal title based on state
-    const title = progressModal.querySelector('h3');
-    if (title) {
-      if (state === 'success') {
-        title.textContent = 'Upload Complete!';
-      } else if (state === 'error') {
-        title.textContent = 'Upload Failed';
-      } else {
-        title.textContent = 'Uploading Files...';
-      }
-    }
-  }
-}
+    const total = Math.max(1, total_docs || 0);
+    const done = Math.min(total, docs_done || 0);
+    const percent = Math.round((done / total) * 100);
 
-// Hide upload progress
-function hideUploadProgress() {
-  const progressModal = document.getElementById('uploadProgressModal');
-  if (progressModal) {
-    progressModal.classList.add('hidden');
-  }
+    progressBar.style.width = percent + '%';
+    statusText.textContent = message || (phase === 'rebuild' ? 'Rebuilding index...' : 'Indexing documents...');
+    statusDot.className = running ? 'w-3 h-3 rounded-full bg-amber-500 mr-2 animate-pulse' : 'w-3 h-3 rounded-full bg-slate-400 mr-2';
+
+    // Keep visible while running
+    container.classList.remove('hidden');
+  };
+
+  const poll = async () => {
+    try {
+      const res = await fetch('/api/indexing-status');
+      if (!res.ok) throw new Error('status not ok');
+      const state = await res.json();
+      updateUI(state);
+    } catch (e) {
+      // Stop polling silently on errors
+      if (indexingPollTimer) clearInterval(indexingPollTimer);
+      indexingPollTimer = null;
+    }
+  };
+
+  // Kick and poll
+  poll();
+  if (indexingPollTimer) clearInterval(indexingPollTimer);
+  indexingPollTimer = setInterval(poll, 800);
 }
 
 // ... existing code ...
@@ -1744,15 +1733,14 @@ async function createPodcastFromTextSelection() {
     return;
   }
 
-  // Show podcast generation progress
   showPodcastGenerationProgress();
+  updatePodcastProgressUI(5, 'Generating script...');
 
   try {
-    const response = await fetch('/api/enhanced-podcast', {
+    // Start
+    const startRes = await fetch('/api/podcast/start', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         selected_text: textSelectionInsights.selected_text,
         related_insights: textSelectionInsights.insights || [],
@@ -1761,77 +1749,62 @@ async function createPodcastFromTextSelection() {
         conversation_style: 'academic',
       }),
     });
+    if (!startRes.ok) throw new Error('Failed to start podcast');
+    const { task_id } = await startRes.json();
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Poll status
+    let finalUrl = null;
+    const pollStatus = async () => {
+      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
+      if (!res.ok) throw new Error('Status polling failed');
+      return res.json();
+    };
+
+    const statusToText = (state) => {
+      if (state.phase === 'script') return 'Generating script...';
+      if (state.phase === 'prepare_segments') return 'Preparing segments...';
+      if (state.phase === 'segments') return `Generating audio segments (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'combining') return 'Combining audio...';
+      if (state.phase === 'done') return 'Finalizing...';
+      if (state.phase === 'error') return 'Failed';
+      return 'Working...';
+    };
+
+    let keepPolling = true;
+    while (keepPolling) {
+      const state = await pollStatus();
+      updatePodcastProgressUI(state.progress || 0, statusToText(state));
+      if (state.status === 'completed' && state.url) {
+        finalUrl = state.url;
+        keepPolling = false;
+        break;
+      }
+      if (state.status === 'failed') {
+        throw new Error(state.error || 'Podcast generation failed');
+      }
+      await new Promise(r => setTimeout(r, 800));
     }
 
-    const result = await response.json();
-
-    // Hide progress and show success
     hidePodcastGenerationProgress();
 
-    if (result.url) {
+    if (finalUrl) {
       toast('Podcast generated successfully!', 'success');
-
-      // Set up the audio player with new source
       const player = document.getElementById('player');
-      const audioUrl = result.url + '?t=' + Date.now(); // Add timestamp to prevent caching
-
+      const audioUrl = finalUrl + '?t=' + Date.now();
       player.src = audioUrl;
-      player.setAttribute('title', `Podcast: ${textSelectionInsights.selected_text.substring(0, 50)}...`);
-
-      // Reset audio player initialization to ensure proper setup
       resetAudioPlayerInitialization();
-
-      // Initialize audio player UI before loading
       initializeAudioPlayer();
-
-      // Clear any existing audio info
-      const audioInfo = document.getElementById('audioInfo');
-      const audioTitle = document.getElementById('audioTitle');
-      if (audioInfo) audioInfo.classList.add('hidden');
-      if (audioTitle) audioTitle.textContent = 'Loading podcast...';
-
-      // Wait for audio to load metadata
       await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Audio loading timeout'));
-        }, 15000); // 15 second timeout
-
-        player.addEventListener('loadedmetadata', () => {
-          clearTimeout(timeout);
-          resolve();
-        }, { once: true });
-
-        player.addEventListener('error', (e) => {
-          clearTimeout(timeout);
-          reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
-        }, { once: true });
-
-        player.load(); // Force load
+        const timeout = setTimeout(() => reject(new Error('Audio loading timeout')), 15000);
+        player.addEventListener('loadedmetadata', () => { clearTimeout(timeout); resolve(); }, { once: true });
+        player.addEventListener('error', (e) => { clearTimeout(timeout); reject(new Error('Audio loading failed')); }, { once: true });
+        player.load();
       });
-
-      // Play the podcast
-      await player.play();
-
-      // Update UI to show it's playing
-      const playPauseBtn = document.getElementById('playPauseBtn');
-      if (playPauseBtn) {
-        const icon = playPauseBtn.querySelector('i');
-        if (icon) icon.className = 'fas fa-pause text-sm';
-      }
-
-      if (audioInfo) audioInfo.classList.remove('hidden');
-      if (audioTitle) audioTitle.textContent = `Podcast: ${textSelectionInsights.selected_text.substring(0, 50)}...`;
-
-    } else {
-      toast('Failed to generate podcast', 'error');
+      await player.play().catch(() => { });
     }
   } catch (error) {
-    console.error('Error creating podcast:', error);
     hidePodcastGenerationProgress();
-    toast(`Error creating podcast: ${error.message}`, 'error');
+    toast(error.message || 'Failed to generate podcast', 'error');
   }
 }
 
@@ -2127,25 +2100,59 @@ async function getDocumentPodcast() {
 
     console.log('Creating enhanced podcast with data:', enhancedPodcastData);
 
-    // Send to enhanced podcast endpoint for dual voice generation
-    const response = await fetch('/api/enhanced-podcast', {
+    // Use async podcast with progress polling
+    showPodcastGenerationProgress();
+    updatePodcastProgressUI(5, 'Generating script...');
+
+    // Start
+    const startRes = await fetch('/api/podcast/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(enhancedPodcastData)
     });
+    if (!startRes.ok) throw new Error(await startRes.text());
+    const { task_id } = await startRes.json();
 
-    if (!response.ok) throw new Error(await response.text());
+    const pollStatus = async () => {
+      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
+      if (!res.ok) throw new Error('Status polling failed');
+      return res.json();
+    };
 
-    const data = await response.json();
-    const player = document.getElementById('player');
+    const statusToText = (state) => {
+      if (state.phase === 'script') return 'Generating script...';
+      if (state.phase === 'prepare_segments') return 'Preparing segments...';
+      if (state.phase === 'segments') return `Generating audio segments (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'combining') return 'Combining audio...';
+      if (state.phase === 'done') return 'Finalizing...';
+      if (state.phase === 'error') return 'Failed';
+      return 'Working...';
+    };
 
-    console.log('Enhanced podcast response:', data);
-    console.log('Audio URL from API:', data.url);
+    let finalUrl = null;
+    let keepPolling = true;
+    while (keepPolling) {
+      const state = await pollStatus();
+      updatePodcastProgressUI(state.progress || 0, statusToText(state));
+      if (state.status === 'completed' && state.url) {
+        finalUrl = state.url;
+        keepPolling = false;
+        break;
+      }
+      if (state.status === 'failed') {
+        throw new Error(state.error || 'Podcast generation failed');
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
 
-    // Set up the audio player with new source
-    const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+    hidePodcastGenerationProgress();
+
+    if (!finalUrl) throw new Error('No URL produced');
+
+    const audioUrl = finalUrl + '?t=' + Date.now(); // Add timestamp to prevent caching
     console.log('Final audio URL:', audioUrl);
 
+    const player = document.getElementById('player');
     player.src = audioUrl;
     player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
 
@@ -2174,7 +2181,7 @@ async function getDocumentPodcast() {
 
       player.addEventListener('error', (e) => {
         clearTimeout(timeout);
-        reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+        reject(new Error(`Audio loading failed`));
       }, { once: true });
 
       player.load(); // Force load
@@ -3099,25 +3106,59 @@ async function podcast() {
 
     console.log('Creating enhanced podcast with data:', enhancedPodcastData);
 
-    // Send to enhanced podcast endpoint for dual voice generation
-    const response = await fetch('/api/enhanced-podcast', {
+    // Use async podcast with progress polling
+    showPodcastGenerationProgress();
+    updatePodcastProgressUI(5, 'Generating script...');
+
+    // Start
+    const startRes = await fetch('/api/podcast/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(enhancedPodcastData)
     });
+    if (!startRes.ok) throw new Error(await startRes.text());
+    const { task_id } = await startRes.json();
 
-    if (!response.ok) throw new Error(await response.text());
+    const pollStatus = async () => {
+      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
+      if (!res.ok) throw new Error('Status polling failed');
+      return res.json();
+    };
 
-    const data = await response.json();
-    const player = document.getElementById('player');
+    const statusToText = (state) => {
+      if (state.phase === 'script') return 'Generating script...';
+      if (state.phase === 'prepare_segments') return 'Preparing segments...';
+      if (state.phase === 'segments') return `Generating audio segments (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === 'combining') return 'Combining audio...';
+      if (state.phase === 'done') return 'Finalizing...';
+      if (state.phase === 'error') return 'Failed';
+      return 'Working...';
+    };
 
-    console.log('Enhanced podcast response:', data);
-    console.log('Audio URL from API:', data.url);
+    let finalUrl = null;
+    let keepPolling = true;
+    while (keepPolling) {
+      const state = await pollStatus();
+      updatePodcastProgressUI(state.progress || 0, statusToText(state));
+      if (state.status === 'completed' && state.url) {
+        finalUrl = state.url;
+        keepPolling = false;
+        break;
+      }
+      if (state.status === 'failed') {
+        throw new Error(state.error || 'Podcast generation failed');
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
 
-    // Set up the audio player with new source
-    const audioUrl = data.url + '?t=' + Date.now(); // Add timestamp to prevent caching
+    hidePodcastGenerationProgress();
+
+    if (!finalUrl) throw new Error('No URL produced');
+
+    const audioUrl = finalUrl + '?t=' + Date.now(); // Add timestamp to prevent caching
     console.log('Final audio URL:', audioUrl);
 
+    const player = document.getElementById('player');
     player.src = audioUrl;
     player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
 
@@ -3146,7 +3187,7 @@ async function podcast() {
 
       player.addEventListener('error', (e) => {
         clearTimeout(timeout);
-        reject(new Error(`Audio loading failed: ${e.message || 'Unknown error'}`));
+        reject(new Error(`Audio loading failed`));
       }, { once: true });
 
       player.load(); // Force load
@@ -3282,16 +3323,12 @@ function showPodcastGenerationProgress() {
           <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Generating Podcast...</h3>
           
           <!-- Progress Bar -->
-          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-2">
             <div id="podcastProgress" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
           </div>
-          
-          <div class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            <div id="podcastStatus">Initializing podcast generation...</div>
-          </div>
-          
-          <div class="text-xs text-slate-500 dark:text-slate-400">
-            This may take a few minutes for high-quality audio
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3">
+            <div id="podcastStatus">Initializing...</div>
+            <div id="podcastPercent">0%</div>
           </div>
         </div>
       </div>
@@ -3300,38 +3337,20 @@ function showPodcastGenerationProgress() {
   }
 
   progressModal.classList.remove('hidden');
+}
 
-  // Simulate progress updates
-  let progress = 0;
-  const progressBar = document.getElementById('podcastProgress');
+function updatePodcastProgressUI(percent, text) {
+  const bar = document.getElementById('podcastProgress');
   const status = document.getElementById('podcastStatus');
-
-  const progressInterval = setInterval(() => {
-    progress += Math.random() * 8;
-    if (progress > 85) progress = 85;
-
-    if (progressBar) progressBar.style.width = progress + '%';
-    if (status) {
-      if (progress < 20) status.textContent = 'Analyzing selected text...';
-      else if (progress < 40) status.textContent = 'Generating conversation script...';
-      else if (progress < 60) status.textContent = 'Creating voice segments...';
-      else if (progress < 80) status.textContent = 'Mixing audio...';
-      else status.textContent = 'Finalizing podcast...';
-    }
-  }, 300);
-
-  // Store interval for cleanup
-  progressModal.dataset.progressInterval = progressInterval;
+  const pct = document.getElementById('podcastPercent');
+  if (bar) bar.style.width = Math.max(0, Math.min(100, percent)) + '%';
+  if (pct) pct.textContent = `${Math.round(Math.max(0, Math.min(100, percent)))}%`;
+  if (status && text) status.textContent = text;
 }
 
 function hidePodcastGenerationProgress() {
   const progressModal = document.getElementById('podcastProgressModal');
   if (progressModal) {
-    // Clear progress interval
-    const interval = progressModal.dataset.progressInterval;
-    if (interval) clearInterval(parseInt(interval));
-
-    // Hide modal
     progressModal.classList.add('hidden');
   }
 }
@@ -4479,5 +4498,106 @@ async function confirmResetIndex(btn) {
   } finally {
     const overlay = document.querySelector('.fixed.inset-0.bg-black\\/50');
     if (overlay) overlay.remove();
+  }
+}
+
+// ... existing code ...
+
+// Show upload progress UI
+function showUploadProgress() {
+  // Create or show upload progress modal
+  let progressModal = document.getElementById('uploadProgressModal');
+  if (!progressModal) {
+    progressModal = document.createElement('div');
+    progressModal.id = 'uploadProgressModal';
+    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    progressModal.innerHTML = `
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div class="text-center">
+          <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-cloud-upload-alt text-white text-lg"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-slate-800 dark:text-white mb-4">Uploading Files...</h3>
+          
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 mb-4">
+            <div id="uploadProgressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          
+          <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">
+            <div id="uploadProgressText">Preparing upload...</div>
+          </div>
+          
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            <span id="uploadProgressPercent">0%</span> complete
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(progressModal);
+  }
+
+  progressModal.classList.remove('hidden');
+}
+
+// Update upload progress
+function updateUploadProgress(percent, status, state = 'uploading') {
+  const progressBar = document.getElementById('uploadProgressBar');
+  const progressText = document.getElementById('uploadProgressText');
+  const progressPercent = document.getElementById('uploadProgressPercent');
+  const progressModal = document.getElementById('uploadProgressModal');
+
+  if (progressBar) {
+    progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+
+    // Update progress bar appearance based on state
+    progressBar.classList.remove('success', 'error');
+    if (state === 'success') {
+      progressBar.classList.add('success');
+    } else if (state === 'error') {
+      progressBar.classList.add('error');
+    }
+  }
+
+  if (progressText) {
+    progressText.textContent = status;
+  }
+
+  if (progressPercent) {
+    progressPercent.textContent = `${Math.round(percent)}%`;
+  }
+
+  // Update modal icon based on state
+  if (progressModal) {
+    const icon = progressModal.querySelector('.fas');
+    if (icon) {
+      if (state === 'success') {
+        icon.className = 'fas fa-check-circle text-white text-lg';
+      } else if (state === 'error') {
+        icon.className = 'fas fa-exclamation-circle text-white text-lg';
+      } else {
+        icon.className = 'fas fa-cloud-upload-alt text-white text-lg';
+      }
+    }
+
+    // Update modal title based on state
+    const title = progressModal.querySelector('h3');
+    if (title) {
+      if (state === 'success') {
+        title.textContent = 'Upload Complete!';
+      } else if (state === 'error') {
+        title.textContent = 'Upload Failed';
+      } else {
+        title.textContent = 'Uploading Files...';
+      }
+    }
+  }
+}
+
+// Hide upload progress
+function hideUploadProgress() {
+  const progressModal = document.getElementById('uploadProgressModal');
+  if (progressModal) {
+    progressModal.classList.add('hidden');
   }
 }

@@ -73,9 +73,7 @@ if os.path.exists(env_path):
     load_dotenv(env_path)
     print(f"✅ .env file loaded successfully")
     print(f"🔑 GOOGLE_API_KEY loaded: {'Yes' if os.getenv('GOOGLE_API_KEY') else 'No'}")
-    print(
-        f"🔑 AZURE_TTS_KEY loaded: {'Yes' if os.getenv('AZURE_TTS_KEY') else 'No'}"
-    )
+    print(f"🔑 AZURE_TTS_KEY loaded: {'Yes' if os.getenv('AZURE_TTS_KEY') else 'No'}")
 else:
     print(f"❌ .env file not found at: {env_path}")
     # Try alternative paths
@@ -108,6 +106,140 @@ app.add_middleware(
 # Static mounts
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/files", StaticFiles(directory=FILES_DIR), name="files")
+
+# ----------------------------------------------------------------------------
+# In-memory progress tracking
+# ----------------------------------------------------------------------------
+# Document indexing progress (single global job at a time)
+INDEX_PROGRESS = {
+    "running": False,
+    "phase": None,  # 'uploaded' | 'rebuild' | None
+    "total_docs": 0,
+    "docs_done": 0,
+    "current_doc": None,
+    "message": None,
+    "started_at": None,
+    "ended_at": None,
+}
+
+# Podcast generation tasks (multiple concurrent)
+PODCAST_TASKS = {}
+
+
+def _set_index_progress(running: bool = None, **kwargs):
+    if running is not None:
+        INDEX_PROGRESS["running"] = running
+    if running and INDEX_PROGRESS.get("started_at") is None:
+        INDEX_PROGRESS["started_at"] = time.time()
+    for k, v in kwargs.items():
+        INDEX_PROGRESS[k] = v
+    if not INDEX_PROGRESS["running"]:
+        INDEX_PROGRESS["ended_at"] = time.time()
+
+
+@app.get("/api/indexing-status")
+def get_indexing_status():
+    """Return current indexing progress for frontend polling."""
+    return INDEX_PROGRESS
+
+
+@app.get("/api/podcast/status")
+def get_podcast_status(task_id: str = Query(..., description="Podcast task id")):
+    """Return current podcast generation status for a given task."""
+    task = PODCAST_TASKS.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+@app.post("/api/podcast/start")
+def start_podcast(req: EnhancedPodcastRequest):
+    """Start enhanced podcast async generation and return a task id for progress polling."""
+    task_id = str(uuid.uuid4())
+    PODCAST_TASKS[task_id] = {
+        "task_id": task_id,
+        "status": "queued",
+        "phase": "initializing",
+        "progress": 0,
+        "segments_total": 0,
+        "segments_done": 0,
+        "url": None,
+        "error": None,
+        "started_at": time.time(),
+        "ended_at": None,
+    }
+
+    def progress_cb(event: str, data: dict = None):
+        state = PODCAST_TASKS.get(task_id)
+        if not state:
+            return
+        data = data or {}
+        # Update by event type
+        if event == "script_started":
+            state["status"] = "running"
+            state["phase"] = "script"
+            state["progress"] = max(state.get("progress", 0), 5)
+        elif event == "script_done":
+            state["phase"] = "prepare_segments"
+            state["progress"] = max(state.get("progress", 0), 10)
+        elif event == "segments_parsed":
+            state["phase"] = "segments"
+            state["segments_total"] = data.get("total", 0)
+            state["segments_done"] = 0
+            state["progress"] = max(state.get("progress", 0), 15)
+        elif event == "segment_generated":
+            # Increment segments_done and compute percent (up to 85%)
+            state["segments_done"] = data.get("done", state.get("segments_done", 0))
+            total = max(1, state.get("segments_total", 1))
+            percent = 15 + int(70 * (state["segments_done"] / total))
+            state["progress"] = max(state.get("progress", 0), min(85, percent))
+            state["phase"] = "segments"
+        elif event == "combining":
+            state["phase"] = "combining"
+            state["progress"] = max(state.get("progress", 0), 90)
+        elif event == "done":
+            state["phase"] = "done"
+            state["status"] = "completed"
+            state["progress"] = 100
+            state["url"] = data.get("url")
+            state["ended_at"] = time.time()
+        elif event == "error":
+            state["phase"] = "error"
+            state["status"] = "failed"
+            state["error"] = data.get("message")
+            state["ended_at"] = time.time()
+
+    def run_task():
+        try:
+            # Mark running
+            PODCAST_TASKS[task_id]["status"] = "running"
+            PODCAST_TASKS[task_id]["phase"] = "script"
+            progress_cb("script_started")
+
+            # Generate unique filename
+            timestamp = int(time.time())
+            out_name = f"enhanced_podcast_{timestamp}.mp3"
+            out_path = os.path.join(STATIC_DIR, out_name)
+
+            # Create enhanced podcast with progress callback
+            def wrapper_cb(event: str, data: dict = None):
+                progress_cb(event, data)
+
+            response = enhanced_podcast.create_enhanced_podcast(
+                request=req,
+                output_file=out_path,
+                static_dir=STATIC_DIR,
+                progress_cb=wrapper_cb,
+            )
+
+            # Completed
+            progress_cb("done", {"url": response.url})
+        except Exception as e:
+            progress_cb("error", {"message": str(e)})
+
+    # Start background thread and return task id
+    threading.Thread(target=run_task, daemon=True).start()
+    return {"task_id": task_id}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -182,21 +314,53 @@ async def upload(files: List[UploadFile] = File(...)):
                 print(
                     f"Starting to index {len(uploaded_filenames)} uploaded documents..."
                 )
-                results = document_index.index_documents(FILES_DIR, uploaded_filenames)
-                print(f"Indexing completed for uploaded documents: {results}")
+                # Phase 1: index newly uploaded docs (per-doc for progress)
+                _set_index_progress(
+                    running=True,
+                    phase="uploaded",
+                    total_docs=len(uploaded_filenames),
+                    docs_done=0,
+                    current_doc=None,
+                    message="Indexing uploaded documents...",
+                )
+                for i, doc_name in enumerate(uploaded_filenames, start=1):
+                    _set_index_progress(
+                        current_doc=doc_name,
+                        message=f"Indexing {doc_name} ({i}/{len(uploaded_filenames)})",
+                    )
+                    results = document_index.index_documents(FILES_DIR, [doc_name])
+                    print(f"Indexing completed for {doc_name}: {results}")
+                    _set_index_progress(docs_done=i)
 
-                # Also trigger a full index rebuild to ensure consistency
+                # Phase 2: full rebuild for consistency
                 try:
                     all_docs = [doc.filename for doc in storage.list_pdfs(FILES_DIR)]
-                    rebuild_results = document_index.index_documents(
-                        FILES_DIR, all_docs
+                    _set_index_progress(
+                        phase="rebuild",
+                        total_docs=len(all_docs),
+                        docs_done=0,
+                        current_doc=None,
+                        message="Rebuilding full index...",
                     )
-                    print(f"Full index rebuild completed: {rebuild_results}")
+                    for i, doc_name in enumerate(all_docs, start=1):
+                        _set_index_progress(
+                            current_doc=doc_name,
+                            message=f"Rebuilding: {doc_name} ({i}/{len(all_docs)})",
+                        )
+                        rebuild_results = document_index.index_documents(
+                            FILES_DIR, [doc_name]
+                        )
+                        print(f"Full rebuild indexed {doc_name}: {rebuild_results}")
+                        _set_index_progress(docs_done=i)
+                    print("Full index rebuild completed")
                 except Exception as rebuild_error:
                     print(f"Warning: Full index rebuild failed: {rebuild_error}")
+                finally:
+                    _set_index_progress(running=False, message="Indexing complete")
 
             except Exception as e:
                 print(f"Error indexing uploaded documents: {e}")
+                _set_index_progress(running=False, message=f"Error: {e}")
 
         threading.Thread(target=index_uploaded_docs, daemon=True).start()
     except Exception as e:

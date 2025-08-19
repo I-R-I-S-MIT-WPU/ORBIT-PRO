@@ -825,15 +825,15 @@ class DocumentIndex:
 
             # Sort by similarity and group by document
             similarities.sort(key=lambda x: x[0], reverse=True)
-
-            # Group by document and get best similarity per document
             doc_similarities = {}
             for similarity, chunk in similarities:
                 if chunk.document not in doc_similarities:
                     doc_similarities[chunk.document] = {
-                        "similarity_score": similarity,
+                        "similarity_score": float(
+                            similarity
+                        ),  # Convert numpy.float32 to Python float
                         "best_chunk": chunk,
-                        "reason": f"High semantic similarity ({similarity:.3f}) with current document",
+                        "reason": f"High semantic similarity ({float(similarity):.3f}) with current document",
                     }
 
             # Convert to list and sort

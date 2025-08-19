@@ -289,20 +289,20 @@ async function loadPage(pageNum) {
 
   } catch (error) {
     console.error('Error loading page:', error);
-    toast(`Failed to load page ${pageNum}. Please try again.`, 'error');
+    // toast(`Failed to load page ${pageNum}. Please try again.`, 'error');
 
     // Show error state in the viewer
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-red-50 dark:bg-red-900/20';
-    errorDiv.innerHTML = `
-      <div class="text-center">
-        <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
-        <p class="text-red-600 dark:text-red-400 text-sm">Failed to load page ${pageNum}</p>
-        <button onclick="retryLoadPage(${pageNum})" class="mt-2 px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">
-          Retry
-        </button>
-      </div>
-    `;
+    // const errorDiv = document.createElement('div');
+    // errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-red-50 dark:bg-red-900/20';
+    // errorDiv.innerHTML = `
+    //   <div class="text-center">
+    //     <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+    //     <p class="text-red-600 dark:text-red-400 text-sm">Failed to load page ${pageNum}</p>
+    //     <button onclick="retryLoadPage(${pageNum})" class="mt-2 px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">
+    //       Retry
+    //     </button>
+    //   </div>
+    // `;
 
     const container = document.getElementById('pdf-viewer-container');
     if (container) {

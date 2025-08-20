@@ -1,6 +1,11 @@
 # Adobe Hackathon Finale - Intelligent PDF Analysis Platform
 
 A sophisticated PDF analysis platform that provides intelligent insights, cross-document connections, and interactive features for research and document analysis. Built with Python 3.11.9 and modern AI technologies.
+
+Project Walkthrough Video: https://www.youtube.com/watch?v=FKIqjkv5woM
+
+Pitch Deck PPT: https://www.canva.com/design/DAGwiWzsxK4/hQxQrQjRprA5I_1afaxL_g/edit?utm_content=DAGwiWzsxK4&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
+
 ## POWERSHELL COMMANDS
 
 ```powershell
@@ -95,13 +100,17 @@ docker logs -f adobe-hackathon
 
 > **Note**: While both approaches provide the same core functionality, the PDF.js implementation offers a more direct and user-friendly experience that better aligns with the intended feature requirements.
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/56de8685-c1f3-4d90-aa2e-f9a2ee7302bb" />
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/3ee36bf7-9002-48de-9da8-2c6eb8d302f7" />
+
 ## 🏗️ Architecture
 
 ### **Document Processing Pipeline**
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   PDF Upload    │───▶│  Document Index  │───▶│  Vector Storage │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+└─────────────────┘     └──────────────────┘     └─────────────────┘
                               │
                               ▼
                        ┌──────────────────┐
@@ -154,10 +163,10 @@ docker logs -f adobe-hackathon
 
 #### **PDF.js Direct Selection Approach (Enhanced)**
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+┌─────────────────┐     ┌──────────────────┐    ┌─────────────────┐
 │ PDF Document    │───▶│ Direct Text      │───▶│ Instant         │
-│ (PDF.js)        │    │ Selection        │    │ Analysis        │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+│ (PDF.js)        │    │ Selection        │     │ Analysis        │
+└─────────────────┘    └──────────────────┘     └─────────────────┘
                               │
                               ▼
                        ┌──────────────────┐
@@ -238,14 +247,14 @@ docker logs -f adobe-hackathon
 
 2. **Run the container**
    ```bash
-   docker run -d \
-     --name adobe-hackathon \
-     -p 8080:8080 \
-     -e LLM_PROVIDER=gemini \
-     -e GOOGLE_API_KEY=your_google_api_key \
-     -e AZURE_TTS_KEY=your_AZURE_TTS_KEY \
-     -e AZURE_SPEECH_REGION=your_azure_region \
-     -e ADOBE_EMBED_API_KEY=your_adobe_api_key \
+   docker run -d `
+     --name adobe-hackathon `
+     -p 8080:8080 `
+     -e LLM_PROVIDER=gemini `
+     -e GOOGLE_API_KEY=your_google_api_key `
+     -e AZURE_TTS_KEY=your_AZURE_TTS_KEY `
+     -e AZURE_SPEECH_REGION=your_azure_region `
+     -e ADOBE_EMBED_API_KEY=your_adobe_api_key `
      adobe-hackathon-finale
    ```
 

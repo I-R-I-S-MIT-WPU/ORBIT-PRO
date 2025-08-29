@@ -1,32 +1,10 @@
 # Adobe Hackathon Finale - Intelligent PDF Analysis Platform
 
-A sophisticated PDF analysis platform that provides intelligent insights, cross-document connections, and interactive features for research and document analysis. Built with Python 3.11.9 and modern AI technologies.
+A sophisticated PDF analysis platform that provides intelligent insights, cross-document connections and interactive features for research and document analysis. Built with Python 3.11.9 and modern AI technologies.
 
 Project Walkthrough Video: https://www.youtube.com/watch?v=FKIqjkv5woM
 
 Pitch Deck PPT: https://www.canva.com/design/DAGwiWzsxK4/hQxQrQjRprA5I_1afaxL_g/edit?utm_content=DAGwiWzsxK4&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
-
-## POWERSHELL COMMANDS
-
-```powershell
-docker build --platform linux/amd64 -t adobe-hackathon-finale .
-
-docker run -d --name adobe-hackathon `
-  -p 8080:8080 `
-  -e LLM_PROVIDER=gemini `
-  -e GEMINI_MODEL=gemini-2.0-flash `
-  -e GOOGLE_API_KEY=AIzaSyCQyM9hfqmLXgnjhxS8PzfrAzk0RjZR4H4 `
-  -e TTS_PROVIDER=azure_speech `
-  -e AZURE_TTS_KEY=3Hjeod2UDdc0pLNh6Js5TyuG14cawwqbCceL3ARN56tDjmqiVal7JQQJ99BHACGhslBXJ3w3AAAYACOGH3Bu `
-  -e AZURE_SPEECH_REGION=centralindia `
-  -e ADOBE_EMBED_API_KEY=8fa6dfb2e75241cb9b270b3be9200651 `
-  adobe-hackathon-finale
-```
-
-**See live logs (PowerShell):**
-```powershell
-docker logs -f adobe-hackathon
-```
 
 ## 🚀 Key Features
 
@@ -133,10 +111,10 @@ docker logs -f adobe-hackathon
 
 ### **Enhanced Features Architecture**
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+┌─────────────────┐    ┌──────────────────┐     ┌─────────────────┐
 │ Document Input  │───▶│ AI Analysis      │───▶│ Multi-Modal     │
-│                 │    │ Engine           │    │ Output          │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+│                 │    │ Engine           │     │ Output          │
+└─────────────────┘    └──────────────────┘     └─────────────────┘
                               │
                               ▼
                        ┌──────────────────┐
@@ -149,10 +127,10 @@ docker logs -f adobe-hackathon
 
 #### **Adobe PDF Embed API Approach (Initial)**
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ PDF Document    │───▶│ Text Selection   │───▶│ Copy to Button  │
-│ (Adobe Embed)   │    │ (Manual Copy)    │    │ Input Field     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌─────────────────┐     ┌──────────────────┐    ┌─────────────────┐
+│ PDF Document    │───▶ │ Text Selection  │───▶│ Copy to Button  │
+│ (Adobe Embed)   │     │ (Manual Copy)    │    │ Input Field     │
+└─────────────────┘     └──────────────────┘    └─────────────────┘
                               │
                               ▼
                        ┌──────────────────┐
@@ -237,30 +215,35 @@ docker logs -f adobe-hackathon
    ```
    http://localhost:8080
    ```
-
 #### **Option 2: Docker Deployment**
 
 1. **Build the Docker image**
    ```bash
    docker build --platform linux/amd64 -t adobe-hackathon-finale .
    ```
-
+   
 2. **Run the container**
    ```bash
-   docker run -d `
-     --name adobe-hackathon `
-     -p 8080:8080 `
-     -e LLM_PROVIDER=gemini `
-     -e GOOGLE_API_KEY=your_google_api_key `
-     -e AZURE_TTS_KEY=your_AZURE_TTS_KEY `
-     -e AZURE_SPEECH_REGION=your_azure_region `
-     -e ADOBE_EMBED_API_KEY=your_adobe_api_key `
-     adobe-hackathon-finale
+   docker run -d --name adobe-hackathon `
+   -p 8080:8080 `
+   -e LLM_PROVIDER=gemini `
+   -e GEMINI_MODEL=gemini-2.0-flash `
+   -e GOOGLE_API_KEY=your_google_api_key `
+   -e TTS_PROVIDER=azure_speech `
+   -e AZURE_TTS_KEY=your_azure_tts_key `
+   -e AZURE_SPEECH_REGION=centralindia `
+   -e ADOBE_EMBED_API_KEY=your_adobe_api_key `
+   adobe-hackathon-finale
    ```
 
 3. **Access the application**
    ```
    http://localhost:8080
+   ```
+
+4. **See live logs (PowerShell):**
+   ```powershell
+   docker logs -f adobe-hackathon
    ```
 
 ### **Environment Variables**

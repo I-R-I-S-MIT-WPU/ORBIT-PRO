@@ -18,3 +18,9 @@ backend/document_index/
 .DS_Store
 Thumbs.db
 .env
+
+
+# old model ( large file)
+.env
+*.safetensors
+models/

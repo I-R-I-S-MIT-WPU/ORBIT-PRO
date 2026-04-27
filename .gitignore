@@ -1,26 +1,14 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
+
+# Virtual env
 .venv/
 
-# Env
+# Python cache
+__pycache__/
+*.pyc
+
+# Env files
 .env
 
-temp/
-
-# Data
-files/
-# static/
-backend/document_index/
-
-# OS
-.DS_Store
-Thumbs.db
-.env
-
-
-# old model ( large file)
-.env
+# Models / large files
 *.safetensors
-models/
+*.bin

@@ -1,772 +1,612 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ctrl-Alt-Complete · Document Intelligence Platform - Adobe Hackathon Finale</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- PDF.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
-    rel="stylesheet">
-</head>
-
-<body class="min-h-screen font-['Inter'] antialiased" style="background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);">
-  <!-- Animated Background Elements -->
-  <div class="fixed inset-0 overflow-hidden pointer-events-none">
-    <div
-      class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ORBIT · Document Intelligence Platform</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet" />
+  </head>
+  <body
+    class="min-h-screen font-['Inter'] antialiased bg-slate-950 text-slate-100 overflow-hidden">
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+      <div
+        class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-600/10 to-red-600/10 rounded-full blur-3xl"></div>
+      <div
+        class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-red-600/10 to-blue-600/10 rounded-full blur-3xl"></div>
     </div>
-    <div
-      class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-emerald-400/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000">
-    </div>
-  </div>
-  <!-- Header -->
-  <header
-    class="relative bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-b border-white/20 dark:border-slate-700/50 sticky top-0 z-50 shadow-lg">
-    <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-4 flex flex-col gap-2">
 
-      <!-- Row 1: Logo and Document Intelligence -->
-      <div class="flex flex-row flex-wrap items-center justify-center mb-4 w-full gap-2 sm:gap-4">
-        <a href="https://www.adobe.com/" target="_blank" rel="noopener noreferrer" tabindex="-1">
-          <!-- Adobe Logo SVG -->
-          <svg id="adobeLogo" width="40" height="40" viewBox="0 0 240 234" xmlns="http://www.w3.org/2000/svg"
-            alt="Adobe Logo">
-            <path fill="#FA0F00" d="M42.5 0h155L239 234H0L42.5 0z" />
-            <path fill="#FA0F00" d="M132.5 0H239L197.5 234H85L132.5 0z" />
-            <path fill="#FA0F00" d="M85 234h57L97 130.5 85 234z" />
-            <path fill="#FFFFFF" d="M85 234h57L97 130.5 85 234z" />
-            <path fill="#FA0F00" d="M151.5 135.5L184 234h-32l-13-32h-24l13-32h23.5z" />
-            <text x="50%" y="50%" text-anchor="middle" dy=".35em" font-family="Arial, sans-serif" font-size="160"
-              fill="#FFFFFF" font-weight="bold">A</text>
-          </svg>
-        </a>
-        <div class="flex flex-col items-start justify-center min-w-0">
-          <h1 class="text-lg sm:text-2xl md:text-3xl font-bold text-red-600 leading-tight whitespace-nowrap">Adobe Document
-            Intelligence</h1>
-        </div>
-      </div>
-
-      <!-- Row 2: Optional fields, inputs, badges, and theme toggle -->
-      <div class="flex flex-row items-center justify-between gap-4 w-full mb-4">
-        <span
-          class="text-base font-semibold text-slate-800 dark:text-white optional-inputs-label whitespace-nowrap flex-shrink-0">Optional
-          Inputs:</span>
-        <!-- Persona Input -->
-        <div class="relative group flex-1 min-w-[160px] max-w-xs mx-2">
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl blur opacity-0 group-hover:opacity-20 transition-opacity duration-300">
-          </div>
-          <div class="relative w-full">
-            <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
-            <input id="persona" list="persona-options"
-              class="pl-12 pr-6 py-2 sm:py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-xl text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 w-full shadow-lg hover:shadow-xl overflow-x-auto whitespace-nowrap text-ellipsis appearance-auto"
-              style="overflow-x:auto; white-space:nowrap; text-overflow:ellipsis;"
-              placeholder="Persona (e.g. Undergraduate Chemistry Student)" />
-            <datalist id="persona-options">
-              <option value="Undergraduate Chemistry Student">
-              <option value="Researcher">
-              <option value="Business Analyst">
-              <option value="High School Teacher">
-              <option value="General User">
-            </datalist>
-          </div>
-        </div>
-        <!-- Job Input -->
-        <div class="relative group flex-1 min-w-[160px] max-w-xs mx-2">
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl blur opacity-0 group-hover:opacity-20 transition-opacity duration-300">
-          </div>
-          <div class="relative w-full">
-            <i class="fas fa-tasks absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
-            <input id="job" list="job-options"
-              class="pl-12 pr-6 py-2 sm:py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-xl text-base focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300 w-full shadow-lg hover:shadow-xl overflow-x-auto whitespace-nowrap text-ellipsis appearance-auto"
-              style="overflow-x:auto; white-space:nowrap; text-overflow:ellipsis;"
-              placeholder="Job to be Done (e.g. Identify key concepts)" />
-            <datalist id="job-options">
-              <option value="Identify key concepts">
-              <option value="Summarize document">
-              <option value="Extract data">
-              <option value="Find main arguments">
-              <option value="Create quiz">
-            </datalist>
-          </div>
-        </div>
-        <!-- Status Badges -->
-        <div class="flex items-center space-x-3 flex-shrink-0 mx-2">
-          <div class="relative group">
-            <span id="llmBadge"
-              class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
-              <i class="fas fa-robot mr-2 text-blue-200"></i>
-              <span id="llmStatus">Gemini</span>
-              <!-- No hover effect -->
-            </span>
-          </div>
-          <div class="relative group">
-            <span id="ttsBadge"
-              class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg">
-              <i class="fas fa-microphone mr-2 text-emerald-200"></i>
-              <span id="ttsStatus">Azure</span>
-              <!-- No hover effect -->
-            </span>
-          </div>
-        </div>
-        <!-- Theme Toggle -->
-        <button id="themeToggle"
-          class="relative p-3 rounded-xl border border-slate-200/50 dark:border-slate-600/50 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex-shrink-0 mx-2"
-          title="Toggle theme">
-          <i class="fas fa-sun text-slate-600 dark:text-slate-400 text-lg"></i>
-        </button>
-      </div>
-
-      <!-- Row 3: Action Buttons -->
-      <div class="flex items-center justify-center space-x-2">
-        <button id="analyzeBtn"
-          class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 text-sm sm:text-base">
-          <i class="fas fa-search text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
-          <span>Analyze</span>
-        </button>
-        <button id="insightsBtn"
-          class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
-          disabled>
-          <i class="fas fa-lightbulb text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
-          <span>AI Insights</span>
-        </button>
-        <button id="podcastBtn"
-          class="group relative px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 hover:from-rose-600 hover:via-pink-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 sm:space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
-          disabled>
-          <i class="fas fa-podcast text-base sm:text-lg group-hover:rotate-12 transition-transform duration-300"></i>
-          <span>Podcast</span>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- Global Analyze Progress -->
-  <div id="globalProgress" class="max-w-full mx-auto px-4 pt-2 hidden">
-    <div class="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-      <span id="progressLabel" class="font-medium">Processing…</span>
-      <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div id="progressBar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-500" style="width: 0%"></div>
-      </div>
-      <span id="progressPct" class="w-10 text-right">0%</span>
-      <button id="cancelAnalyzeBtn"
-        class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors duration-200">
-        Cancel
-      </button>
-    </div>
-    <div id="progressFile" class="mt-1 text-xs text-slate-500 dark:text-slate-400"></div>
-
-    <!-- Per-file Progress Breakdown -->
-    <div id="fileProgressList" class="mt-3 space-y-2 hidden">
-      <div class="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">File Progress:</div>
-      <div id="fileProgressItems" class="space-y-1"></div>
-    </div>
-  </div>
-
-  <main class="relative max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-4 md:py-8">
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 md:gap-6 auto-rows-fr">
-      <!-- Left Sidebar - Documents Only -->
-      <div class="xl:col-span-3 space-y-4 w-full">
-        <!-- Documents Section -->
-        <div class="group relative">
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[500px]">
+    <div class="flex h-screen relative z-40">
+      <aside
+        class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col overflow-hidden">
+        <div class="p-6 border-b border-slate-800">
+          <div class="flex items-center space-x-3">
             <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20">
-              <h2 class="text-lg font-bold text-slate-800 dark:text-white flex items-center">
+              class="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
+              <i class="fas fa-orbit text-white text-lg"></i>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-white">ORBIT</h1>
+              <p class="text-xs text-slate-400">Intelligence Hub</p>
+            </div>
+          </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2">
+          <button
+            class="nav-workspace active w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all group"
+            data-page="workspace">
+            <i class="fas fa-file-pdf text-lg group-hover:scale-110"></i>
+            <span class="font-medium">Workspace</span>
+            <div
+              class="ml-auto w-2 h-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100"></div>
+          </button>
+          <button
+            class="nav-analysis w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all group"
+            data-page="analysis">
+            <i class="fas fa-chart-line text-lg group-hover:scale-110"></i>
+            <span class="font-medium">Deep Analysis</span>
+            <div
+              class="ml-auto w-2 h-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100"></div>
+          </button>
+          <button
+            class="nav-media w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all group"
+            data-page="media">
+            <i class="fas fa-podcast text-lg group-hover:scale-110"></i>
+            <span class="font-medium">Media Center</span>
+            <div
+              class="ml-auto w-2 h-2 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100"></div>
+          </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 space-y-3">
+          <div class="space-y-2">
+            <div
+              class="text-xs text-slate-500 font-semibold uppercase tracking-wide">
+              Services
+            </div>
+            <div
+              id="llmBadge"
+              class="flex items-center space-x-2 px-3 py-2 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+              <i class="fas fa-robot text-blue-400 text-sm"></i>
+              <span id="llmStatus" class="text-xs text-blue-300 font-medium"
+                >Gemini</span
+              >
+            </div>
+            <div
+              id="ttsBadge"
+              class="flex items-center space-x-2 px-3 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
+              <i class="fas fa-microphone text-emerald-400 text-sm"></i>
+              <span id="ttsStatus" class="text-xs text-emerald-300 font-medium"
+                >Azure TTS</span
+              >
+            </div>
+          </div>
+          <button
+            id="themeToggle"
+            class="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-slate-700 hover:bg-slate-800">
+            <i class="fas fa-sun text-slate-400"></i>
+            <span class="text-sm text-slate-400">Theme</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="flex-1 flex flex-col overflow-hidden">
+        <header
+          class="bg-slate-900 border-b border-slate-800 h-16 flex items-center px-6 justify-between flex-shrink-0">
+          <div class="flex-1 max-w-2xl">
+            <div class="flex items-center space-x-2">
+              <div class="relative flex-1 max-w-xs">
+                <i
+                  class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm"></i>
+                <input
+                  id="persona"
+                  list="persona-options"
+                  placeholder="Persona..."
+                  class="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-300" />
+                <datalist id="persona-options">
+                  <option value="Undergraduate Chemistry Student"></option>
+                  <option value="Researcher"></option>
+                  <option value="Business Analyst"></option>
+                  <option value="High School Teacher"></option>
+                  <option value="General User"></option>
+                </datalist>
+              </div>
+              <div class="relative flex-1 max-w-xs">
+                <i
+                  class="fas fa-tasks absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm"></i>
+                <input
+                  id="job"
+                  list="job-options"
+                  placeholder="Job to be done..."
+                  class="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-300" />
+                <datalist id="job-options">
+                  <option value="Identify key concepts"></option>
+                  <option value="Summarize document"></option>
+                  <option value="Extract data"></option>
+                  <option value="Find main arguments"></option>
+                  <option value="Create quiz"></option>
+                </datalist>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button
+              id="analyzeBtn"
+              class="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-sm flex items-center space-x-2 shadow-lg">
+              <i class="fas fa-search text-xs"></i><span>Analyze</span>
+            </button>
+            <button
+              id="insightsBtn"
+              class="px-4 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm flex items-center space-x-2 shadow-lg disabled:opacity-50"
+              disabled>
+              <i class="fas fa-lightbulb text-xs"></i><span>Insights</span>
+            </button>
+            <button
+              id="podcastBtn"
+              class="px-4 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg text-sm flex items-center space-x-2 shadow-lg disabled:opacity-50"
+              disabled>
+              <i class="fas fa-podcast text-xs"></i><span>Podcast</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="flex-1 overflow-auto relative" id="content-container">
+          <div
+            id="page-workspace"
+            class="page-content w-full h-full p-6 overflow-auto">
+            <div
+              id="globalProgress"
+              class="mb-4 hidden bg-slate-800 rounded-lg p-4">
+              <div class="flex items-center gap-3 text-sm text-slate-300">
+                <span id="progressLabel">Processing…</span>
                 <div
-                  class="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center mr-3 shadow-lg">
-                  <i class="fas fa-file-pdf text-white text-sm"></i>
+                  class="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    id="progressBar"
+                    class="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                    style="width: 0%"></div>
                 </div>
-                Documents
-              </h2>
+                <span id="progressPct" class="w-10 text-right">0%</span>
+                <button
+                  id="cancelAnalyzeBtn"
+                  class="px-3 py-1 bg-red-500 text-white rounded-lg text-xs">
+                  Cancel
+                </button>
+              </div>
             </div>
 
-            <div class="p-3 space-y-3">
-              <!-- Upload Area -->
-              <div class="group/upload relative">
+            <div class="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
+              <div
+                class="col-span-3 flex flex-col bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
                 <div
-                  class="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover/upload:opacity-100 transition-opacity duration-300">
-                </div>
-                <div
-                  class="relative border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-3 text-center hover:border-blue-400 dark:hover:border-purple-400 transition-all duration-300 cursor-pointer transform hover:scale-[1.02]">
-                  <input id="fileInput" type="file" multiple accept="application/pdf" class="hidden"
-                    aria-label="Upload PDF files" />
-                  <div class="space-y-2">
+                  class="p-4 border-b border-slate-700 bg-gradient-to-r from-slate-800 to-slate-700">
+                  <h2 class="text-lg font-bold text-white flex items-center">
                     <div
-                      class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto shadow-lg group-hover/upload:scale-110 transition-transform duration-300">
-                      <i class="fas fa-cloud-upload-alt text-sm text-white"></i>
+                      class="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center mr-3">
+                      <i class="fas fa-file-pdf text-sm text-white"></i>
                     </div>
-                    <div>
-                      <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Drop PDFs here</p>
-                      <p class="text-xs text-slate-500 dark:text-slate-400">Support for multiple files</p>
+                    Documents
+                  </h2>
+                </div>
+                <div class="flex-1 p-4 space-y-3 overflow-y-auto flex flex-col">
+                  <div
+                    class="relative border-2 border-dashed border-slate-600 hover:border-blue-400 rounded-xl p-3 text-center">
+                    <input
+                      id="fileInput"
+                      type="file"
+                      multiple
+                      accept="application/pdf"
+                      class="hidden" />
+                    <div class="space-y-2">
+                      <div
+                        class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mx-auto">
+                        <i
+                          class="fas fa-cloud-upload-alt text-sm text-white"></i>
+                      </div>
+                      <div>
+                        <p class="text-sm font-semibold text-slate-300 mb-1">
+                          Drop PDFs
+                        </p>
+                        <p class="text-xs text-slate-500">Multiple files</p>
+                      </div>
+                      <button
+                        id="uploadBtn"
+                        class="w-full px-3 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs">
+                        Choose Files
+                      </button>
                     </div>
-                    <button id="uploadBtn"
-                      class="px-3 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-xs">
-                      Choose Files
+                  </div>
+
+                  <div class="flex flex-wrap gap-1">
+                    <button
+                      id="selectAllBtn"
+                      class="px-2 py-1 bg-slate-700 text-slate-300 rounded-lg text-xs">
+                      <i class="fas fa-check-double mr-1"></i>All
+                    </button>
+                    <button
+                      id="clearSelectionBtn"
+                      class="px-2 py-1 bg-slate-700 text-slate-300 rounded-lg text-xs">
+                      <i class="fas fa-times mr-1"></i>Clear
+                    </button>
+                    <button
+                      id="deleteSelectedBtn"
+                      class="px-2 py-1 bg-red-900/30 text-red-300 rounded-lg text-xs disabled:opacity-50"
+                      disabled>
+                      <i class="fas fa-trash mr-1"></i>Delete
+                    </button>
+                    <button
+                      id="resetIndexBtn"
+                      class="px-2 py-1 bg-yellow-900/30 text-yellow-300 rounded-lg text-xs">
+                      <i class="fas fa-rotate mr-1"></i>Reset
                     </button>
                   </div>
-                </div>
-              </div>
 
-              <!-- Document Controls -->
-              <div class="flex flex-wrap items-center gap-2">
-                <button id="selectAllBtn"
-                  class="px-2 py-1 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 hover:from-slate-200 hover:to-slate-300 dark:hover:from-slate-600 dark:hover:to-slate-500 text-slate-700 dark:text-slate-300 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-xs">
-                  <i class="fas fa-check-double mr-1"></i>All
-                </button>
-                <button id="clearSelectionBtn"
-                  class="px-2 py-1 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 hover:from-slate-200 hover:to-slate-300 dark:hover:from-slate-600 dark:hover:to-slate-500 text-slate-700 dark:text-slate-300 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-xs">
-                  <i class="fas fa-times mr-1"></i>Clear
-                </button>
-                <button id="deleteSelectedBtn"
-                  class="px-2 py-1 bg-gradient-to-r from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 hover:from-red-200 hover:to-red-300 dark:hover:from-red-800/40 dark:hover:to-red-700/40 text-red-700 dark:text-red-300 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled>
-                  <i class="fas fa-trash mr-1"></i>Delete
-                </button>
-                <button id="resetIndexBtn"
-                  class="px-2 py-1 bg-gradient-to-r from-yellow-100 to-amber-200 dark:from-yellow-900/30 dark:to-amber-800/30 hover:from-yellow-200 hover:to-amber-300 dark:hover:from-yellow-800/40 dark:hover:to-amber-700/40 text-amber-700 dark:text-amber-300 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-xs">
-                  <i class="fas fa-rotate mr-1"></i>Reset Index
-                </button>
-                <div class="flex-1">
                   <div class="relative">
                     <i
-                      class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input id="docFilter"
-                      class="w-full pl-6 pr-2 py-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-                      placeholder="Filter..." />
+                      class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-xs"></i>
+                    <input
+                      id="docFilter"
+                      placeholder="Filter..."
+                      class="w-full pl-6 pr-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-300" />
+                  </div>
+
+                  <div class="text-center">
+                    <span
+                      id="selectedCount"
+                      class="inline-flex items-center px-2 py-1 rounded-lg text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      <i class="fas fa-check-circle mr-1"></i>0 selected
+                    </span>
+                  </div>
+
+                  <div class="flex-1 overflow-y-auto">
+                    <ul id="docList" class="space-y-1"></ul>
                   </div>
                 </div>
               </div>
 
-              <!-- Selected Count -->
-              <div class="text-center">
-                <span id="selectedCount"
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg">
-                  <i class="fas fa-check-circle mr-1"></i>0 selected
-                </span>
-              </div>
-
-              <!-- Document List -->
-              <div class="max-h-96 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <ul id="docList" class="space-y-2 custom-scrollbar"></ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Center - PDF Viewer (centered and largest card) -->
-      <div class="xl:col-span-6 w-full flex justify-center">
-        <div class="relative w-full max-w-3xl mx-auto">
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden">
-            <!-- Enhanced PDF Toolbar -->
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20">
-              <div class="flex flex-col space-y-2">
-                <!-- Top row - Search and Document Info -->
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                  <!-- Search -->
-                  <div class="relative group/search flex-1 min-w-0">
-                    <div
-                      class="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl blur opacity-0 group-hover/search:opacity-100 transition-opacity duration-300">
-                    </div>
-                    <div class="relative">
+              <div
+                class="col-span-6 flex flex-col bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div
+                  class="p-3 border-b border-slate-700 space-y-2 flex-shrink-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="relative flex-1 max-w-xs">
                       <i
-                        class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
-                      <input id="searchInput"
-                        class="w-full pl-9 pr-3 py-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 shadow-lg"
-                        placeholder="Search in document..." />
+                        class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm"></i>
+                      <input
+                        id="searchInput"
+                        placeholder="Search..."
+                        class="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded-lg text-slate-300" />
+                    </div>
+                    <button
+                      id="searchBtn"
+                      class="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-sm">
+                      <i class="fas fa-search mr-1"></i>Search
+                    </button>
+                    <button
+                      id="textSelectionBtn"
+                      class="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-sm">
+                      <i class="fas fa-search mr-1"></i>Text
+                    </button>
+                    <div class="text-right flex-1">
+                      <div
+                        id="currentDocName"
+                        class="text-sm font-bold text-slate-300 truncate">
+                        No document
+                      </div>
                     </div>
                   </div>
-                  <button id="searchBtn"
-                    class="px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-sm whitespace-nowrap">
-                    <i class="fas fa-search mr-1"></i>Search
-                  </button>
 
-                  <!-- Text Selection Button -->
-                  <button id="textSelectionBtn"
-                    class="px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-sm whitespace-nowrap"
-                    title="Analyze selected text from PDF">
-                    <i class="fas fa-search mr-1"></i>Analyze Text
-                  </button>
-
-                  <!-- Document Info -->
-                  <div class="text-right min-w-0 flex-shrink-0">
-                    <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Current Document</div>
-                    <div id="currentDocName" class="text-sm font-bold text-slate-800 dark:text-white truncate max-w-32"
-                      title="No document selected">No document selected</div>
-                  </div>
-                </div>
-
-                <!-- Bottom row - Navigation and Zoom -->
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                  <!-- Navigation -->
-                  <div class="flex items-center space-x-2">
-                    <button id="prevPageBtn"
-                      class="p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:scale-105"
-                      disabled title="Previous page">
-                      <i class="fas fa-chevron-left text-slate-600 dark:text-slate-400 text-sm"></i>
-                    </button>
-
-                    <div class="flex items-center space-x-2">
-                      <span class="text-xs font-medium text-slate-600 dark:text-slate-400">Page</span>
-                      <input id="gotoPageInput"
-                        class="w-14 px-2 py-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 shadow-md"
-                        type="number" min="1" placeholder="1" />
-                      <button id="gotoPageBtn"
-                        class="px-2 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 text-xs">
-                        Go
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center space-x-1">
+                      <button
+                        id="prevPageBtn"
+                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400 disabled:opacity-50"
+                        disabled>
+                        <i class="fas fa-chevron-left text-sm"></i>
                       </button>
-                      <span id="pageCount" class="text-xs font-medium text-slate-600 dark:text-slate-400">/ 1</span>
+                      <span class="text-xs text-slate-400">Page</span>
+                      <input
+                        id="gotoPageInput"
+                        type="number"
+                        min="1"
+                        class="w-12 px-2 py-1 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-300 text-center" />
+                      <span id="pageCount" class="text-xs text-slate-400"
+                        >/ 1</span
+                      >
+                      <button
+                        id="nextPageBtn"
+                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400 disabled:opacity-50"
+                        disabled>
+                        <i class="fas fa-chevron-right text-sm"></i>
+                      </button>
                     </div>
 
-                    <button id="nextPageBtn"
-                      class="p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:scale-105"
-                      disabled title="Next page">
-                      <i class="fas fa-chevron-right text-slate-600 dark:text-slate-400 text-sm"></i>
-                    </button>
-                  </div>
-
-                  <!-- Zoom Controls -->
-                  <div class="flex items-center space-x-2">
-                    <button id="zoomOutBtn"
-                      class="p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
-                      title="Zoom out">
-                      <i class="fas fa-search-minus text-slate-600 dark:text-slate-400 text-sm"></i>
-                    </button>
-                    <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">Zoom</span>
-                    <span id="zoomLevel"
-                      class="text-xs font-medium text-blue-600 dark:text-blue-400 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded">100%</span>
-                    <button id="zoomInBtn"
-                      class="p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
-                      title="Zoom in">
-                      <i class="fas fa-search-plus text-slate-600 dark:text-slate-400 text-sm"></i>
-                    </button>
-                    <button id="resetZoomBtn"
-                      class="p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105"
-                      title="Reset zoom">
-                      <i class="fas fa-expand-arrows-alt text-slate-600 dark:text-slate-400 text-sm"></i>
-                    </button>
-
-                    <!-- View Mode Toggle -->
-                    <div class="flex items-center space-x-1 ml-2">
-                      <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">View:</span>
-                      <button id="viewModeToggle"
-                        class="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 text-xs"
-                        title="Toggle between single page and continuous view">
+                    <div class="flex items-center space-x-1">
+                      <button
+                        id="zoomOutBtn"
+                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400">
+                        <i class="fas fa-search-minus text-sm"></i>
+                      </button>
+                      <span
+                        id="zoomLevel"
+                        class="text-xs text-slate-300 px-2 py-1 bg-slate-700 rounded-lg min-w-12 text-center"
+                        >100%</span
+                      >
+                      <button
+                        id="zoomInBtn"
+                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400">
+                        <i class="fas fa-search-plus text-sm"></i>
+                      </button>
+                      <button
+                        id="resetZoomBtn"
+                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400">
+                        <i class="fas fa-expand-arrows-alt text-sm"></i>
+                      </button>
+                      <button
+                        id="viewModeToggle"
+                        class="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-xs">
                         <i class="fas fa-file-alt mr-1"></i>Single
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <!-- PDF Viewer Container -->
-            <div id="pdf-viewer-container"
-              class="w-full h-[65vh] min-h-[450px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl overflow-auto custom-scrollbar shadow-2xl border border-slate-300 dark:border-slate-600 relative">
-              <!-- Single Page View -->
-              <div id="single-page-view" class="w-full h-full flex items-center justify-center">
-                <canvas id="pdf-canvas"></canvas>
-              </div>
-
-              <!-- Continuous View Container -->
-              <div id="continuous-view" class="w-full p-4 space-y-4 hidden">
-                <!-- Pages will be dynamically added here -->
-              </div>
-
-              <div id="pdf-loading"
-                class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-800/90 hidden">
-                <div class="text-center">
-                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p class="text-slate-600 dark:text-slate-400">Loading PDF...</p>
-                </div>
-              </div>
-              <div id="pdf-error"
-                class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-800/90 hidden">
-                <div class="text-center">
-                  <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
-                  <p class="text-slate-600 dark:text-slate-400">Failed to load PDF</p>
-                  <button id="retry-pdf"
-                    class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Retry</button>
-                </div>
-              </div>
-              <div id="pdf-neutral"
-                class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-800/90">
-                <div class="text-center">
+                <div
+                  id="pdf-viewer-container"
+                  class="flex-1 bg-gradient-to-br from-slate-900 to-slate-800 overflow-auto flex items-center justify-center relative">
                   <div
-                    class="w-16 h-16 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-file-pdf text-slate-400 dark:text-slate-500 text-2xl"></i>
+                    id="single-page-view"
+                    class="w-full h-full flex items-center justify-center">
+                    <canvas id="pdf-canvas"></canvas>
                   </div>
-                  <p class="text-slate-600 dark:text-slate-400 font-medium">Select a document to view</p>
-                  <p class="text-xs text-slate-500 dark:text-slate-500 mt-1">Choose a PDF from the left panel</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Text Selection Insights (Cross-PDF Insights) on rightmost side of first row -->
-      <div class="xl:col-span-3 w-full">
-        <div id="textSelectionPanel" class="group relative min-h-[500px]"> <!-- Cross-PDF Insights -->
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[500px]">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-              <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                  <i class="fas fa-brain text-white text-xs"></i>
-                </div>
-                Text Selection Insights
-              </h2>
-              <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">Select text in the PDF to see related content
-                across all documents</p>
-            </div>
-            <div class="p-3"><!-- Content will be dynamically populated by JavaScript --></div>
-          </div>
-        </div>
-      </div>
-    </div> <!-- End main grid row -->
-    <div class="max-w-7xl mx-auto mt-8 px-2 sm:px-4 md:px-6">
-      <!-- 2x3 grid of cards, responsive -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 auto-rows-fr">
-        <div class="group relative"> <!-- Document Clusters -->
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px]">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20">
-              <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                  <i class="fas fa-sitemap text-white text-xs"></i>
-                </div>
-                Document Clusters
-              </h2>
-              <div class="flex items-center justify-between mt-2">
-                <p class="text-xs text-slate-600 dark:text-slate-400">Automatically grouped similar documents</p>
-                <button id="clusterBtn"
-                  class="px-2 py-1 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-xs font-medium transition-colors duration-200"><i
-                    class="fas fa-magic mr-1"></i>Cluster</button>
-              </div>
-            </div>
-            <div class="p-3">
-              <div id="clusters"
-                class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full">
-                <div class="text-center text-xs text-slate-500 dark:text-slate-400 py-3">Click "Cluster" to group
-                  similar documents</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="group relative"> <!-- Recommendations -->
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px]">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
-              <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                  <i class="fas fa-lightbulb text-white text-xs"></i>
-                </div>
-                Recommendations
-              </h2>
-              <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">Related documents based on current selection
-              </p>
-            </div>
-            <div class="p-3">
-              <div id="recommendations"
-                class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full">
-                <div class="text-center text-xs text-slate-500 dark:text-slate-400 py-3">Select a document to see
-                  recommendations</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Row 2: Top Sections, Key Insights, AI Insights + AI Podcast -->
-        <div class="group relative"> <!-- Top Sections -->
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px] flex flex-col">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-              <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                  <i class="fas fa-chart-line text-white text-xs"></i>
-                </div>
-                Top Sections
-              </h2>
-            </div>
-            <div class="p-3">
-              <div id="sections"
-                class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full"></div>
-            </div>
-          </div>
-        </div>
-        <div class="group relative"> <!-- Key Insights -->
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px] flex flex-col">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-              <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                  <i class="fas fa-quote-left text-white text-xs"></i>
-                </div>
-                Key Insights
-              </h2>
-            </div>
-            <div class="p-3">
-              <div id="snippets"
-                class="space-y-2 max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full"></div>
-            </div>
-          </div>
-        </div>
-        <div class="group relative"> <!-- AI Insights -->
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 flex flex-col gap-4 min-h-[340px]">
-            <div>
-              <div
-                class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20">
-                <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
                   <div
-                    class="w-6 h-6 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                    <i class="fas fa-lightbulb text-white text-xs"></i>
+                    id="continuous-view"
+                    class="w-full p-4 space-y-4 hidden"></div>
+                  <div
+                    id="pdf-loading"
+                    class="absolute inset-0 flex items-center justify-center bg-slate-800/80 hidden">
+                    <div class="text-center">
+                      <div
+                        class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                      <p class="text-slate-400">Loading...</p>
+                    </div>
                   </div>
-                  AI Insights
-                </h2>
-              </div>
-              <div class="p-3">
-                <pre id="insights"
-                  class="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-700 p-2 rounded-xl border border-slate-200 dark:border-slate-600 min-h-[80px] max-h-[260px] overflow-y-auto overflow-x-hidden custom-scrollbar h-full"></pre>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="group relative"> <!-- AI Podcast -->
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          </div>
-          <div
-            class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[340px]">
-            <div
-              class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-              <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-                <div
-                  class="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                  <i class="fas fa-podcast text-white text-xs"></i>
-                </div>
-                AI Dual Voice Podcast
-              </h2>
-            </div>
-            <div class="p-2 flex flex-col items-center justify-center">
-              <!-- Enhanced Audio Player -->
-              <div class="space-y-2 w-full flex flex-col items-center justify-center">
-                <!-- Audio Controls -->
-                <div class="flex items-center justify-center space-x-2 w-full">
-                  <button id="playPauseBtn" title="Play/Pause"
-                    class="w-10 h-10 bg-purple-500 hover:bg-purple-600 text-white rounded-full flex items-center justify-center transition-colors"><i
-                      class="fas fa-play text-sm"></i></button>
-                  <button id="stopBtn" title="Stop"
-                    class="w-8 h-8 bg-slate-500 hover:bg-slate-600 text-white rounded-full flex items-center justify-center transition-colors"><i
-                      class="fas fa-stop text-xs"></i></button>
-                  <!-- Playback Speed Control -->
-                  <div class="relative group"><button id="speedBtn"
-                      title="Playback Speed - Click to cycle through speeds"
-                      class="w-8 h-8 bg-slate-400 hover:bg-slate-500 text-white rounded-full flex items-center justify-center transition-colors text-xs font-medium">1x</button>
-                  </div>
-                  <div class="flex-1">
-                    <div class="text-xs text-slate-600 dark:text-slate-400 mb-1">Progress</div>
-                    <div id="progressContainer"
-                      class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 cursor-pointer relative">
-                      <div id="audioProgress"
-                        class="bg-purple-500 h-2 rounded-full transition-all duration-100 relative" style="width: 0%">
-                        <div id="progressHandle"
-                          class="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-purple-600 rounded-full shadow-md opacity-0 hover:opacity-100 transition-opacity">
-                        </div>
+                  <div
+                    id="pdf-neutral"
+                    class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center">
+                      <div
+                        class="w-16 h-16 bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-file-pdf text-slate-600 text-2xl"></i>
                       </div>
+                      <p class="text-slate-400">Select a document</p>
                     </div>
                   </div>
                 </div>
-                <!-- Time Display -->
-                <div class="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"><span
-                    id="currentTime">0:00</span><span id="totalTime">0:00</span></div>
-                <!-- Hidden Audio Element -->
-                <audio id="player" preload="metadata" class="hidden">
-                  <source src="" type="audio/mpeg">Your browser does not support the audio element.
-                </audio>
-                <!-- Audio Info -->
-                <div id="audioInfo" class="text-xs text-slate-500 dark:text-slate-400 text-center py-2 hidden">
-                  <div class="font-medium text-slate-700 dark:text-slate-300 mb-1">Now Playing</div>
-                  <div id="audioTitle" class="truncate">No audio loaded</div>
+              </div>
+
+              <div
+                class="col-span-3 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col">
+                <div id="textSelectionPanel" class="flex-1 flex flex-col">
+                  <div class="p-4 border-b border-slate-700">
+                    <h2 class="text-lg font-bold text-white">
+                      <i class="fas fa-brain mr-2"></i>Insights
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-2">
+                      Select text in PDF
+                    </p>
+                  </div>
+                  <div class="flex-1 p-4 overflow-y-auto"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            id="page-analysis"
+            class="page-content w-full h-full p-6 overflow-auto space-y-6 hidden">
+            <div>
+              <h2 class="text-2xl font-bold text-white">Deep Analysis</h2>
+              <p class="text-sm text-slate-400 mt-1">Comprehensive insights</p>
+            </div>
+            <div class="grid grid-cols-3 gap-6">
+              <div
+                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div
+                  class="p-4 border-b border-slate-700 flex items-center justify-between">
+                  <h3 class="text-lg font-bold text-white">
+                    <i class="fas fa-sitemap mr-2"></i>Clusters
+                  </h3>
+                  <button
+                    id="clusterBtn"
+                    class="px-2 py-1 bg-cyan-500 text-white rounded-lg text-xs">
+                    <i class="fas fa-magic mr-1"></i>Cluster
+                  </button>
+                </div>
+                <div class="p-4 h-96 overflow-y-auto">
+                  <div id="clusters" class="space-y-2">
+                    <div class="text-center text-xs text-slate-500 py-3">
+                      Click button
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-700">
+                  <h3 class="text-lg font-bold text-white">
+                    <i class="fas fa-chart-line mr-2"></i>Sections
+                  </h3>
+                </div>
+                <div class="p-4 h-96 overflow-y-auto">
+                  <div id="sections" class="space-y-2"></div>
+                </div>
+              </div>
+              <div
+                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-700">
+                  <h3 class="text-lg font-bold text-white">
+                    <i class="fas fa-quote-left mr-2"></i>Insights
+                  </h3>
+                </div>
+                <div class="p-4 h-96 overflow-y-auto">
+                  <div id="snippets" class="space-y-2"></div>
+                </div>
+              </div>
+            </div>
+            <div
+              class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+              <div class="p-4 border-b border-slate-700">
+                <h3 class="text-lg font-bold text-white">
+                  <i class="fas fa-lightbulb mr-2"></i>AI Analysis
+                </h3>
+              </div>
+              <div class="p-4">
+                <pre
+                  id="insights"
+                  class="text-sm text-slate-300 whitespace-pre-wrap bg-slate-900 p-4 rounded-xl border border-slate-700 min-h-40 max-h-80 overflow-y-auto"></pre>
+              </div>
+            </div>
+            <div
+              class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+              <div class="p-4 border-b border-slate-700">
+                <h3 class="text-lg font-bold text-white">
+                  <i class="fas fa-lightbulb mr-2"></i>Recommendations
+                </h3>
+              </div>
+              <div class="p-4">
+                <div
+                  id="recommendations"
+                  class="space-y-2 max-h-80 overflow-y-auto">
+                  <div class="text-center text-xs text-slate-500">
+                    Select document
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            id="page-media"
+            class="page-content w-full h-full p-6 overflow-auto space-y-6 hidden">
+            <div>
+              <h2 class="text-2xl font-bold text-white">Media Center</h2>
+              <p class="text-sm text-slate-400 mt-1">Podcast player & more</p>
+            </div>
+            <div class="grid grid-cols-3 gap-6">
+              <div
+                class="col-span-2 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-700">
+                  <h3 class="text-lg font-bold text-white">
+                    <i class="fas fa-podcast mr-2"></i>Podcast
+                  </h3>
+                </div>
+                <div
+                  class="p-8 flex flex-col items-center justify-center space-y-6 min-h-96">
+                  <div class="space-y-4 w-full max-w-sm">
+                    <div class="flex items-center justify-center space-x-4">
+                      <button
+                        id="playPauseBtn"
+                        class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center shadow-lg">
+                        <i class="fas fa-play text-2xl"></i>
+                      </button>
+                      <button
+                        id="stopBtn"
+                        class="w-12 h-12 bg-slate-700 text-slate-300 rounded-full flex items-center justify-center shadow-md">
+                        <i class="fas fa-stop"></i>
+                      </button>
+                      <button
+                        id="speedBtn"
+                        class="w-12 h-12 bg-slate-700 text-slate-300 rounded-full flex items-center justify-center text-xs font-bold">
+                        1x
+                      </button>
+                    </div>
+                    <div class="space-y-2">
+                      <div
+                        id="progressContainer"
+                        class="w-full bg-slate-700 rounded-full h-2 relative">
+                        <div
+                          id="audioProgress"
+                          class="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full"
+                          style="width: 0%"></div>
+                      </div>
+                      <div
+                        class="flex items-center justify-between text-xs text-slate-400">
+                        <span id="currentTime">0:00</span>
+                        <span id="totalTime">0:00</span>
+                      </div>
+                    </div>
+                    <audio
+                      id="player"
+                      preload="metadata"
+                      class="hidden"></audio>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-slate-700">
+                  <h3 class="text-lg font-bold text-white">
+                    <i class="fas fa-closed-captioning mr-2"></i>Transcript
+                  </h3>
+                </div>
+                <div class="flex-1 p-4 overflow-y-auto">
+                  <div id="transcript" class="text-sm text-slate-300">
+                    <div class="text-center text-slate-500 py-6">
+                      No transcript
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+              <div class="p-4 border-b border-slate-700">
+                <h3 class="text-lg font-bold text-white">
+                  <i class="fas fa-wave-square mr-2"></i>Animation
+                </h3>
+                <p class="text-xs text-slate-400 mt-2">Experimental feature</p>
+              </div>
+              <div class="p-6 flex items-center justify-center min-h-80">
+                <div
+                  class="rounded-lg overflow-hidden max-w-lg w-full flex items-center justify-center"
+                  style="height: 300px">
+                  <video
+                    controls
+                    class="w-full h-full object-contain"
+                    style="background: #000">
+                    <source src="/static/PodcastAnimation.mp4" />
+                  </video>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
-    </div>
-  </main>
 
-  <!-- AI Podcast Animation Card (Experimental Feature) - Standalone Last Row -->
-  <div class="max-w-7xl mx-auto mt-8 px-2 sm:px-4 md:px-6">
-    <div class="flex justify-center">
-      <div class="group relative w-full max-w-2xl"> <!-- AI Podcast Animation -->
-  <div class="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-  <div class="relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-all duration-500 min-h-[440px] flex flex-col">
-          <div class="p-3 border-b border-slate-200/30 dark:border-slate-700/30 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-            <h2 class="text-base font-bold text-slate-800 dark:text-white flex items-center">
-              <div class="w-6 h-6 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center mr-2 shadow-lg">
-                <i class="fas fa-wave-square text-white text-xs"></i>
-              </div>
-              Podcast Animation
-            </h2>
-            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">       </p>
-            <p class="text-sm mb-4">EXPERIMENTAL(Not Live for Production since High Computational Time and Resources required): Automatically animate characters from your audio recordings with realistic lip-sync and
-              gestures.</p>
-          </div>
-          <div class="p-3 flex-1 flex flex-col items-center justify-center">
-      <div class="rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 mb-4 w-full max-w-xs mx-auto flex items-center justify-center" style="height:240px;">
-        <video controls poster="/download.png" class="w-full h-full object-contain max-w-xs" title="AI Podcast Animation" style="background:#000;">
-          <source src="/static/PodcastAnimation.mp4" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-      </div>
-            <p class="text-xs text-center text-yellow-600 dark:text-yellow-400 font-semibold" role="note">
-                <i data-lucide="alert-triangle" class="inline-block w-4 h-4 mr-1" aria-hidden="true"></i>
-                Experimental feature. Performance may vary.
-            </p>
-          </div>
+    <div id="toast" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
+    <div
+      id="loadingOverlay"
+      class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center">
+      <div class="bg-slate-800 rounded-2xl p-8 border border-slate-700">
+        <div class="flex items-center space-x-4">
+          <div
+            class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-slate-300 font-semibold">Processing...</span>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Toast Notifications -->
-  <div id="toast" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
-
-  <!-- Loading Overlay -->
-  <div id="loadingOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 hidden items-center justify-center">
-    <div
-      class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-white/20 dark:border-slate-700/50">
-      <div class="flex items-center space-x-4">
-        <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-slate-700 dark:text-slate-300 font-semibold text-lg">Processing...</span>
-      </div>
-    </div>
-  </div>
-
-
-  <script src="/app.js"></script>
-  <script>
-    // Podcast Animation Video Controls
-    document.addEventListener('DOMContentLoaded', function () {
-      const video = document.getElementById('podcastAnimationVideo');
-      const playPauseBtn = document.getElementById('podcastAnimPlayPauseBtn');
-      const playPauseIcon = document.getElementById('podcastAnimPlayPauseIcon');
-      const progress = document.getElementById('podcastAnimProgress');
-      const currentTimeEl = document.getElementById('podcastAnimCurrentTime');
-      const totalTimeEl = document.getElementById('podcastAnimTotalTime');
-      if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl) return;
-
-      function formatTime(sec) {
-        sec = Math.floor(sec);
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        return `${m}:${s.toString().padStart(2, '0')}`;
-      }
-
-      video.addEventListener('loadedmetadata', function () {
-        progress.max = Math.floor(video.duration);
-        totalTimeEl.textContent = formatTime(video.duration);
-      });
-
-      video.addEventListener('timeupdate', function () {
-        progress.value = Math.floor(video.currentTime);
-        currentTimeEl.textContent = formatTime(video.currentTime);
-      });
-
-      playPauseBtn.addEventListener('click', function () {
-        if (video.paused) {
-          video.play();
-        } else {
-          video.pause();
-        }
-      });
-
-      video.addEventListener('play', function () {
-        playPauseIcon.classList.remove('fa-play');
-        playPauseIcon.classList.add('fa-pause');
-      });
-      video.addEventListener('pause', function () {
-        playPauseIcon.classList.remove('fa-pause');
-        playPauseIcon.classList.add('fa-play');
-      });
-
-      progress.addEventListener('input', function () {
-        video.currentTime = progress.value;
-      });
-
-      // Keyboard accessibility: Space/Enter toggles play/pause
-      playPauseBtn.addEventListener('keydown', function (e) {
-        if (e.key === ' ' || e.key === 'Enter') {
-          playPauseBtn.click();
-          e.preventDefault();
-        }
-      });
-    });
-  </script>
-
-  <!-- Footer -->
-    <footer class="bg-white dark:bg-slate-900 mt-8 py-6 transition-colors duration-300">
-
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 dark:text-gray-400">
-      <p class="text-sm">&copy; 2025 Adobe. All rights reserved.</p>
-      <p class="text-sm mt-2">
-        Built by Team Ctrl-Alt-Complete
-        <a href="https://github.com/kushagra-a-singh/Adobe-Hackathon-2025_Team-Ctrl-Alt-Complete_Finale" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-500 hover:underline">
-          Link to GitHub
-        </a>
-        <span class="mx-2">|</span>
-        <a href="https://www.adobe.com/" target="_blank" rel="noopener noreferrer" class="font-semibold text-red-600 hover:underline">
-          Adobe
-        </a>
-      </p>
-    </div>
-  </footer>
-
-
+    <script src="/app.js"></script>
+  </body>
 </html>

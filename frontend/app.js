@@ -1,31 +1,56 @@
+// --- Page Navigation System ---
+document.addEventListener("DOMContentLoaded", function () {
+  // Initialize page navigation
+  const navButtons = document.querySelectorAll("[data-page]");
+  const pageContents = document.querySelectorAll(".page-content");
+
+  navButtons.forEach((button) => {
+    button.addEventListener("click", function () {
+      const targetPage = this.getAttribute("data-page");
+
+      // Update active nav button
+      navButtons.forEach((btn) => btn.classList.remove("active"));
+      this.classList.add("active");
+
+      // Show target page and hide others
+      pageContents.forEach((page) => page.classList.add("hidden"));
+      const targetPageEl = document.getElementById(`page-${targetPage}`);
+      if (targetPageEl) {
+        targetPageEl.classList.remove("hidden");
+      }
+    });
+  });
+});
+
 // --- AI Podcast Animation Video Controls ---
-document.addEventListener('DOMContentLoaded', function () {
-  const video = document.getElementById('aiPodcastVideo');
-  const playPauseBtn = document.getElementById('videoPlayPauseBtn');
-  const playPauseIcon = document.getElementById('videoPlayPauseIcon');
-  const progress = document.getElementById('videoProgress');
-  const currentTimeEl = document.getElementById('videoCurrentTime');
-  const totalTimeEl = document.getElementById('videoTotalTime');
-  if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl) return;
+document.addEventListener("DOMContentLoaded", function () {
+  const video = document.getElementById("aiPodcastVideo");
+  const playPauseBtn = document.getElementById("videoPlayPauseBtn");
+  const playPauseIcon = document.getElementById("videoPlayPauseIcon");
+  const progress = document.getElementById("videoProgress");
+  const currentTimeEl = document.getElementById("videoCurrentTime");
+  const totalTimeEl = document.getElementById("videoTotalTime");
+  if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl)
+    return;
 
   function formatTime(sec) {
     sec = Math.floor(sec);
     const m = Math.floor(sec / 60);
     const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   }
 
-  video.addEventListener('loadedmetadata', function () {
+  video.addEventListener("loadedmetadata", function () {
     progress.max = Math.floor(video.duration);
     totalTimeEl.textContent = formatTime(video.duration);
   });
 
-  video.addEventListener('timeupdate', function () {
+  video.addEventListener("timeupdate", function () {
     progress.value = Math.floor(video.currentTime);
     currentTimeEl.textContent = formatTime(video.currentTime);
   });
 
-  playPauseBtn.addEventListener('click', function () {
+  playPauseBtn.addEventListener("click", function () {
     if (video.paused) {
       video.play();
     } else {
@@ -33,22 +58,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  video.addEventListener('play', function () {
-    playPauseIcon.classList.remove('fa-play');
-    playPauseIcon.classList.add('fa-pause');
+  video.addEventListener("play", function () {
+    playPauseIcon.classList.remove("fa-play");
+    playPauseIcon.classList.add("fa-pause");
   });
-  video.addEventListener('pause', function () {
-    playPauseIcon.classList.remove('fa-pause');
-    playPauseIcon.classList.add('fa-play');
+  video.addEventListener("pause", function () {
+    playPauseIcon.classList.remove("fa-pause");
+    playPauseIcon.classList.add("fa-play");
   });
 
-  progress.addEventListener('input', function () {
+  progress.addEventListener("input", function () {
     video.currentTime = progress.value;
   });
 
   // Keyboard accessibility: Space/Enter toggles play/pause
-  playPauseBtn.addEventListener('keydown', function (e) {
-    if (e.key === ' ' || e.key === 'Enter') {
+  playPauseBtn.addEventListener("keydown", function (e) {
+    if (e.key === " " || e.key === "Enter") {
       playPauseBtn.click();
       e.preventDefault();
     }
@@ -84,10 +109,10 @@ let isRendering = false;
 
 // Toast notification system with debouncing
 let toastTimeout = null;
-let lastToastMessage = '';
-let lastToastType = '';
+let lastToastMessage = "";
+let lastToastType = "";
 
-function toast(message, type = 'info', duration = 4000) {
+function toast(message, type = "info", duration = 4000) {
   // Prevent duplicate toasts
   if (lastToastMessage === message && lastToastType === type) {
     return;
@@ -101,27 +126,27 @@ function toast(message, type = 'info', duration = 4000) {
   lastToastMessage = message;
   lastToastType = type;
 
-  const container = document.getElementById('toast');
+  const container = document.getElementById("toast");
   if (!container) return;
 
   // Clear existing toasts
-  container.innerHTML = '';
+  container.innerHTML = "";
 
-  const toastEl = document.createElement('div');
+  const toastEl = document.createElement("div");
   toastEl.className = `toast-item ${type} transform translate-x-full opacity-0`;
 
   const icons = {
-    success: 'fas fa-check-circle',
-    error: 'fas fa-exclamation-circle',
-    warning: 'fas fa-exclamation-triangle',
-    info: 'fas fa-info-circle'
+    success: "fas fa-check-circle",
+    error: "fas fa-exclamation-circle",
+    warning: "fas fa-exclamation-triangle",
+    info: "fas fa-info-circle",
   };
 
   const colors = {
-    success: 'from-green-500 to-emerald-500',
-    error: 'from-red-500 to-pink-500',
-    warning: 'from-yellow-500 to-amber-500',
-    info: 'from-blue-500 to-indigo-500'
+    success: "from-green-500 to-emerald-500",
+    error: "from-red-500 to-pink-500",
+    warning: "from-yellow-500 to-amber-500",
+    info: "from-blue-500 to-indigo-500",
   };
 
   toastEl.innerHTML = `
@@ -142,8 +167,8 @@ function toast(message, type = 'info', duration = 4000) {
 
   // Animate in
   requestAnimationFrame(() => {
-    toastEl.classList.remove('translate-x-full', 'opacity-0');
-    toastEl.classList.add('translate-x-0', 'opacity-100');
+    toastEl.classList.remove("translate-x-full", "opacity-0");
+    toastEl.classList.add("translate-x-0", "opacity-100");
   });
 
   // Auto remove
@@ -152,7 +177,7 @@ function toast(message, type = 'info', duration = 4000) {
   }, duration);
 
   // Manual close
-  toastEl.querySelector('.toast-close').addEventListener('click', () => {
+  toastEl.querySelector(".toast-close").addEventListener("click", () => {
     removeToast(toastEl);
   });
 }
@@ -160,25 +185,25 @@ function toast(message, type = 'info', duration = 4000) {
 function removeToast(toastEl) {
   if (!toastEl) return;
 
-  toastEl.classList.add('translate-x-full', 'opacity-0');
+  toastEl.classList.add("translate-x-full", "opacity-0");
 
   setTimeout(() => {
     if (toastEl.parentNode) {
       toastEl.parentNode.removeChild(toastEl);
     }
     // Reset last toast tracking
-    lastToastMessage = '';
-    lastToastType = '';
+    lastToastMessage = "";
+    lastToastType = "";
   }, 300);
 }
 
 // Initialize PDF.js viewer
-async function initViewer(url, containerId = 'pdf-viewer-container') {
+async function initViewer(url, containerId = "pdf-viewer-container") {
   return new Promise(async (resolve) => {
     try {
       // Check if we have a valid URL
-      if (!url || url === 'undefined' || url === 'null') {
-        console.log('No valid URL provided to initViewer');
+      if (!url || url === "undefined" || url === "null") {
+        console.log("No valid URL provided to initViewer");
         hidePDFLoading();
         resolve(false);
         return;
@@ -189,17 +214,18 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
         try {
           currentRenderTask.cancel();
         } catch (e) {
-          console.log('Render task already completed or cancelled');
+          console.log("Render task already completed or cancelled");
         }
         currentRenderTask = null;
       }
 
       // Set worker path for PDF.js
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
       // Get canvas and context
-      pdfCanvas = document.getElementById('pdf-canvas');
-      pdfContext = pdfCanvas.getContext('2d');
+      pdfCanvas = document.getElementById("pdf-canvas");
+      pdfContext = pdfCanvas.getContext("2d");
 
       // Clear the canvas
       if (pdfContext) {
@@ -219,11 +245,11 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
 
       // Initialize view mode (start with single page view)
       isContinuousView = false;
-      const singlePageView = document.getElementById('single-page-view');
-      const continuousView = document.getElementById('continuous-view');
+      const singlePageView = document.getElementById("single-page-view");
+      const continuousView = document.getElementById("continuous-view");
       if (singlePageView && continuousView) {
-        singlePageView.classList.remove('hidden');
-        continuousView.classList.add('hidden');
+        singlePageView.classList.remove("hidden");
+        continuousView.classList.add("hidden");
       }
 
       // Set canvas dimensions
@@ -245,13 +271,13 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
       hidePDFLoading();
 
       // Set up window resize handler
-      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener("resize", resizeCanvas);
 
       resolve(true);
     } catch (error) {
-      console.error('Error in initViewer:', error);
+      console.error("Error in initViewer:", error);
       showPDFError();
-      toast('Failed to load PDF. Please try again.', 'error');
+      toast("Failed to load PDF. Please try again.", "error");
       resolve(false);
     }
   });
@@ -261,7 +287,7 @@ async function initViewer(url, containerId = 'pdf-viewer-container') {
 async function loadPage(pageNum) {
   try {
     if (pageNum < 1 || pageNum > totalPages) {
-      console.log('Invalid page number:', pageNum);
+      console.log("Invalid page number:", pageNum);
       return;
     }
 
@@ -270,13 +296,13 @@ async function loadPage(pageNum) {
       try {
         currentRenderTask.cancel();
       } catch (e) {
-        console.log('Render task already completed or cancelled');
+        console.log("Render task already completed or cancelled");
       }
       currentRenderTask = null;
     }
 
     // Wait a bit to ensure previous operations are cleaned up
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     currentPage = pageNum;
 
@@ -291,11 +317,16 @@ async function loadPage(pageNum) {
         break;
       } catch (error) {
         retryCount++;
-        console.warn(`Failed to get page ${pageNum}, retry ${retryCount}/${maxRetries}:`, error);
+        console.warn(
+          `Failed to get page ${pageNum}, retry ${retryCount}/${maxRetries}:`,
+          error,
+        );
         if (retryCount >= maxRetries) {
-          throw new Error(`Failed to load page ${pageNum} after ${maxRetries} attempts`);
+          throw new Error(
+            `Failed to load page ${pageNum} after ${maxRetries} attempts`,
+          );
         }
-        await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
+        await new Promise((resolve) => setTimeout(resolve, 200 * retryCount));
       }
     }
 
@@ -312,7 +343,7 @@ async function loadPage(pageNum) {
     // Render the page with retry logic
     const renderContext = {
       canvasContext: pdfContext,
-      viewport: viewport
+      viewport: viewport,
     };
 
     // Store the render task and wait for it to complete
@@ -321,7 +352,7 @@ async function loadPage(pageNum) {
     // Add timeout to prevent hanging
     const renderPromise = currentRenderTask.promise;
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Render timeout')), 30000); // 30 second timeout
+      setTimeout(() => reject(new Error("Render timeout")), 30000); // 30 second timeout
     });
 
     await Promise.race([renderPromise, timeoutPromise]);
@@ -336,15 +367,14 @@ async function loadPage(pageNum) {
     updatePageCount();
 
     // Update goto input field
-    const gotoInput = document.getElementById('gotoPageInput');
+    const gotoInput = document.getElementById("gotoPageInput");
     if (gotoInput) {
       gotoInput.value = currentPage;
     }
 
     console.log(`Page ${currentPage} loaded successfully`);
-
   } catch (error) {
-    console.error('Error loading page:', error);
+    console.error("Error loading page:", error);
     // toast(`Failed to load page ${pageNum}. Please try again.`, 'error');
 
     // Show error state in the viewer
@@ -360,7 +390,7 @@ async function loadPage(pageNum) {
     //   </div>
     // `;
 
-    const container = document.getElementById('pdf-viewer-container');
+    const container = document.getElementById("pdf-viewer-container");
     if (container) {
       container.appendChild(errorDiv);
     }
@@ -371,34 +401,34 @@ async function loadPage(pageNum) {
 async function createTextLayerForSinglePage(page, viewport) {
   try {
     // Remove any existing text layer first
-    let existingTextLayer = document.getElementById('single-page-text-layer');
+    let existingTextLayer = document.getElementById("single-page-text-layer");
     if (existingTextLayer) {
       existingTextLayer.remove();
     }
 
     // Create new text layer container
-    const textLayerContainer = document.createElement('div');
-    textLayerContainer.id = 'single-page-text-layer';
-    textLayerContainer.className = 'text-layer absolute inset-0 pointer-events-auto z-10';
+    const textLayerContainer = document.createElement("div");
+    textLayerContainer.id = "single-page-text-layer";
+    textLayerContainer.className =
+      "text-layer absolute inset-0 pointer-events-auto z-10";
     textLayerContainer.style.width = `${viewport.width}px`;
     textLayerContainer.style.height = `${viewport.height}px`;
-    textLayerContainer.style.fontSize = '0px';
-    textLayerContainer.style.lineHeight = '1';
-    textLayerContainer.style.color = 'transparent';
-    textLayerContainer.style.userSelect = 'text';
-    textLayerContainer.style.cursor = 'text';
+    textLayerContainer.style.fontSize = "0px";
+    textLayerContainer.style.lineHeight = "1";
+    textLayerContainer.style.color = "transparent";
+    textLayerContainer.style.userSelect = "text";
+    textLayerContainer.style.cursor = "text";
 
     // Insert after canvas
-    const canvasContainer = document.getElementById('pdf-viewer-container');
+    const canvasContainer = document.getElementById("pdf-viewer-container");
     if (canvasContainer) {
       canvasContainer.appendChild(textLayerContainer);
     }
 
     // Render text content
     await renderTextLayer(page, textLayerContainer, viewport);
-
   } catch (error) {
-    console.error('Error creating text layer for single page:', error);
+    console.error("Error creating text layer for single page:", error);
   }
 }
 
@@ -407,15 +437,15 @@ async function loadAllPages() {
   try {
     if (!pdfDoc) return;
 
-    const continuousContainer = document.getElementById('continuous-view');
+    const continuousContainer = document.getElementById("continuous-view");
     if (!continuousContainer) return;
 
     // Clear existing content
-    continuousContainer.innerHTML = '';
+    continuousContainer.innerHTML = "";
 
     // Show loading progress
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'text-center py-8';
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "text-center py-8";
     loadingDiv.innerHTML = `
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
       <p class="text-slate-600 dark:text-slate-400">Loading pages...</p>
@@ -426,12 +456,15 @@ async function loadAllPages() {
     const loadedPages = [];
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
       try {
-        const pageWrapper = await loadPageToContainer(pageNum, continuousContainer);
+        const pageWrapper = await loadPageToContainer(
+          pageNum,
+          continuousContainer,
+        );
         if (pageWrapper) {
           loadedPages.push(pageWrapper);
         }
         // Add a small delay between pages to prevent conflicts
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (error) {
         console.error(`Error loading page ${pageNum}:`, error);
         // Continue loading other pages even if one fails
@@ -445,12 +478,17 @@ async function loadAllPages() {
 
     // Show summary of loaded pages
     if (loadedPages.length > 0) {
-      console.log(`Successfully loaded ${loadedPages.length} out of ${totalPages} pages`);
+      console.log(
+        `Successfully loaded ${loadedPages.length} out of ${totalPages} pages`,
+      );
       if (loadedPages.length < totalPages) {
-        toast(`Loaded ${loadedPages.length} out of ${totalPages} pages. Some pages failed to load.`, 'warning');
+        toast(
+          `Loaded ${loadedPages.length} out of ${totalPages} pages. Some pages failed to load.`,
+          "warning",
+        );
       }
     } else {
-      toast('Failed to load any pages. Please try again.', 'error');
+      toast("Failed to load any pages. Please try again.", "error");
     }
 
     // Set up text selection for all pages
@@ -458,10 +496,9 @@ async function loadAllPages() {
 
     // Show text selection hint
     showTextSelectionHint();
-
   } catch (error) {
-    console.error('Error loading all pages:', error);
-    toast('Failed to load PDF pages. Please try again.', 'error');
+    console.error("Error loading all pages:", error);
+    toast("Failed to load PDF pages. Please try again.", "error");
   }
 }
 
@@ -470,47 +507,46 @@ async function toggleViewMode() {
   try {
     isContinuousView = !isContinuousView;
 
-    const singlePageView = document.getElementById('single-page-view');
-    const continuousView = document.getElementById('continuous-view');
+    const singlePageView = document.getElementById("single-page-view");
+    const continuousView = document.getElementById("continuous-view");
 
     if (isContinuousView) {
       // Switch to continuous view
-      singlePageView.classList.add('hidden');
-      continuousView.classList.remove('hidden');
+      singlePageView.classList.add("hidden");
+      continuousView.classList.remove("hidden");
 
       // Update button text
       if (viewModeToggle) {
         viewModeToggle.innerHTML = '<i class="fas fa-list mr-1"></i>Continuous';
-        viewModeToggle.title = 'Switch to single page view';
+        viewModeToggle.title = "Switch to single page view";
       }
 
       // Load all pages
       await loadAllPages();
 
-      toast('Switched to continuous view - scroll to see all pages', 'info');
+      toast("Switched to continuous view - scroll to see all pages", "info");
     } else {
       // Switch to single page view
-      continuousView.classList.add('hidden');
-      singlePageView.classList.remove('hidden');
+      continuousView.classList.add("hidden");
+      singlePageView.classList.remove("hidden");
 
       // Update button text
       if (viewModeToggle) {
         viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
-        viewModeToggle.title = 'Switch to continuous view';
+        viewModeToggle.title = "Switch to continuous view";
       }
 
       // Load current page
       await loadPage(currentPage);
 
-      toast('Switched to single page view', 'info');
+      toast("Switched to single page view", "info");
     }
 
     // Update toolbar state
     updateToolbarState();
-
   } catch (error) {
-    console.error('Error toggling view mode:', error);
-    toast('Failed to switch view mode', 'error');
+    console.error("Error toggling view mode:", error);
+    toast("Failed to switch view mode", "error");
   }
 }
 
@@ -521,33 +557,35 @@ async function loadPageToContainer(pageNum, container) {
     const viewport = page.getViewport({ scale: currentScale });
 
     // Create page wrapper
-    const pageWrapper = document.createElement('div');
-    pageWrapper.className = 'page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto';
+    const pageWrapper = document.createElement("div");
+    pageWrapper.className =
+      "page-wrapper relative bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto";
     pageWrapper.style.width = `${viewport.width}px`;
-    pageWrapper.style.maxWidth = '100%';
+    pageWrapper.style.maxWidth = "100%";
     pageWrapper.dataset.pageNumber = pageNum; // Add data attribute for easy selection
 
     // Create canvas for this page
-    const canvas = document.createElement('canvas');
-    canvas.className = 'page-canvas w-full h-auto';
+    const canvas = document.createElement("canvas");
+    canvas.className = "page-canvas w-full h-auto";
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     canvas.dataset.pageNumber = pageNum;
 
     // Create text layer for text selection
-    const textLayerDiv = document.createElement('div');
-    textLayerDiv.className = 'text-layer absolute inset-0 pointer-events-auto';
+    const textLayerDiv = document.createElement("div");
+    textLayerDiv.className = "text-layer absolute inset-0 pointer-events-auto";
     textLayerDiv.style.width = `${viewport.width}px`;
     textLayerDiv.style.height = `${viewport.height}px`;
-    textLayerDiv.style.fontSize = '0px'; // Hide text but keep it selectable
-    textLayerDiv.style.lineHeight = '1';
-    textLayerDiv.style.color = 'transparent';
-    textLayerDiv.style.userSelect = 'text';
-    textLayerDiv.style.cursor = 'text';
+    textLayerDiv.style.fontSize = "0px"; // Hide text but keep it selectable
+    textLayerDiv.style.lineHeight = "1";
+    textLayerDiv.style.color = "transparent";
+    textLayerDiv.style.userSelect = "text";
+    textLayerDiv.style.cursor = "text";
 
     // Create page info overlay
-    const pageInfo = document.createElement('div');
-    pageInfo.className = 'absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium z-10';
+    const pageInfo = document.createElement("div");
+    pageInfo.className =
+      "absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs font-medium z-10";
     pageInfo.textContent = `Page ${pageNum}`;
 
     pageWrapper.appendChild(canvas);
@@ -555,10 +593,10 @@ async function loadPageToContainer(pageNum, container) {
     pageWrapper.appendChild(pageInfo);
 
     // Render the page to canvas
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext("2d");
     const renderContext = {
       canvasContext: context,
-      viewport: viewport
+      viewport: viewport,
     };
 
     // Clear the canvas before rendering
@@ -575,9 +613,9 @@ async function loadPageToContainer(pageNum, container) {
     container.appendChild(pageWrapper);
 
     // Add click handler for page navigation
-    pageWrapper.addEventListener('click', (e) => {
+    pageWrapper.addEventListener("click", (e) => {
       // Don't navigate if clicking on text layer
-      if (e.target.closest('.text-layer')) {
+      if (e.target.closest(".text-layer")) {
         return;
       }
 
@@ -585,17 +623,16 @@ async function loadPageToContainer(pageNum, container) {
       updatePageCount();
 
       // Update goto input field
-      const gotoInput = document.getElementById('gotoPageInput');
+      const gotoInput = document.getElementById("gotoPageInput");
       if (gotoInput) {
         gotoInput.value = currentPage;
       }
 
       // Scroll to this page
-      pageWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      pageWrapper.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
     return pageWrapper;
-
   } catch (error) {
     console.error(`Error loading page ${pageNum}:`, error);
     return null;
@@ -608,34 +645,34 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
     const textContent = await page.getTextContent({
       normalizeWhitespace: true,
       disableCombineTextItems: true,
-      includeMarkedContent: false
+      includeMarkedContent: false,
     });
 
     // Clear existing content and set up text layer
-    textLayerDiv.innerHTML = '';
-    textLayerDiv.style.position = 'absolute';
-    textLayerDiv.style.left = '0';
-    textLayerDiv.style.top = '0';
-    textLayerDiv.style.width = '100%';
-    textLayerDiv.style.height = '100%';
-    textLayerDiv.style.overflow = 'visible';
-    textLayerDiv.style.lineHeight = '1';
-    textLayerDiv.style.fontSize = '0';
-    textLayerDiv.style.userSelect = 'text';
-    textLayerDiv.style.webkitUserSelect = 'text';
-    textLayerDiv.style.lineHeight = '1.0';
-    textLayerDiv.style.fontSize = '0';
+    textLayerDiv.innerHTML = "";
+    textLayerDiv.style.position = "absolute";
+    textLayerDiv.style.left = "0";
+    textLayerDiv.style.top = "0";
+    textLayerDiv.style.width = "100%";
+    textLayerDiv.style.height = "100%";
+    textLayerDiv.style.overflow = "visible";
+    textLayerDiv.style.lineHeight = "1";
+    textLayerDiv.style.fontSize = "0";
+    textLayerDiv.style.userSelect = "text";
+    textLayerDiv.style.webkitUserSelect = "text";
+    textLayerDiv.style.lineHeight = "1.0";
+    textLayerDiv.style.fontSize = "0";
 
     // Group text items by their vertical position
     const lineMap = new Map();
 
     // First pass: group text items by their vertical position
     textContent.items.forEach((item) => {
-      if (!item.str || item.str.trim() === '') return;
+      if (!item.str || item.str.trim() === "") return;
 
       const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
       const style = textContent.styles[item.fontName];
-      const fontSize = Math.max(0.1, Math.sqrt((tx[0] * tx[0]) + (tx[1] * tx[1])));
+      const fontSize = Math.max(0.1, Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]));
       const lineHeight = (style?.lineHeight || 1.2) * fontSize;
 
       // Round the vertical position to group items on the same line
@@ -652,7 +689,7 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
         fontSize: fontSize,
         scale: tx[0] / fontSize,
         style: style,
-        direction: item.strDirection
+        direction: item.strDirection,
       });
     });
 
@@ -662,36 +699,37 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
       items.sort((a, b) => a.left - b.left);
 
       // Create a container for this line
-      const lineContainer = document.createElement('div');
-      lineContainer.className = 'text-line';
-      lineContainer.style.position = 'absolute';
-      lineContainer.style.left = '0';
+      const lineContainer = document.createElement("div");
+      lineContainer.className = "text-line";
+      lineContainer.style.position = "absolute";
+      lineContainer.style.left = "0";
       lineContainer.style.top = `${lineKey}px`;
       lineContainer.style.height = `${items[0].fontSize * 1.2}px`;
       lineContainer.style.lineHeight = `${items[0].fontSize * 1.2}px`;
-      lineContainer.style.whiteSpace = 'nowrap';
-      lineContainer.style.pointerEvents = 'auto';
+      lineContainer.style.whiteSpace = "nowrap";
+      lineContainer.style.pointerEvents = "auto";
 
       // Add text spans for each item in the line
-      items.forEach(item => {
-        const textElement = document.createElement('span');
-        textElement.className = 'text-span';
+      items.forEach((item) => {
+        const textElement = document.createElement("span");
+        textElement.className = "text-span";
         textElement.textContent = item.text;
-        textElement.style.position = 'absolute';
+        textElement.style.position = "absolute";
         textElement.style.left = `${item.left}px`;
-        textElement.style.top = '0';
+        textElement.style.top = "0";
         textElement.style.fontSize = `${item.fontSize}px`;
-        textElement.style.fontFamily = item.style?.fontFamily || 'sans-serif';
+        textElement.style.fontFamily = item.style?.fontFamily || "sans-serif";
         textElement.style.transform = `matrix(${item.scale}, 0, 0, 1, 0, 0)`;
-        textElement.style.transformOrigin = 'left top';
-        textElement.style.whiteSpace = 'pre';
-        textElement.style.cursor = 'text';
-        textElement.style.userSelect = 'text';
-        textElement.style.webkitUserSelect = 'text';
-        textElement.style.color = 'transparent';
-        textElement.style.pointerEvents = 'auto';
-        textElement.style.verticalAlign = 'top';
-        textElement.style.direction = item.direction === 'ttb' ? 'vertical-rl' : 'ltr';
+        textElement.style.transformOrigin = "left top";
+        textElement.style.whiteSpace = "pre";
+        textElement.style.cursor = "text";
+        textElement.style.userSelect = "text";
+        textElement.style.webkitUserSelect = "text";
+        textElement.style.color = "transparent";
+        textElement.style.pointerEvents = "auto";
+        textElement.style.verticalAlign = "top";
+        textElement.style.direction =
+          item.direction === "ttb" ? "vertical-rl" : "ltr";
 
         lineContainer.appendChild(textElement);
       });
@@ -699,9 +737,11 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
       textLayerDiv.appendChild(lineContainer);
     }
 
-    console.log(`Text layer rendered for page with ${textContent.items.length} text items`);
+    console.log(
+      `Text layer rendered for page with ${textContent.items.length} text items`,
+    );
   } catch (error) {
-    console.error('Error rendering text layer:', error);
+    console.error("Error rendering text layer:", error);
   }
 }
 
@@ -709,7 +749,7 @@ async function renderTextLayer(page, textLayerDiv, viewport) {
 function resizeCanvas() {
   if (!pdfCanvas) return;
 
-  const container = document.getElementById('pdf-viewer-container');
+  const container = document.getElementById("pdf-viewer-container");
   if (!container) return;
 
   const containerRect = container.getBoundingClientRect();
@@ -733,44 +773,44 @@ function resizeCanvas() {
 
 // Show PDF loading state
 function showPDFLoading() {
-  const loading = document.getElementById('pdf-loading');
-  const error = document.getElementById('pdf-error');
-  const neutral = document.getElementById('pdf-neutral');
-  if (loading) loading.classList.remove('hidden');
-  if (error) error.classList.add('hidden');
-  if (neutral) neutral.classList.add('hidden');
+  const loading = document.getElementById("pdf-loading");
+  const error = document.getElementById("pdf-error");
+  const neutral = document.getElementById("pdf-neutral");
+  if (loading) loading.classList.remove("hidden");
+  if (error) error.classList.add("hidden");
+  if (neutral) neutral.classList.add("hidden");
 }
 
 // Hide PDF loading state
 function hidePDFLoading() {
-  const loading = document.getElementById('pdf-loading');
-  if (loading) loading.classList.add('hidden');
+  const loading = document.getElementById("pdf-loading");
+  if (loading) loading.classList.add("hidden");
 }
 
 // Show PDF error state
 function showPDFError() {
-  const loading = document.getElementById('pdf-loading');
-  const error = document.getElementById('pdf-error');
-  const neutral = document.getElementById('pdf-neutral');
-  if (loading) loading.classList.add('hidden');
-  if (error) error.classList.remove('hidden');
-  if (neutral) neutral.classList.add('hidden');
+  const loading = document.getElementById("pdf-loading");
+  const error = document.getElementById("pdf-error");
+  const neutral = document.getElementById("pdf-neutral");
+  if (loading) loading.classList.add("hidden");
+  if (error) error.classList.remove("hidden");
+  if (neutral) neutral.classList.add("hidden");
 }
 
 // Show PDF neutral state (no document selected)
 function showPDFNeutral() {
-  const loading = document.getElementById('pdf-loading');
-  const error = document.getElementById('pdf-error');
-  const neutral = document.getElementById('pdf-neutral');
-  const canvas = document.getElementById('pdf-canvas');
+  const loading = document.getElementById("pdf-loading");
+  const error = document.getElementById("pdf-error");
+  const neutral = document.getElementById("pdf-neutral");
+  const canvas = document.getElementById("pdf-canvas");
 
-  if (loading) loading.classList.add('hidden');
-  if (error) error.classList.add('hidden');
-  if (neutral) neutral.classList.remove('hidden');
+  if (loading) loading.classList.add("hidden");
+  if (error) error.classList.add("hidden");
+  if (neutral) neutral.classList.remove("hidden");
 
   // Clear canvas and show placeholder
   if (canvas) {
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Set canvas to a reasonable size
@@ -778,66 +818,70 @@ function showPDFNeutral() {
     canvas.height = 600;
 
     // Draw a placeholder
-    ctx.fillStyle = '#f8fafc';
+    ctx.fillStyle = "#f8fafc";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw placeholder text
-    ctx.fillStyle = '#64748b';
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('Select a document to view', canvas.width / 2, canvas.height / 2);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "16px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "Select a document to view",
+      canvas.width / 2,
+      canvas.height / 2,
+    );
   }
 }
 
 // Theme handling (light/dark)
 function initTheme() {
-  const saved = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  const t = document.getElementById('themeToggle');
-  if (t) t.textContent = saved === 'dark' ? '🌙' : '☀️';
+  const saved = localStorage.getItem("theme") || "dark";
+  document.documentElement.setAttribute("data-theme", saved);
+  const t = document.getElementById("themeToggle");
+  if (t) t.textContent = saved === "dark" ? "🌙" : "☀️";
 }
 
 function toggleTheme() {
-  const cur = document.documentElement.getAttribute('data-theme') || 'light';
-  const next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  const t = document.getElementById('themeToggle');
-  if (t) t.textContent = next === 'dark' ? '🌙' : '☀️';
+  const cur = document.documentElement.getAttribute("data-theme") || "light";
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  const t = document.getElementById("themeToggle");
+  if (t) t.textContent = next === "dark" ? "🌙" : "☀️";
 }
 
 async function fetchConfig() {
   try {
-    const res = await fetch('/api/config');
+    const res = await fetch("/api/config");
     const data = await res.json();
     // Store any config data if needed
-    console.log('Config loaded:', data);
+    console.log("Config loaded:", data);
   } catch (e) {
-    console.error('Config fetch failed:', e);
+    console.error("Config fetch failed:", e);
   }
 }
 
 async function fetchHealth() {
   try {
-    const res = await fetch('/api/health');
+    const res = await fetch("/api/health");
     HEALTH = await res.json();
 
     // Update status badges
-    const llmStatus = document.getElementById('llmStatus');
-    const ttsStatus = document.getElementById('ttsStatus');
+    const llmStatus = document.getElementById("llmStatus");
+    const ttsStatus = document.getElementById("ttsStatus");
 
     if (llmStatus) {
-      llmStatus.textContent = HEALTH.llm_provider || 'Unknown';
+      llmStatus.textContent = HEALTH.llm_provider || "Unknown";
     }
 
     if (ttsStatus) {
-      ttsStatus.textContent = HEALTH.tts_provider || 'Unknown';
+      ttsStatus.textContent = HEALTH.tts_provider || "Unknown";
     }
 
     // Update current document name display
     updateCurrentDocName();
   } catch (e) {
-    console.error('Health check failed:', e);
+    console.error("Health check failed:", e);
   }
 }
 
@@ -855,17 +899,17 @@ async function selectDocument(docName) {
 
     if (success) {
       // Update document list selection
-      const list = document.getElementById('docList');
+      const list = document.getElementById("docList");
       if (list) {
         // Remove previous selections
-        list.querySelectorAll('.doc-item.selected').forEach(item => {
-          item.classList.remove('selected');
+        list.querySelectorAll(".doc-item.selected").forEach((item) => {
+          item.classList.remove("selected");
         });
 
         // Select the new document
         const selectedItem = list.querySelector(`[data-filename="${docName}"]`);
         if (selectedItem) {
-          selectedItem.classList.add('selected');
+          selectedItem.classList.add("selected");
         }
       }
 
@@ -874,8 +918,8 @@ async function selectDocument(docName) {
 
     return success;
   } catch (error) {
-    console.error('Error selecting document:', error);
-    toast('Error selecting document', 'error');
+    console.error("Error selecting document:", error);
+    toast("Error selecting document", "error");
     return false;
   }
 }
@@ -883,16 +927,16 @@ async function selectDocument(docName) {
 // Update the loadDocuments function to use the new selectDocument function
 async function loadDocuments() {
   try {
-    const res = await fetch('/api/documents');
+    const res = await fetch("/api/documents");
     const docs = await res.json();
-    const list = document.getElementById('docList');
+    const list = document.getElementById("docList");
     if (!list) return;
 
-    list.innerHTML = '';
+    list.innerHTML = "";
 
     docs.forEach((d) => {
-      const li = document.createElement('li');
-      li.className = 'doc-item group cursor-pointer';
+      const li = document.createElement("li");
+      li.className = "doc-item group cursor-pointer";
       li.innerHTML = `
         <div class="flex items-center space-x-3 flex-1">
           <div class="flex-1 min-w-0">
@@ -914,13 +958,15 @@ async function loadDocuments() {
         </div>
       `;
       li.dataset.filename = d.filename;
-      li.addEventListener('click', async (e) => {
+      li.addEventListener("click", async (e) => {
         // Only select if not clicking delete
-        if (e.target.closest('button[onclick]')) return;
+        if (e.target.closest("button[onclick]")) return;
 
         // Deselect all others
-        document.querySelectorAll('.doc-item.selected').forEach(el => el.classList.remove('selected'));
-        li.classList.add('selected');
+        document
+          .querySelectorAll(".doc-item.selected")
+          .forEach((el) => el.classList.remove("selected"));
+        li.classList.add("selected");
 
         // Load the document
         await selectDocument(d.filename);
@@ -931,17 +977,17 @@ async function loadDocuments() {
 
     updateSelectedCount();
   } catch (e) {
-    console.error('Failed to load documents:', e);
+    console.error("Failed to load documents:", e);
   }
 }
 
 function getSelectedDocs() {
-  const list = document.getElementById('docList');
+  const list = document.getElementById("docList");
   if (!list) return [];
 
   const docs = [];
   for (const li of list.children) {
-    if (li.classList.contains('selected')) {
+    if (li.classList.contains("selected")) {
       docs.push(li.dataset.filename || li.textContent);
     }
   }
@@ -949,52 +995,56 @@ function getSelectedDocs() {
 }
 
 function updateSelectedCount() {
-  const el = document.getElementById('selectedCount');
-  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  const el = document.getElementById("selectedCount");
+  const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
   if (!el) return;
-  const list = document.getElementById('docList');
+  const list = document.getElementById("docList");
   if (!list) return;
 
   let count = 0;
-  for (const li of list.children) if (li.classList.contains('selected')) count++;
+  for (const li of list.children)
+    if (li.classList.contains("selected")) count++;
   el.textContent = `${count} selected`;
 
   // Enable/disable delete button based on selection
   if (deleteSelectedBtn) {
     if (count > 0) {
       deleteSelectedBtn.disabled = false;
-      deleteSelectedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      deleteSelectedBtn.classList.remove("opacity-50", "cursor-not-allowed");
     } else {
       deleteSelectedBtn.disabled = true;
-      deleteSelectedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      deleteSelectedBtn.classList.add("opacity-50", "cursor-not-allowed");
     }
   }
 }
 
 function updateCurrentDocName() {
-  const currentDocNameEl = document.getElementById('currentDocName');
+  const currentDocNameEl = document.getElementById("currentDocName");
   if (currentDocNameEl && currentDoc) {
-    const filename = currentDoc.split('/').pop();
-    currentDocNameEl.textContent = filename || 'Unknown document';
+    const filename = currentDoc.split("/").pop();
+    currentDocNameEl.textContent = filename || "Unknown document";
   } else if (currentDocNameEl) {
-    currentDocNameEl.textContent = 'No document selected';
+    currentDocNameEl.textContent = "No document selected";
   }
 }
 
 // Handle file uploads
 async function uploadFiles() {
-  const input = document.getElementById('fileInput');
+  const input = document.getElementById("fileInput");
   if (!input.files.length) {
-    toast('Please select files to upload', 'warning');
+    toast("Please select files to upload", "warning");
     return;
   }
 
   // Validate file types
   const files = Array.from(input.files);
-  const invalidFiles = files.filter(file => !file.type.includes('pdf'));
+  const invalidFiles = files.filter((file) => !file.type.includes("pdf"));
 
   if (invalidFiles.length > 0) {
-    toast(`Invalid file type(s): ${invalidFiles.map(f => f.name).join(', ')}. Only PDF files are supported.`, 'error');
+    toast(
+      `Invalid file type(s): ${invalidFiles.map((f) => f.name).join(", ")}. Only PDF files are supported.`,
+      "error",
+    );
     return;
   }
 
@@ -1002,25 +1052,28 @@ async function uploadFiles() {
   showUploadProgress();
 
   const form = new FormData();
-  for (const f of files) form.append('files', f);
+  for (const f of files) form.append("files", f);
 
   try {
     // Create XMLHttpRequest for progress tracking
     const xhr = new XMLHttpRequest();
 
     // Track upload progress
-    xhr.upload.addEventListener('progress', (event) => {
+    xhr.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) {
         const percentComplete = (event.loaded / event.total) * 100;
-        updateUploadProgress(percentComplete, `Uploading ${files.length} file(s)...`);
+        updateUploadProgress(
+          percentComplete,
+          `Uploading ${files.length} file(s)...`,
+        );
       }
     });
 
     // Handle upload completion
-    xhr.addEventListener('load', async () => {
+    xhr.addEventListener("load", async () => {
       if (xhr.status === 200) {
-        updateUploadProgress(100, 'Upload completed!', 'success');
-        toast(`Successfully uploaded ${files.length} file(s)! 🎉`, 'success');
+        updateUploadProgress(100, "Upload completed!", "success");
+        toast(`Successfully uploaded ${files.length} file(s)! 🎉`, "success");
 
         // Reload documents list
         await loadDocuments();
@@ -1029,7 +1082,7 @@ async function uploadFiles() {
         try {
           startIndexingStatusPolling();
         } catch (e) {
-          console.warn('Indexing status polling failed to start:', e);
+          console.warn("Indexing status polling failed to start:", e);
         }
 
         // Hide upload modal after a short delay
@@ -1037,51 +1090,51 @@ async function uploadFiles() {
           hideUploadProgress();
         }, 1200);
       } else {
-        updateUploadProgress(0, 'Upload failed', 'error');
-        toast(`Upload failed: ${xhr.statusText || 'Unknown error'}`, 'error');
+        updateUploadProgress(0, "Upload failed", "error");
+        toast(`Upload failed: ${xhr.statusText || "Unknown error"}`, "error");
         hideUploadProgress();
       }
     });
 
     // Handle upload errors
-    xhr.addEventListener('error', () => {
-      updateUploadProgress(0, 'Upload failed', 'error');
-      toast('Upload failed: Network error', 'error');
+    xhr.addEventListener("error", () => {
+      updateUploadProgress(0, "Upload failed", "error");
+      toast("Upload failed: Network error", "error");
       hideUploadProgress();
     });
 
     // Handle upload timeout
-    xhr.addEventListener('timeout', () => {
-      updateUploadProgress(0, 'Upload failed', 'error');
-      toast('Upload failed: Request timed out', 'error');
+    xhr.addEventListener("timeout", () => {
+      updateUploadProgress(0, "Upload failed", "error");
+      toast("Upload failed: Request timed out", "error");
       hideUploadProgress();
     });
 
     // Start the upload
-    xhr.open('POST', '/api/upload');
+    xhr.open("POST", "/api/upload");
     xhr.timeout = 300000; // 5 minutes timeout for large files
     xhr.send(form);
-
   } catch (error) {
-    console.error('Upload error:', error);
-    updateUploadProgress(0, 'Upload failed', 'error');
-    toast(`Upload failed: ${error.message}`, 'error');
+    console.error("Upload error:", error);
+    updateUploadProgress(0, "Upload failed", "error");
+    toast(`Upload failed: ${error.message}`, "error");
     hideUploadProgress();
   }
 }
 
 // --- Indexing progress UI ---
 function ensureIndexingProgressUI() {
-  let el = document.getElementById('indexingProgressBarContainer');
+  let el = document.getElementById("indexingProgressBarContainer");
   if (el) {
     // Ensure it sits bottom-left even if it already exists
-    el.classList.remove('right-6');
-    el.classList.add('left-6');
+    el.classList.remove("right-6");
+    el.classList.add("left-6");
     return el;
   }
-  el = document.createElement('div');
-  el.id = 'indexingProgressBarContainer';
-  el.className = 'fixed bottom-6 left-6 bg-white dark:bg-slate-800 shadow-xl rounded-xl p-4 w-80 z-40 hidden';
+  el = document.createElement("div");
+  el.id = "indexingProgressBarContainer";
+  el.className =
+    "fixed bottom-6 left-6 bg-white dark:bg-slate-800 shadow-xl rounded-xl p-4 w-80 z-40 hidden";
   el.innerHTML = `
     <div class="flex items-center mb-2">
       <div class="w-3 h-3 rounded-full bg-emerald-500 mr-2" id="indexingStatusDot"></div>
@@ -1102,36 +1155,30 @@ function ensureIndexingProgressUI() {
 let indexingPollTimer = null;
 function startIndexingStatusPolling() {
   const container = ensureIndexingProgressUI();
-  container.classList.remove('hidden');
+  container.classList.remove("hidden");
 
-  const progressBar = document.getElementById('indexingProgressBar');
-  const statusText = document.getElementById('indexingStatusText');
-  const statusDot = document.getElementById('indexingStatusDot');
-  const closeBtn = document.getElementById('indexingCloseBtn');
+  const progressBar = document.getElementById("indexingProgressBar");
+  const statusText = document.getElementById("indexingStatusText");
+  const statusDot = document.getElementById("indexingStatusDot");
+  const closeBtn = document.getElementById("indexingCloseBtn");
 
   if (closeBtn) {
     closeBtn.onclick = () => {
       if (indexingPollTimer) clearInterval(indexingPollTimer);
       indexingPollTimer = null;
-      container.classList.add('hidden');
+      container.classList.add("hidden");
     };
   }
 
   const updateUI = (state) => {
-    const {
-      running,
-      phase,
-      total_docs,
-      docs_done,
-      current_doc,
-      message
-    } = state || {};
+    const { running, phase, total_docs, docs_done, current_doc, message } =
+      state || {};
 
-    if (!running && (!phase || phase === 'done')) {
-      progressBar.style.width = '100%';
-      statusText.textContent = 'Indexing complete';
-      statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500 mr-2';
-      setTimeout(() => container.classList.add('hidden'), 1200);
+    if (!running && (!phase || phase === "done")) {
+      progressBar.style.width = "100%";
+      statusText.textContent = "Indexing complete";
+      statusDot.className = "w-3 h-3 rounded-full bg-emerald-500 mr-2";
+      setTimeout(() => container.classList.add("hidden"), 1200);
       if (indexingPollTimer) clearInterval(indexingPollTimer);
       indexingPollTimer = null;
       return;
@@ -1141,18 +1188,22 @@ function startIndexingStatusPolling() {
     const done = Math.min(total, docs_done || 0);
     const percent = Math.round((done / total) * 100);
 
-    progressBar.style.width = percent + '%';
-    statusText.textContent = message || (phase === 'rebuild' ? 'Rebuilding index...' : 'Indexing documents...');
-    statusDot.className = running ? 'w-3 h-3 rounded-full bg-amber-500 mr-2 animate-pulse' : 'w-3 h-3 rounded-full bg-slate-400 mr-2';
+    progressBar.style.width = percent + "%";
+    statusText.textContent =
+      message ||
+      (phase === "rebuild" ? "Rebuilding index..." : "Indexing documents...");
+    statusDot.className = running
+      ? "w-3 h-3 rounded-full bg-amber-500 mr-2 animate-pulse"
+      : "w-3 h-3 rounded-full bg-slate-400 mr-2";
 
     // Keep visible while running
-    container.classList.remove('hidden');
+    container.classList.remove("hidden");
   };
 
   const poll = async () => {
     try {
-      const res = await fetch('/api/indexing-status');
-      if (!res.ok) throw new Error('status not ok');
+      const res = await fetch("/api/indexing-status");
+      if (!res.ok) throw new Error("status not ok");
       const state = await res.json();
       updateUI(state);
     } catch (e) {
@@ -1174,7 +1225,7 @@ function startIndexingStatusPolling() {
 async function loadDocument(doc) {
   try {
     if (!doc || !doc.filename) {
-      console.error('Invalid document:', doc);
+      console.error("Invalid document:", doc);
       return false;
     }
 
@@ -1200,8 +1251,8 @@ async function loadDocument(doc) {
 
       // Enable insights and podcast buttons when document is loaded
       // (they can work with just the document, even without analysis)
-      const insightsBtn = document.getElementById('insightsBtn');
-      const podcastBtn = document.getElementById('podcastBtn');
+      const insightsBtn = document.getElementById("insightsBtn");
+      const podcastBtn = document.getElementById("podcastBtn");
       if (insightsBtn) insightsBtn.disabled = false;
       if (podcastBtn) podcastBtn.disabled = false;
 
@@ -1209,42 +1260,41 @@ async function loadDocument(doc) {
       try {
         await getDocumentRecommendations();
       } catch (error) {
-        console.error('Error loading document recommendations:', error);
+        console.error("Error loading document recommendations:", error);
       }
 
-      toast(`Loaded: ${doc.filename}`, 'success');
+      toast(`Loaded: ${doc.filename}`, "success");
       return true;
     } else {
-      toast('Failed to load document', 'error');
+      toast("Failed to load document", "error");
       return false;
     }
-
   } catch (error) {
-    console.error('Error loading document:', error);
-    toast('Error loading document', 'error');
+    console.error("Error loading document:", error);
+    toast("Error loading document", "error");
     return false;
   }
 }
 
 // Handle file uploads
 async function uploadFiles_legacy() {
-  const input = document.getElementById('fileInput');
+  const input = document.getElementById("fileInput");
   if (!input.files.length) return;
   const form = new FormData();
-  for (const f of input.files) form.append('files', f);
-  await fetch('/api/upload', { method: 'POST', body: form });
+  for (const f of input.files) form.append("files", f);
+  await fetch("/api/upload", { method: "POST", body: form });
   await loadDocuments();
 }
 
 async function loadDocuments_legacy() {
-  const res = await fetch('/api/documents');
+  const res = await fetch("/api/documents");
   const docs = await res.json();
-  const list = document.getElementById('docList');
-  list.innerHTML = '';
+  const list = document.getElementById("docList");
+  list.innerHTML = "";
 
   docs.forEach((d) => {
-    const li = document.createElement('li');
-    li.className = 'doc-item group';
+    const li = document.createElement("li");
+    li.className = "doc-item group";
 
     // Create a beautiful document item
     li.innerHTML = `
@@ -1272,28 +1322,33 @@ async function loadDocuments_legacy() {
     li.dataset.filename = d.filename;
 
     // Add click handlers
-    li.addEventListener('click', () => {
+    li.addEventListener("click", () => {
       // Toggle selection
-      li.classList.toggle('selected');
+      li.classList.toggle("selected");
 
       // Update visual state
-      const indicator = li.querySelector('.w-3.h-3');
-      const viewBtn = li.querySelector('button');
+      const indicator = li.querySelector(".w-3.h-3");
+      const viewBtn = li.querySelector("button");
 
-      if (li.classList.contains('selected')) {
-        indicator.className = 'w-3 h-3 rounded-full bg-blue-500 animate-pulse';
-        viewBtn.className = 'p-2 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-lg transition-all duration-300 opacity-100 transform translate-x-0';
-        viewBtn.innerHTML = '<i class="fas fa-check text-blue-600 dark:text-blue-400 text-xs"></i>';
-        viewBtn.title = 'Document selected';
+      if (li.classList.contains("selected")) {
+        indicator.className = "w-3 h-3 rounded-full bg-blue-500 animate-pulse";
+        viewBtn.className =
+          "p-2 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-lg transition-all duration-300 opacity-100 transform translate-x-0";
+        viewBtn.innerHTML =
+          '<i class="fas fa-check text-blue-600 dark:text-blue-400 text-xs"></i>';
+        viewBtn.title = "Document selected";
       } else {
-        indicator.className = 'w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-all duration-300';
-        viewBtn.className = 'p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0';
-        viewBtn.innerHTML = '<i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>';
-        viewBtn.title = 'View document';
+        indicator.className =
+          "w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-all duration-300";
+        viewBtn.className =
+          "p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0";
+        viewBtn.innerHTML =
+          '<i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>';
+        viewBtn.title = "View document";
       }
 
       // Load document if not already loaded
-      if (li.classList.contains('selected') && currentDoc !== d.filename) {
+      if (li.classList.contains("selected") && currentDoc !== d.filename) {
         loadDocument(d);
       }
 
@@ -1307,10 +1362,10 @@ async function loadDocuments_legacy() {
 }
 
 function getSelectedDocs_legacy() {
-  const list = document.getElementById('docList');
+  const list = document.getElementById("docList");
   const docs = [];
   for (const li of list.children) {
-    if (li.classList.contains('selected')) {
+    if (li.classList.contains("selected")) {
       docs.push(li.dataset.filename || li.textContent);
     }
   }
@@ -1318,31 +1373,32 @@ function getSelectedDocs_legacy() {
 }
 
 function updateSelectedCount_legacy() {
-  const el = document.getElementById('selectedCount');
-  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  const el = document.getElementById("selectedCount");
+  const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
   if (!el) return;
-  const list = document.getElementById('docList');
+  const list = document.getElementById("docList");
   if (!list) return;
 
   let count = 0;
-  for (const li of list.children) if (li.classList.contains('selected')) count++;
+  for (const li of list.children)
+    if (li.classList.contains("selected")) count++;
   el.textContent = `${count} selected`;
 
   // Enable/disable delete button based on selection
   if (deleteSelectedBtn) {
     if (count > 0) {
       deleteSelectedBtn.disabled = false;
-      deleteSelectedBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      deleteSelectedBtn.classList.remove("opacity-50", "cursor-not-allowed");
     } else {
       deleteSelectedBtn.disabled = true;
-      deleteSelectedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      deleteSelectedBtn.classList.add("opacity-50", "cursor-not-allowed");
     }
   }
 }
 
 // Update the page count display in the UI
 function updatePageCount() {
-  const pageCountEl = document.getElementById('pageCount');
+  const pageCountEl = document.getElementById("pageCount");
   if (pageCountEl) {
     pageCountEl.textContent = ` / ${totalPages}`;
   }
@@ -1357,8 +1413,8 @@ function clampPageNumber(page) {
 }
 
 function renderSections(sections, relatedMap) {
-  const container = document.getElementById('sections');
-  container.innerHTML = '';
+  const container = document.getElementById("sections");
+  container.innerHTML = "";
 
   if (sections.length === 0) {
     container.innerHTML = `
@@ -1378,8 +1434,8 @@ function renderSections(sections, relatedMap) {
 
   sections.forEach((s, index) => {
     const key = `${s.document}|${s.section_title}|${s.page_number}`;
-    const item = document.createElement('div');
-    item.className = 'section-item group cursor-pointer';
+    const item = document.createElement("div");
+    item.className = "section-item group cursor-pointer";
 
     item.innerHTML = `
       <div class="flex items-start justify-between">
@@ -1405,11 +1461,15 @@ function renderSections(sections, relatedMap) {
             </div>
           </div>
           
-          ${s.section_summary ? `
+          ${
+            s.section_summary
+              ? `
             <p class="section-content text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               ${s.section_summary}
             </p>
-          ` : ''}
+          `
+              : ""
+          }
         </div>
         
         <button class="ml-4 p-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300 opacity-0 group-hover:opacity-100" 
@@ -1418,14 +1478,18 @@ function renderSections(sections, relatedMap) {
         </button>
       </div>
       
-      ${relatedMap[key] && relatedMap[key].length > 0 ? `
+      ${
+        relatedMap[key] && relatedMap[key].length > 0
+          ? `
         <div class="related-sections mt-4">
           <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center">
             <i class="fas fa-link mr-2"></i>
             Related Sections (${relatedMap[key].length})
           </div>
           <div class="flex flex-wrap gap-2">
-            ${relatedMap[key].map((r, idx) => `
+            ${relatedMap[key]
+              .map(
+                (r, idx) => `
               <button class="related-item hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-300" 
                       data-page="${r.page_number}" data-doc="${r.document}" title="Jump to ${r.section_title}">
                 <div class="flex items-center space-x-2">
@@ -1434,21 +1498,25 @@ function renderSections(sections, relatedMap) {
                   <span class="text-xs opacity-75">p.${r.page_number}</span>
                 </div>
               </button>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
     `;
 
     container.appendChild(item);
 
     // Add click handlers
-    const jumpBtn = item.querySelector('button[data-page]');
+    const jumpBtn = item.querySelector("button[data-page]");
     if (jumpBtn) {
-      jumpBtn.addEventListener('click', async (e) => {
+      jumpBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const page = parseInt(jumpBtn.getAttribute('data-page'), 10);
-        const doc = jumpBtn.getAttribute('data-doc');
+        const page = parseInt(jumpBtn.getAttribute("data-page"), 10);
+        const doc = jumpBtn.getAttribute("data-doc");
 
         // Load document if not already loaded
         if (currentDoc !== `/files/${doc}`) {
@@ -1457,22 +1525,22 @@ function renderSections(sections, relatedMap) {
           // Wait a bit for the viewer to initialize before jumping to page
           setTimeout(async () => {
             const ok = await jumpToPage(page);
-            if (!ok) toast('Navigation failed.', 'error');
+            if (!ok) toast("Navigation failed.", "error");
           }, 1000);
         } else {
           // Document already loaded, jump directly to page
           const ok = await jumpToPage(page);
-          if (!ok) toast('Navigation failed.', 'error');
+          if (!ok) toast("Navigation failed.", "error");
         }
       });
     }
 
     // Add click handlers for related sections
-    item.querySelectorAll('.related-item').forEach((relBtn) => {
-      relBtn.addEventListener('click', async (e) => {
+    item.querySelectorAll(".related-item").forEach((relBtn) => {
+      relBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const page = parseInt(relBtn.getAttribute('data-page'), 10);
-        const doc = relBtn.getAttribute('data-doc');
+        const page = parseInt(relBtn.getAttribute("data-page"), 10);
+        const doc = relBtn.getAttribute("data-doc");
 
         // Load document if not already loaded
         if (currentDoc !== `/files/${doc}`) {
@@ -1481,12 +1549,12 @@ function renderSections(sections, relatedMap) {
           // Wait a bit for the viewer to initialize before jumping to page
           setTimeout(async () => {
             const ok = await jumpToPage(page);
-            if (!ok) toast('Navigation failed.', 'error');
+            if (!ok) toast("Navigation failed.", "error");
           }, 1000);
         } else {
           // Document already loaded, jump directly to page
           const ok = await jumpToPage(page);
-          if (!ok) toast('Navigation failed.', 'error');
+          if (!ok) toast("Navigation failed.", "error");
         }
       });
     });
@@ -1494,8 +1562,8 @@ function renderSections(sections, relatedMap) {
 }
 
 function renderSnippets(snippets) {
-  const container = document.getElementById('snippets');
-  container.innerHTML = '';
+  const container = document.getElementById("snippets");
+  container.innerHTML = "";
 
   if (!snippets || snippets.length === 0) {
     container.innerHTML = `
@@ -1515,8 +1583,8 @@ function renderSnippets(snippets) {
   currentSnippets = snippets;
 
   snippets.forEach((s, index) => {
-    const item = document.createElement('div');
-    item.className = 'snippet-item group cursor-pointer';
+    const item = document.createElement("div");
+    item.className = "snippet-item group cursor-pointer";
 
     item.innerHTML = `
       <div class="flex items-start space-x-3">
@@ -1549,12 +1617,12 @@ function renderSnippets(snippets) {
     container.appendChild(item);
 
     // Add click handler
-    const jumpBtn = item.querySelector('button[data-page]');
+    const jumpBtn = item.querySelector("button[data-page]");
     if (jumpBtn) {
-      jumpBtn.addEventListener('click', async (e) => {
+      jumpBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const page = parseInt(jumpBtn.getAttribute('data-page'), 10);
-        const doc = jumpBtn.getAttribute('data-doc');
+        const page = parseInt(jumpBtn.getAttribute("data-page"), 10);
+        const doc = jumpBtn.getAttribute("data-doc");
 
         // Load document if not already loaded
         if (currentDoc !== `/files/${doc}`) {
@@ -1563,12 +1631,12 @@ function renderSnippets(snippets) {
           // Wait a bit for the viewer to initialize before jumping to page
           setTimeout(async () => {
             const ok = await jumpToPage(page);
-            if (!ok) toast('Navigation failed.', 'error');
+            if (!ok) toast("Navigation failed.", "error");
           }, 1000);
         } else {
           // Document already loaded, jump directly to page
           const ok = await jumpToPage(page);
-          if (!ok) toast('Navigation failed.', 'error');
+          if (!ok) toast("Navigation failed.", "error");
         }
       });
     }
@@ -1579,7 +1647,7 @@ function renderSnippets(snippets) {
 async function jumpToPage(pageNumber) {
   try {
     if (!pdfDoc) {
-      toast('No PDF loaded', 'error');
+      toast("No PDF loaded", "error");
       return false;
     }
 
@@ -1593,38 +1661,38 @@ async function jumpToPage(pageNumber) {
     await loadPage(clampedPage);
 
     // Update the goto input field
-    const gotoInput = document.getElementById('gotoPageInput');
+    const gotoInput = document.getElementById("gotoPageInput");
     if (gotoInput) {
       gotoInput.value = clampedPage;
     }
 
-    toast(`Jumped to page ${clampedPage}`, 'success');
+    toast(`Jumped to page ${clampedPage}`, "success");
     return true;
-
   } catch (error) {
-    console.error('Error jumping to page:', error);
-    toast('Failed to jump to page', 'error');
+    console.error("Error jumping to page:", error);
+    toast("Failed to jump to page", "error");
     return false;
   }
 }
 
 // Set up a global error handler for PDF.js viewer
-window.addEventListener('error', (event) => {
-  console.debug('PDF.js error:', event.error);
-  if (event.error && !event.error.message?.includes('PDF')) {
-    toast('An error occurred with the PDF viewer', 'error');
+window.addEventListener("error", (event) => {
+  console.debug("PDF.js error:", event.error);
+  if (event.error && !event.error.message?.includes("PDF")) {
+    toast("An error occurred with the PDF viewer", "error");
   }
 });
 
 // Show text selection loading state
 function showTextSelectionLoading() {
-  let panel = document.getElementById('textSelectionPanel');
+  let panel = document.getElementById("textSelectionPanel");
 
   // Create panel if it doesn't exist
   if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'textSelectionPanel';
-    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden';
+    panel = document.createElement("div");
+    panel.id = "textSelectionPanel";
+    panel.className =
+      "fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden";
     document.body.appendChild(panel);
   }
 
@@ -1646,23 +1714,24 @@ function showTextSelectionLoading() {
     </div>
   `;
 
-  panel.classList.remove('hidden');
+  panel.classList.remove("hidden");
 
   // Simulate progress updates
   let progress = 0;
-  const progressBar = document.getElementById('textSelectionProgress');
-  const status = document.getElementById('textSelectionStatus');
+  const progressBar = document.getElementById("textSelectionProgress");
+  const status = document.getElementById("textSelectionStatus");
 
   const progressInterval = setInterval(() => {
     progress += Math.random() * 15;
     if (progress > 90) progress = 90;
 
-    if (progressBar) progressBar.style.width = progress + '%';
+    if (progressBar) progressBar.style.width = progress + "%";
     if (status) {
-      if (progress < 30) status.textContent = 'Extracting text context...';
-      else if (progress < 60) status.textContent = 'Searching across documents...';
-      else if (progress < 90) status.textContent = 'Generating insights...';
-      else status.textContent = 'Finalizing results...';
+      if (progress < 30) status.textContent = "Extracting text context...";
+      else if (progress < 60)
+        status.textContent = "Searching across documents...";
+      else if (progress < 90) status.textContent = "Generating insights...";
+      else status.textContent = "Finalizing results...";
     }
   }, 200);
 
@@ -1672,9 +1741,9 @@ function showTextSelectionLoading() {
 
 // Hide text selection UI
 function hideTextSelectionUI() {
-  const insightsPanel = document.getElementById('textSelectionPanel');
+  const insightsPanel = document.getElementById("textSelectionPanel");
   if (insightsPanel) {
-    insightsPanel.classList.add('hidden');
+    insightsPanel.classList.add("hidden");
   }
 
   // Clear global variables
@@ -1685,18 +1754,19 @@ function hideTextSelectionUI() {
 // Clear text selection
 function clearTextSelection() {
   hideTextSelectionUI();
-  toast('Text selection cleared', 'info');
+  toast("Text selection cleared", "info");
 }
 
 // Display text selection insights
 function displayTextSelectionInsights(insights) {
-  let panel = document.getElementById('textSelectionPanel');
+  let panel = document.getElementById("textSelectionPanel");
 
   // Create panel if it doesn't exist
   if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'textSelectionPanel';
-    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden';
+    panel = document.createElement("div");
+    panel.id = "textSelectionPanel";
+    panel.className =
+      "fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40 hidden";
     document.body.appendChild(panel);
   }
 
@@ -1718,40 +1788,53 @@ function displayTextSelectionInsights(insights) {
       <div class="mb-4">
         <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 text-selection-label">Selected Text:</div>
         <div class="bg-slate-100 dark:bg-slate-700 p-3 rounded-lg text-sm text-slate-800 dark:text-slate-200">
-          "${insights.selected_text.substring(0, 200)}${insights.selected_text.length > 200 ? '...' : ''}"
+          "${insights.selected_text.substring(0, 200)}${insights.selected_text.length > 200 ? "..." : ""}"
         </div>
       </div>
       
-      ${insights.summary ? `
+      ${
+        insights.summary
+          ? `
         <div class="mb-4">
           <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 text-selection-label">Summary:</div>
           <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm text-slate-700 dark:text-slate-300">
             ${insights.summary}
           </div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
-      ${insights.insights && insights.insights.length > 0 ? `
+      ${
+        insights.insights && insights.insights.length > 0
+          ? `
         <div class="mb-4">
           <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 text-selection-label">Related Content (${insights.insights.length}):</div>
           <div class="space-y-2 max-h-40 overflow-y-auto">
-            ${insights.insights.slice(0, 5).map((insight, idx) => `
+            ${insights.insights
+              .slice(0, 5)
+              .map(
+                (insight, idx) => `
               <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded border-l-4 border-blue-500">
                 <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
                   ${insight.document} (p.${insight.page_number}) - ${insight.insight_type}
                 </div>
                 <div class="text-sm text-slate-700 dark:text-slate-300">
-                  ${insight.relevant_text.substring(0, 100)}${insight.relevant_text.length > 100 ? '...' : ''}
+                  ${insight.relevant_text.substring(0, 100)}${insight.relevant_text.length > 100 ? "..." : ""}
                 </div>
                 <button onclick="jumpToDocument('${insight.document}', ${insight.page_number})" 
                         class="mt-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
                   Jump to this section →
                 </button>
               </div>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
       <div class="flex space-x-2">
         <button onclick="getTextSelectionInsights()" 
@@ -1766,13 +1849,13 @@ function displayTextSelectionInsights(insights) {
     </div>
   `;
 
-  panel.classList.remove('hidden');
+  panel.classList.remove("hidden");
 }
 
 // Jump to document function (placeholder for now)
 function jumpToDocument(documentName, pageNumber) {
   if (!documentName) {
-    showNotification('Document name not available', 'error');
+    showNotification("Document name not available", "error");
     return;
   }
 
@@ -1795,132 +1878,155 @@ function jumpToDocument(documentName, pageNumber) {
 
 // Get text selection recommendations (placeholder for now)
 function getTextSelectionRecommendations() {
-  toast('Getting recommendations...', 'info');
+  toast("Getting recommendations...", "info");
   // TODO: Implement recommendations API call
 }
 
 // Create podcast from text selection (placeholder for now)
 async function createPodcastFromTextSelection() {
   if (!textSelectionInsights) {
-    toast('No text selection insights available', 'error');
+    toast("No text selection insights available", "error");
     return;
   }
 
   showPodcastGenerationProgress();
-  updatePodcastProgressUI(5, 'Generating script...');
+  updatePodcastProgressUI(5, "Generating script...");
 
   try {
     // Start
-    const startRes = await fetch('/api/podcast/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const startRes = await fetch("/api/podcast/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         selected_text: textSelectionInsights.selected_text,
         related_insights: textSelectionInsights.insights || [],
-        document: currentDoc || 'unknown',
+        document: currentDoc || "unknown",
         page_number: currentPage,
-        conversation_style: 'academic',
+        conversation_style: "academic",
       }),
     });
-    if (!startRes.ok) throw new Error('Failed to start podcast');
+    if (!startRes.ok) throw new Error("Failed to start podcast");
     const { task_id } = await startRes.json();
 
     // Poll status
     let finalUrl = null;
     const pollStatus = async () => {
-      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
-      if (!res.ok) throw new Error('Status polling failed');
+      const res = await fetch(
+        `/api/podcast/status?task_id=${encodeURIComponent(task_id)}`,
+      );
+      if (!res.ok) throw new Error("Status polling failed");
       return res.json();
     };
 
     const statusToText = (state) => {
-      if (state.phase === 'script') return 'Generating script...';
-      if (state.phase === 'prepare_segments') return 'Preparing segments...';
-      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
-      if (state.phase === 'combining') return 'Combining audio...';
-      if (state.phase === 'done') return 'Finalizing...';
-      if (state.phase === 'error') return 'Failed';
-      return 'Working...';
+      if (state.phase === "script") return "Generating script...";
+      if (state.phase === "prepare_segments") return "Preparing segments...";
+      if (state.phase === "segments")
+        return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === "combining") return "Combining audio...";
+      if (state.phase === "done") return "Finalizing...";
+      if (state.phase === "error") return "Failed";
+      return "Working...";
     };
 
     let keepPolling = true;
     while (keepPolling) {
       const state = await pollStatus();
       updatePodcastProgressUI(state.progress || 0, statusToText(state));
-      if (state.status === 'completed' && state.url) {
+      if (state.status === "completed" && state.url) {
         finalUrl = state.url;
         keepPolling = false;
         break;
       }
-      if (state.status === 'failed') {
-        throw new Error(state.error || 'Podcast generation failed');
+      if (state.status === "failed") {
+        throw new Error(state.error || "Podcast generation failed");
       }
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 800));
     }
 
     hidePodcastGenerationProgress();
 
     if (finalUrl) {
-      toast('Podcast generated successfully!', 'success');
-      const player = document.getElementById('player');
-      const audioUrl = finalUrl + '?t=' + Date.now();
+      toast("Podcast generated successfully!", "success");
+      const player = document.getElementById("player");
+      const audioUrl = finalUrl + "?t=" + Date.now();
       player.src = audioUrl;
       resetAudioPlayerInitialization();
       initializeAudioPlayer();
       await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Audio loading timeout')), 15000);
-        player.addEventListener('loadedmetadata', () => { clearTimeout(timeout); resolve(); }, { once: true });
-        player.addEventListener('error', (e) => { clearTimeout(timeout); reject(new Error('Audio loading failed')); }, { once: true });
+        const timeout = setTimeout(
+          () => reject(new Error("Audio loading timeout")),
+          15000,
+        );
+        player.addEventListener(
+          "loadedmetadata",
+          () => {
+            clearTimeout(timeout);
+            resolve();
+          },
+          { once: true },
+        );
+        player.addEventListener(
+          "error",
+          (e) => {
+            clearTimeout(timeout);
+            reject(new Error("Audio loading failed"));
+          },
+          { once: true },
+        );
         player.load();
       });
-      await player.play().catch(() => { });
+      await player.play().catch(() => {});
     }
   } catch (error) {
     hidePodcastGenerationProgress();
-    toast(error.message || 'Failed to generate podcast', 'error');
+    toast(error.message || "Failed to generate podcast", "error");
   }
 }
 
 async function analyze() {
   // Get persona and job from input fields, use defaults if empty
-  const persona = document.getElementById('persona').value.trim() || 'General User';
-  const job = document.getElementById('job').value.trim() || 'Understanding document content and structure';
+  const persona =
+    document.getElementById("persona").value.trim() || "General User";
+  const job =
+    document.getElementById("job").value.trim() ||
+    "Understanding document content and structure";
 
   const selectedDocs = getSelectedDocs();
   if (selectedDocs.length === 0) {
-    toast('Please select at least one document to analyze', 'warning');
+    toast("Please select at least one document to analyze", "warning");
     return;
   }
 
   // Show loading state
-  const analyzeBtn = document.getElementById('analyzeBtn');
+  const analyzeBtn = document.getElementById("analyzeBtn");
   const originalText = analyzeBtn.innerHTML;
   analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
   analyzeBtn.disabled = true;
 
   try {
     // Call the correct /api/analyze endpoint
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         persona: persona,
         job: job,
         documents: selectedDocs,
-        approach: 'nlp',
-        method: 'auto',
-        top_k: 5
-      })
+        approach: "nlp",
+        method: "auto",
+        top_k: 5,
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Analysis API error:', response.status, errorText);
+      console.error("Analysis API error:", response.status, errorText);
       throw new Error(`Analysis failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    console.log('Analysis response:', data);
+    console.log("Analysis response:", data);
 
     // Handle response structure - it may return extracted_sections and snippets
     const sections = data.extracted_sections || data.sections || [];
@@ -1939,17 +2045,19 @@ async function analyze() {
     await getDocumentRecommendations();
 
     // Enable insights and podcast buttons after successful analysis
-    const insightsBtn = document.getElementById('insightsBtn');
-    const podcastBtn = document.getElementById('podcastBtn');
+    const insightsBtn = document.getElementById("insightsBtn");
+    const podcastBtn = document.getElementById("podcastBtn");
     if (insightsBtn) insightsBtn.disabled = false;
     if (podcastBtn) podcastBtn.disabled = false;
 
     HAS_ANALYSIS = true;
-    toast('Analysis completed successfully! Top Sections and Key Insights are now available.', 'success');
-
+    toast(
+      "Analysis completed successfully! Top Sections and Key Insights are now available.",
+      "success",
+    );
   } catch (error) {
-    console.error('Analysis failed:', error);
-    toast(`Analysis failed: ${error.message}`, 'error');
+    console.error("Analysis failed:", error);
+    toast(`Analysis failed: ${error.message}`, "error");
   } finally {
     // Restore button state
     analyzeBtn.innerHTML = originalText;
@@ -1963,23 +2071,26 @@ async function getDocumentRecommendations() {
     if (!currentDoc) return;
 
     // Use the correct recommendations endpoint
-    const response = await fetch(`/api/index/recommendations/${encodeURIComponent(currentDoc)}?top_k=5`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
+    const response = await fetch(
+      `/api/index/recommendations/${encodeURIComponent(currentDoc)}?top_k=5`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      },
+    );
 
     if (response.ok) {
       const data = await response.json();
-      console.log('Document recommendations:', data);
+      console.log("Document recommendations:", data);
 
       // Update the recommendations panel if data is available
       if (data.recommendations && data.recommendations.length > 0) {
-        console.log('Raw recommendations data:', data.recommendations);
+        console.log("Raw recommendations data:", data.recommendations);
         updateRecommendationsPanel(data.recommendations);
       } else {
-        console.log('No recommendations found in response');
+        console.log("No recommendations found in response");
         // Show empty state
-        const container = document.getElementById('recommendations');
+        const container = document.getElementById("recommendations");
         if (container) {
           container.innerHTML = `
             <div class="text-center text-xs text-slate-500 dark:text-slate-400 py-3">
@@ -1989,9 +2100,9 @@ async function getDocumentRecommendations() {
         }
       }
     } else {
-      console.warn('Failed to get recommendations:', response.status);
+      console.warn("Failed to get recommendations:", response.status);
       // Show error state
-      const container = document.getElementById('recommendations');
+      const container = document.getElementById("recommendations");
       if (container) {
         container.innerHTML = `
           <div class="text-center text-xs text-red-500 dark:text-red-400 py-3">
@@ -2001,9 +2112,9 @@ async function getDocumentRecommendations() {
       }
     }
   } catch (error) {
-    console.error('Error getting document recommendations:', error);
+    console.error("Error getting document recommendations:", error);
     // Show error state
-    const container = document.getElementById('recommendations');
+    const container = document.getElementById("recommendations");
     if (container) {
       container.innerHTML = `
         <div class="text-center text-xs text-red-500 dark:text-red-400 py-3">
@@ -2016,7 +2127,7 @@ async function getDocumentRecommendations() {
 
 // Update recommendations panel
 function updateRecommendationsPanel(recommendations) {
-  const container = document.getElementById('recommendations');
+  const container = document.getElementById("recommendations");
   if (!container) return;
 
   if (!recommendations || recommendations.length === 0) {
@@ -2030,41 +2141,44 @@ function updateRecommendationsPanel(recommendations) {
 
   // Debug: Log the first recommendation to see the data structure
   if (recommendations.length > 0) {
-    console.log('First recommendation data structure:', recommendations[0]);
+    console.log("First recommendation data structure:", recommendations[0]);
   }
 
-  container.innerHTML = recommendations.slice(0, 5).map((rec, index) => {
-    // Handle different possible data structures from the API
-    const documentName = rec.document || rec.filename || rec.doc_name || 'Unknown';
-    const pageNumber = rec.page_number || rec.page || rec.page_num || 1;
+  container.innerHTML = recommendations
+    .slice(0, 5)
+    .map((rec, index) => {
+      // Handle different possible data structures from the API
+      const documentName =
+        rec.document || rec.filename || rec.doc_name || "Unknown";
+      const pageNumber = rec.page_number || rec.page || rec.page_num || 1;
 
-    // Handle different text field names
-    let relevantText = '';
-    if (rec.relevant_text) relevantText = rec.relevant_text;
-    else if (rec.text) relevantText = rec.text;
-    else if (rec.content) relevantText = rec.content;
-    else if (rec.section_title) relevantText = rec.section_title;
-    else if (rec.section_summary) relevantText = rec.section_summary;
-    else relevantText = 'No text available';
+      // Handle different text field names
+      let relevantText = "";
+      if (rec.relevant_text) relevantText = rec.relevant_text;
+      else if (rec.text) relevantText = rec.text;
+      else if (rec.content) relevantText = rec.content;
+      else if (rec.section_title) relevantText = rec.section_title;
+      else if (rec.section_summary) relevantText = rec.section_summary;
+      else relevantText = "No text available";
 
-    // Debug: Log what text field was found
-    console.log(`Recommendation ${index + 1}:`, {
-      document: documentName,
-      page: pageNumber,
-      hasRelevantText: !!rec.relevant_text,
-      hasText: !!rec.text,
-      hasContent: !!rec.content,
-      hasSectionTitle: !!rec.section_title,
-      hasSectionSummary: !!rec.section_summary,
-      finalText: relevantText.substring(0, 50) + '...'
-    });
+      // Debug: Log what text field was found
+      console.log(`Recommendation ${index + 1}:`, {
+        document: documentName,
+        page: pageNumber,
+        hasRelevantText: !!rec.relevant_text,
+        hasText: !!rec.text,
+        hasContent: !!rec.content,
+        hasSectionTitle: !!rec.section_title,
+        hasSectionSummary: !!rec.section_summary,
+        finalText: relevantText.substring(0, 50) + "...",
+      });
 
-    // Ensure we have some text to display
-    if (!relevantText || relevantText.trim() === '') {
-      relevantText = `Content from ${documentName} page ${pageNumber}`;
-    }
+      // Ensure we have some text to display
+      if (!relevantText || relevantText.trim() === "") {
+        relevantText = `Content from ${documentName} page ${pageNumber}`;
+      }
 
-    return `
+      return `
       <div class="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4 border-emerald-500 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors cursor-pointer group" 
            onclick="jumpToRecommendation('${documentName}', ${pageNumber})">
         <div class="flex items-center justify-between mb-2">
@@ -2076,11 +2190,12 @@ function updateRecommendationsPanel(recommendations) {
       </div>
     </div>
         <div class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-          ${relevantText.substring(0, 120)}${relevantText.length > 120 ? '...' : ''}
+          ${relevantText.substring(0, 120)}${relevantText.length > 120 ? "..." : ""}
         </div>
       </div>
     `;
-  }).join('');
+    })
+    .join("");
 }
 
 // Get document insights
@@ -2088,32 +2203,34 @@ async function getDocumentInsights() {
   try {
     if (!currentDoc) return;
 
-    const persona = document.getElementById('persona').value.trim();
-    const job = document.getElementById('job').value.trim();
+    const persona = document.getElementById("persona").value.trim();
+    const job = document.getElementById("job").value.trim();
     const curr = currentSections[0];
     // Use top 3 snippet texts for richer insights
-    const relatedTexts = (currentSnippets || []).slice(0, 3).map((s) => s.refined_text);
+    const relatedTexts = (currentSnippets || [])
+      .slice(0, 3)
+      .map((s) => s.refined_text);
 
-    const response = await fetch('/api/insights', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/insights", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         persona,
         job,
-        current_text: curr ? curr.section_title : '',
-        related_texts: relatedTexts
+        current_text: curr ? curr.section_title : "",
+        related_texts: relatedTexts,
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      document.getElementById('insights').textContent = data.content;
-      toast('Insights ready', 'success');
+      document.getElementById("insights").textContent = data.content;
+      toast("Insights ready", "success");
     } else {
-      console.warn('Failed to get insights:', response.status);
+      console.warn("Failed to get insights:", response.status);
     }
   } catch (error) {
-    console.error('Error getting document insights:', error);
+    console.error("Error getting document insights:", error);
   }
 }
 
@@ -2122,8 +2239,10 @@ async function getDocumentPodcast() {
   try {
     if (!currentDoc) return;
 
-    const persona = document.getElementById('persona').value.trim() || 'listener';
-    const job = document.getElementById('job').value.trim() || 'exploring this content';
+    const persona =
+      document.getElementById("persona").value.trim() || "listener";
+    const job =
+      document.getElementById("job").value.trim() || "exploring this content";
 
     // Create enhanced podcast data with sections and snippets
     const sections = currentSections.slice(0, 3); // Top 3 sections
@@ -2139,9 +2258,9 @@ async function getDocumentPodcast() {
         page_number: section.page_number,
         section_title: section.section_title,
         relevant_text: section.section_summary || section.section_title,
-        relevance_score: 0.9 - (index * 0.1), // Decreasing relevance
+        relevance_score: 0.9 - index * 0.1, // Decreasing relevance
         insight_type: "section",
-        jump_url: `/files/${section.document}#page=${section.page_number}`
+        jump_url: `/files/${section.document}#page=${section.page_number}`,
       });
     });
 
@@ -2152,54 +2271,60 @@ async function getDocumentPodcast() {
         page_number: snippet.page_number,
         section_title: `Key Insight ${index + 1}`,
         relevant_text: snippet.refined_text,
-        relevance_score: 0.85 - (index * 0.05), // Decreasing relevance
+        relevance_score: 0.85 - index * 0.05, // Decreasing relevance
         insight_type: "snippet",
-        jump_url: `/files/${snippet.document}#page=${snippet.page_number}`
+        jump_url: `/files/${snippet.document}#page=${snippet.page_number}`,
       });
     });
 
     // Use the ENHANCED podcast API for dual voices and better quality
     const enhancedPodcastData = {
-      selected_text: sections.length > 0 ? sections[0].section_summary || sections[0].section_title :
-        snippets.length > 0 ? snippets[0].refined_text :
-          "Analysis of selected documents",
+      selected_text:
+        sections.length > 0
+          ? sections[0].section_summary || sections[0].section_title
+          : snippets.length > 0
+            ? snippets[0].refined_text
+            : "Analysis of selected documents",
       related_insights: relatedInsights,
-      document: currentDoc ? currentDoc.split('/').pop() : 'analyzed_documents',
+      document: currentDoc ? currentDoc.split("/").pop() : "analyzed_documents",
       page_number: currentPage || 1,
       conversation_style: "academic",
       persona: persona,
-      job: job
+      job: job,
     };
 
-    console.log('Creating enhanced podcast with data:', enhancedPodcastData);
+    console.log("Creating enhanced podcast with data:", enhancedPodcastData);
 
     // Use async podcast with progress polling
     showPodcastGenerationProgress();
-    updatePodcastProgressUI(5, 'Generating script...');
+    updatePodcastProgressUI(5, "Generating script...");
 
     // Start
-    const startRes = await fetch('/api/podcast/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(enhancedPodcastData)
+    const startRes = await fetch("/api/podcast/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(enhancedPodcastData),
     });
     if (!startRes.ok) throw new Error(await startRes.text());
     const { task_id } = await startRes.json();
 
     const pollStatus = async () => {
-      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
-      if (!res.ok) throw new Error('Status polling failed');
+      const res = await fetch(
+        `/api/podcast/status?task_id=${encodeURIComponent(task_id)}`,
+      );
+      if (!res.ok) throw new Error("Status polling failed");
       return res.json();
     };
 
     const statusToText = (state) => {
-      if (state.phase === 'script') return 'Generating script...';
-      if (state.phase === 'prepare_segments') return 'Preparing segments...';
-      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
-      if (state.phase === 'combining') return 'Combining audio...';
-      if (state.phase === 'done') return 'Finalizing...';
-      if (state.phase === 'error') return 'Failed';
-      return 'Working...';
+      if (state.phase === "script") return "Generating script...";
+      if (state.phase === "prepare_segments") return "Preparing segments...";
+      if (state.phase === "segments")
+        return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === "combining") return "Combining audio...";
+      if (state.phase === "done") return "Finalizing...";
+      if (state.phase === "error") return "Failed";
+      return "Working...";
     };
 
     let finalUrl = null;
@@ -2207,27 +2332,27 @@ async function getDocumentPodcast() {
     while (keepPolling) {
       const state = await pollStatus();
       updatePodcastProgressUI(state.progress || 0, statusToText(state));
-      if (state.status === 'completed' && state.url) {
+      if (state.status === "completed" && state.url) {
         finalUrl = state.url;
         keepPolling = false;
         break;
       }
-      if (state.status === 'failed') {
-        throw new Error(state.error || 'Podcast generation failed');
+      if (state.status === "failed") {
+        throw new Error(state.error || "Podcast generation failed");
       }
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 800));
     }
 
     hidePodcastGenerationProgress();
 
-    if (!finalUrl) throw new Error('No URL produced');
+    if (!finalUrl) throw new Error("No URL produced");
 
-    const audioUrl = finalUrl + '?t=' + Date.now(); // Add timestamp to prevent caching
-    console.log('Final audio URL:', audioUrl);
+    const audioUrl = finalUrl + "?t=" + Date.now(); // Add timestamp to prevent caching
+    console.log("Final audio URL:", audioUrl);
 
-    const player = document.getElementById('player');
+    const player = document.getElementById("player");
     player.src = audioUrl;
-    player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
+    player.setAttribute("title", `AI Podcast: ${job} (Dual Voice)`);
 
     // Reset audio player initialization to ensure proper setup
     resetAudioPlayerInitialization();
@@ -2236,26 +2361,34 @@ async function getDocumentPodcast() {
     initializeAudioPlayer();
 
     // Clear any existing audio info
-    const audioInfo = document.getElementById('audioInfo');
-    const audioTitle = document.getElementById('audioTitle');
-    if (audioInfo) audioInfo.classList.add('hidden');
-    if (audioTitle) audioTitle.textContent = 'Loading dual voice podcast...';
+    const audioInfo = document.getElementById("audioInfo");
+    const audioTitle = document.getElementById("audioTitle");
+    if (audioInfo) audioInfo.classList.add("hidden");
+    if (audioTitle) audioTitle.textContent = "Loading dual voice podcast...";
 
     // Wait for audio to load metadata
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Audio loading timeout'));
+        reject(new Error("Audio loading timeout"));
       }, 15000); // 15 second timeout for enhanced podcast
 
-      player.addEventListener('loadedmetadata', () => {
-        clearTimeout(timeout);
-        resolve();
-      }, { once: true });
+      player.addEventListener(
+        "loadedmetadata",
+        () => {
+          clearTimeout(timeout);
+          resolve();
+        },
+        { once: true },
+      );
 
-      player.addEventListener('error', (e) => {
-        clearTimeout(timeout);
-        reject(new Error(`Audio loading failed`));
-      }, { once: true });
+      player.addEventListener(
+        "error",
+        (e) => {
+          clearTimeout(timeout);
+          reject(new Error(`Audio loading failed`));
+        },
+        { once: true },
+      );
 
       player.load(); // Force load
     });
@@ -2267,20 +2400,19 @@ async function getDocumentPodcast() {
     await player.play();
 
     // Update UI to show it's playing
-    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playPauseBtn = document.getElementById("playPauseBtn");
 
     if (playPauseBtn) {
-      const icon = playPauseBtn.querySelector('i');
-      if (icon) icon.className = 'fas fa-pause text-sm';
+      const icon = playPauseBtn.querySelector("i");
+      if (icon) icon.className = "fas fa-pause text-sm";
     }
 
-    if (audioInfo) audioInfo.classList.remove('hidden');
+    if (audioInfo) audioInfo.classList.remove("hidden");
     if (audioTitle) audioTitle.textContent = `AI Podcast: ${job} (Dual Voice)`;
 
-    toast('High-quality dual voice podcast is now playing! 🎧', 'success');
-
+    toast("High-quality dual voice podcast is now playing! 🎧", "success");
   } catch (error) {
-    console.error('Error getting document podcast:', error);
+    console.error("Error getting document podcast:", error);
   }
 }
 
@@ -2293,18 +2425,18 @@ function setupTextSelectionEvents() {
     }
 
     // Clear any existing event listeners
-    pdfCanvas.removeEventListener('mouseup', handleTextSelection);
-    pdfCanvas.removeEventListener('keyup', handleTextSelection);
+    pdfCanvas.removeEventListener("mouseup", handleTextSelection);
+    pdfCanvas.removeEventListener("keyup", handleTextSelection);
 
     // Add text selection event listeners
-    pdfCanvas.addEventListener('mouseup', handleTextSelection);
-    pdfCanvas.addEventListener('keyup', handleTextSelection);
+    pdfCanvas.addEventListener("mouseup", handleTextSelection);
+    pdfCanvas.addEventListener("keyup", handleTextSelection);
 
     // Add selection change listener for better text capture
-    document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener("selectionchange", handleSelectionChange);
 
     // Add keyboard shortcuts
-    document.addEventListener('keydown', handleTextSelectionKeyboard);
+    document.addEventListener("keydown", handleTextSelectionKeyboard);
 
     console.log("✅ PDF.js text selection events configured successfully");
   } catch (error) {
@@ -2324,7 +2456,10 @@ function handleSelectionChange() {
 
   // Only process if there's meaningful text selection
   if (selectedText && selectedText.length > 10) {
-    console.log('Text selection detected:', selectedText.substring(0, 100) + '...');
+    console.log(
+      "Text selection detected:",
+      selectedText.substring(0, 100) + "...",
+    );
 
     // Show the insights panel immediately with loading state
     showTextSelectionInsightsInstantly(selectedText);
@@ -2342,13 +2477,13 @@ function handleSelectionChange() {
 function handleTextSelectionKeyboard(event) {
   try {
     // Escape key to clear selection
-    if (event.key === 'Escape') {
+    if (event.key === "Escape") {
       clearTextSelection();
       event.preventDefault();
     }
 
     // Ctrl+A to select all text on current page
-    if (event.ctrlKey && event.key === 'a') {
+    if (event.ctrlKey && event.key === "a") {
       selectAllTextOnCurrentPage();
       event.preventDefault();
     }
@@ -2362,9 +2497,11 @@ function selectAllTextOnCurrentPage() {
   try {
     if (isContinuousView) {
       // In continuous view, select text from the current page wrapper
-      const currentPageWrapper = document.querySelector(`[data-page-number="${currentPage}"]`);
+      const currentPageWrapper = document.querySelector(
+        `[data-page-number="${currentPage}"]`,
+      );
       if (currentPageWrapper) {
-        const textLayer = currentPageWrapper.querySelector('.text-layer');
+        const textLayer = currentPageWrapper.querySelector(".text-layer");
         if (textLayer) {
           const selection = window.getSelection();
           const range = document.createRange();
@@ -2375,7 +2512,7 @@ function selectAllTextOnCurrentPage() {
       }
     } else {
       // In single page view, select text from the single page text layer
-      const textLayer = document.getElementById('single-page-text-layer');
+      const textLayer = document.getElementById("single-page-text-layer");
       if (textLayer) {
         const selection = window.getSelection();
         const range = document.createRange();
@@ -2385,7 +2522,7 @@ function selectAllTextOnCurrentPage() {
       }
     }
 
-    toast('All text on current page selected', 'info');
+    toast("All text on current page selected", "info");
   } catch (error) {
     console.error("Error selecting all text:", error);
   }
@@ -2407,34 +2544,39 @@ async function handleTextSelection(event) {
       const range = selection.getRangeAt(0);
 
       // Check if the selection is within our PDF viewer
-      const pdfContainer = document.getElementById('pdf-viewer-container');
-      if (pdfContainer && pdfContainer.contains(range.commonAncestorContainer)) {
-
+      const pdfContainer = document.getElementById("pdf-viewer-container");
+      if (
+        pdfContainer &&
+        pdfContainer.contains(range.commonAncestorContainer)
+      ) {
         // Process the selected text and trigger insights
-        console.log('Processing text selection:', selectedText.substring(0, 100) + '...');
+        console.log(
+          "Processing text selection:",
+          selectedText.substring(0, 100) + "...",
+        );
 
         // Set processing flag to prevent duplicate calls
         isProcessingTextSelection = true;
 
         try {
           // Call the text selection API
-          const response = await fetch('/api/text-selection', {
-            method: 'POST',
+          const response = await fetch("/api/text-selection", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               selected_text: selectedText,
-              document: currentDoc ? currentDoc.split('/').pop() : 'unknown',
+              document: currentDoc ? currentDoc.split("/").pop() : "unknown",
               page_number: currentPage,
-              persona: document.getElementById('persona')?.value || '',
-              job: document.getElementById('job')?.value || ''
+              persona: document.getElementById("persona")?.value || "",
+              job: document.getElementById("job")?.value || "",
             }),
           });
 
           if (response.ok) {
             const data = await response.json();
-            console.log('Text selection response:', data);
+            console.log("Text selection response:", data);
 
             // Store the insights globally
             textSelectionInsights = data;
@@ -2445,15 +2587,14 @@ async function handleTextSelection(event) {
             // Also refresh recommendations for current document
             try {
               getDocumentRecommendations();
-            } catch (_) { }
-
+            } catch (_) {}
           } else {
-            console.error('Text selection API failed:', response.status);
-            toast('Failed to analyze text selection', 'error');
+            console.error("Text selection API failed:", response.status);
+            toast("Failed to analyze text selection", "error");
           }
         } catch (error) {
-          console.error('Error processing text selection:', error);
-          toast('Error processing text selection', 'error');
+          console.error("Error processing text selection:", error);
+          toast("Error processing text selection", "error");
         } finally {
           // Reset processing flag
           isProcessingTextSelection = false;
@@ -2477,7 +2618,7 @@ function highlightSelectedText(selection) {
     const range = selection.getRangeAt(0);
 
     // Get the text layer container
-    const textLayer = document.querySelector('.text-layer');
+    const textLayer = document.querySelector(".text-layer");
     if (!textLayer) return;
 
     // Get the bounding rectangle of the selection
@@ -2485,24 +2626,24 @@ function highlightSelectedText(selection) {
     if (rects.length === 0) return;
 
     // Create a highlight for each rectangle in the selection
-    Array.from(rects).forEach(rect => {
+    Array.from(rects).forEach((rect) => {
       if (rect.width === 0 || rect.height === 0) return;
 
       // Create highlight element
-      const highlight = document.createElement('div');
-      highlight.className = 'text-highlight';
+      const highlight = document.createElement("div");
+      highlight.className = "text-highlight";
 
       // Position the highlight
       const textLayerRect = textLayer.getBoundingClientRect();
-      highlight.style.position = 'absolute';
+      highlight.style.position = "absolute";
       highlight.style.left = `${rect.left - textLayerRect.left + textLayer.scrollLeft}px`;
       highlight.style.top = `${rect.top - textLayerRect.top + textLayer.scrollTop}px`;
       highlight.style.width = `${rect.width}px`;
       highlight.style.height = `${rect.height}px`;
-      highlight.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
-      highlight.style.pointerEvents = 'none';
-      highlight.style.borderRadius = '2px';
-      highlight.style.zIndex = '1';
+      highlight.style.backgroundColor = "rgba(255, 255, 0, 0.3)";
+      highlight.style.pointerEvents = "none";
+      highlight.style.borderRadius = "2px";
+      highlight.style.zIndex = "1";
 
       textLayer.appendChild(highlight);
     });
@@ -2513,18 +2654,22 @@ function highlightSelectedText(selection) {
       NodeFilter.SHOW_TEXT,
       {
         acceptNode: function (node) {
-          return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-        }
-      }
+          return range.intersectsNode(node)
+            ? NodeFilter.FILTER_ACCEPT
+            : NodeFilter.FILTER_REJECT;
+        },
+      },
     );
 
     while (walker.nextNode()) {
       const node = walker.currentNode;
-      if (node.parentNode && !node.parentNode.classList.contains('text-layer')) {
-        node.parentNode.classList.add('selected');
+      if (
+        node.parentNode &&
+        !node.parentNode.classList.contains("text-layer")
+      ) {
+        node.parentNode.classList.add("selected");
       }
     }
-
   } catch (error) {
     console.error("Error highlighting selected text:", error);
   }
@@ -2534,12 +2679,12 @@ function highlightSelectedText(selection) {
 function clearTextHighlighting() {
   try {
     // Remove selected class
-    document.querySelectorAll('.selected').forEach(el => {
-      el.classList.remove('selected');
+    document.querySelectorAll(".selected").forEach((el) => {
+      el.classList.remove("selected");
     });
 
     // Remove highlight elements
-    document.querySelectorAll('.text-highlight').forEach(el => {
+    document.querySelectorAll(".text-highlight").forEach((el) => {
       el.remove();
     });
   } catch (error) {
@@ -2549,7 +2694,12 @@ function clearTextHighlighting() {
 
 // Process the selected text and trigger insights
 function processSelectedText(text, pageNumber) {
-  console.log("Processing selected text:", text.substring(0, 100) + "...", "Page:", pageNumber);
+  console.log(
+    "Processing selected text:",
+    text.substring(0, 100) + "...",
+    "Page:",
+    pageNumber,
+  );
 
   if (!text || text.trim().length < 10) {
     console.log("Text too short, ignoring selection");
@@ -2563,28 +2713,28 @@ function processSelectedText(text, pageNumber) {
   showTextSelectionLoading();
 
   // Call the text selection API
-  fetch('/api/text-selection', {
-    method: 'POST',
+  fetch("/api/text-selection", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       selected_text: selectedText,
-      document: currentDoc || 'unknown',
+      document: currentDoc || "unknown",
       page_number: pageNumber || currentPage,
-      persona: document.getElementById('persona')?.value || '',
-      job: document.getElementById('job')?.value || '',
+      persona: document.getElementById("persona")?.value || "",
+      job: document.getElementById("job")?.value || "",
     }),
   })
-    .then(response => response.json())
-    .then(data => {
+    .then((response) => response.json())
+    .then((data) => {
       console.log("Text selection response:", data);
       textSelectionInsights = data;
       displayTextSelectionInsights(data);
     })
-    .catch(error => {
-      console.error('Error processing text selection:', error);
-      toast(`Error processing text selection: ${error.message}`, 'error');
+    .catch((error) => {
+      console.error("Error processing text selection:", error);
+      toast(`Error processing text selection: ${error.message}`, "error");
     });
 }
 
@@ -2592,26 +2742,26 @@ function processSelectedText(text, pageNumber) {
 function setupToolbar() {
   try {
     // Navigation buttons
-    const prevPageBtn = document.getElementById('prevPageBtn');
-    const nextPageBtn = document.getElementById('nextPageBtn');
-    const gotoPageBtn = document.getElementById('gotoPageBtn');
-    const gotoPageInput = document.getElementById('gotoPageInput');
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const gotoPageBtn = document.getElementById("gotoPageBtn");
+    const gotoPageInput = document.getElementById("gotoPageInput");
 
     // Zoom buttons
-    const zoomInBtn = document.getElementById('zoomInBtn');
-    const zoomOutBtn = document.getElementById('zoomOutBtn');
-    const resetZoomBtn = document.getElementById('resetZoomBtn');
+    const zoomInBtn = document.getElementById("zoomInBtn");
+    const zoomOutBtn = document.getElementById("zoomOutBtn");
+    const resetZoomBtn = document.getElementById("resetZoomBtn");
 
     // Search functionality
-    const searchBtn = document.getElementById('searchBtn');
-    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById("searchBtn");
+    const searchInput = document.getElementById("searchInput");
 
     // Text selection button (now optional since we have automatic selection)
-    const textSelectionBtn = document.getElementById('textSelectionBtn');
+    const textSelectionBtn = document.getElementById("textSelectionBtn");
 
     // Navigation event listeners
     if (prevPageBtn) {
-      prevPageBtn.addEventListener('click', () => {
+      prevPageBtn.addEventListener("click", () => {
         if (currentPage > 1) {
           loadPage(currentPage - 1);
         }
@@ -2619,7 +2769,7 @@ function setupToolbar() {
     }
 
     if (nextPageBtn) {
-      nextPageBtn.addEventListener('click', () => {
+      nextPageBtn.addEventListener("click", () => {
         if (currentPage < totalPages) {
           loadPage(currentPage + 1);
         }
@@ -2627,18 +2777,18 @@ function setupToolbar() {
     }
 
     if (gotoPageBtn && gotoPageInput) {
-      gotoPageBtn.addEventListener('click', () => {
+      gotoPageBtn.addEventListener("click", () => {
         const pageNum = parseInt(gotoPageInput.value);
         if (pageNum >= 1 && pageNum <= totalPages) {
           loadPage(pageNum);
         } else {
-          toast('Invalid page number', 'error');
+          toast("Invalid page number", "error");
         }
       });
 
       // Allow Enter key to trigger goto
-      gotoPageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+      gotoPageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
           gotoPageBtn.click();
         }
       });
@@ -2646,21 +2796,21 @@ function setupToolbar() {
 
     // Zoom event listeners
     if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', async () => {
+      zoomInBtn.addEventListener("click", async () => {
         currentScale = Math.min(currentScale * 1.2, 3.0);
         await applyZoom();
       });
     }
 
     if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', async () => {
+      zoomOutBtn.addEventListener("click", async () => {
         currentScale = Math.max(currentScale / 1.2, 0.5);
         await applyZoom();
       });
     }
 
     if (resetZoomBtn) {
-      resetZoomBtn.addEventListener('click', async () => {
+      resetZoomBtn.addEventListener("click", async () => {
         currentScale = 1.0;
         await applyZoom();
       });
@@ -2668,7 +2818,7 @@ function setupToolbar() {
 
     // Search functionality
     if (searchBtn && searchInput) {
-      searchBtn.addEventListener('click', () => {
+      searchBtn.addEventListener("click", () => {
         const query = searchInput.value.trim();
         if (query) {
           searchInDocument(query);
@@ -2676,8 +2826,8 @@ function setupToolbar() {
       });
 
       // Allow Enter key to trigger search
-      searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+      searchInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
           searchBtn.click();
         }
       });
@@ -2685,15 +2835,15 @@ function setupToolbar() {
 
     // Text selection button (now shows manual text input as fallback)
     if (textSelectionBtn) {
-      textSelectionBtn.addEventListener('click', () => {
+      textSelectionBtn.addEventListener("click", () => {
         showTextInputModal();
       });
     }
 
     // View mode toggle
-    viewModeToggle = document.getElementById('viewModeToggle');
+    viewModeToggle = document.getElementById("viewModeToggle");
     if (viewModeToggle) {
-      viewModeToggle.addEventListener('click', () => {
+      viewModeToggle.addEventListener("click", () => {
         toggleViewMode();
       });
     }
@@ -2711,7 +2861,7 @@ function setupToolbar() {
 async function applyZoom() {
   try {
     // Update zoom level display
-    const zoomLevel = document.getElementById('zoomLevel');
+    const zoomLevel = document.getElementById("zoomLevel");
     if (zoomLevel) {
       zoomLevel.textContent = `${Math.round(currentScale * 100)}%`;
     }
@@ -2724,16 +2874,16 @@ async function applyZoom() {
       await loadPage(currentPage);
     }
   } catch (error) {
-    console.error('Error applying zoom:', error);
+    console.error("Error applying zoom:", error);
   }
 }
 
 // Update toolbar button states
 function updateToolbarState() {
-  const prevPageBtn = document.getElementById('prevPageBtn');
-  const nextPageBtn = document.getElementById('nextPageBtn');
-  const gotoPageInput = document.getElementById('gotoPageInput');
-  const gotoPageBtn = document.getElementById('gotoPageBtn');
+  const prevPageBtn = document.getElementById("prevPageBtn");
+  const nextPageBtn = document.getElementById("nextPageBtn");
+  const gotoPageInput = document.getElementById("gotoPageInput");
+  const gotoPageBtn = document.getElementById("gotoPageBtn");
 
   // Update navigation buttons based on view mode
   if (isContinuousView) {
@@ -2754,10 +2904,10 @@ function updateToolbarState() {
   if (viewModeToggle) {
     if (isContinuousView) {
       viewModeToggle.innerHTML = '<i class="fas fa-list mr-1"></i>Continuous';
-      viewModeToggle.title = 'Switch to single page view';
+      viewModeToggle.title = "Switch to single page view";
     } else {
       viewModeToggle.innerHTML = '<i class="fas fa-file-alt mr-1"></i>Single';
-      viewModeToggle.title = 'Switch to continuous view';
+      viewModeToggle.title = "Switch to continuous view";
     }
   }
 }
@@ -2767,7 +2917,7 @@ async function searchInDocument(query) {
   try {
     if (!pdfDoc || !query.trim()) return;
 
-    toast('Searching in document...', 'info');
+    toast("Searching in document...", "info");
 
     // Simple text search implementation
     const results = [];
@@ -2777,12 +2927,12 @@ async function searchInDocument(query) {
       try {
         const page = await pdfDoc.getPage(pageNum);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
+        const pageText = textContent.items.map((item) => item.str).join(" ");
 
         if (pageText.toLowerCase().includes(query.toLowerCase())) {
           results.push({
             page: pageNum,
-            text: pageText.substring(0, 200) + '...'
+            text: pageText.substring(0, 200) + "...",
           });
         }
       } catch (error) {
@@ -2794,20 +2944,20 @@ async function searchInDocument(query) {
       // Show search results
       showSearchResults(query, results);
     } else {
-      toast('No matches found', 'info');
+      toast("No matches found", "info");
     }
-
   } catch (error) {
-    console.error('Error searching document:', error);
-    toast('Search failed', 'error');
+    console.error("Error searching document:", error);
+    toast("Search failed", "error");
   }
 }
 
 // Show search results
 function showSearchResults(query, results) {
   // Create a simple results overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  const overlay = document.createElement("div");
+  overlay.className =
+    "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
   overlay.innerHTML = `
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl max-h-96 overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
@@ -2819,7 +2969,9 @@ function showSearchResults(query, results) {
         </button>
       </div>
       <div class="space-y-3">
-        ${results.map(result => `
+        ${results
+          .map(
+            (result) => `
           <div class="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600" onclick="loadPage(${result.page}); this.closest('.fixed').remove();">
             <div class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Page ${result.page}
@@ -2828,7 +2980,9 @@ function showSearchResults(query, results) {
               ${result.text}
             </div>
           </div>
-        `).join('')}
+        `,
+          )
+          .join("")}
       </div>
     </div>
   `;
@@ -2836,7 +2990,7 @@ function showSearchResults(query, results) {
   document.body.appendChild(overlay);
 
   // Close on outside click
-  overlay.addEventListener('click', (e) => {
+  overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
       overlay.remove();
     }
@@ -2845,7 +2999,7 @@ function showSearchResults(query, results) {
 
 // Show manual text input as fallback
 function showManualTextInput() {
-  const input = prompt('Enter text to analyze:');
+  const input = prompt("Enter text to analyze:");
   if (input && input.trim().length >= 10) {
     processSelectedText(input.trim(), currentPage);
   }
@@ -2863,10 +3017,10 @@ function retryPDF() {
 }
 
 // Set up retry button event listener
-document.addEventListener('DOMContentLoaded', function () {
-  const retryBtn = document.getElementById('retry-pdf');
+document.addEventListener("DOMContentLoaded", function () {
+  const retryBtn = document.getElementById("retry-pdf");
   if (retryBtn) {
-    retryBtn.addEventListener('click', retryPDF);
+    retryBtn.addEventListener("click", retryPDF);
   }
 });
 
@@ -2879,22 +3033,22 @@ async function main() {
   // Set up upload functionality
   setupUploadFunctionality();
 
-  document.getElementById('analyzeBtn').addEventListener('click', analyze);
-  const ib = document.getElementById('insightsBtn');
-  const pb = document.getElementById('podcastBtn');
-  const cb = document.getElementById('clusterBtn');
+  document.getElementById("analyzeBtn").addEventListener("click", analyze);
+  const ib = document.getElementById("insightsBtn");
+  const pb = document.getElementById("podcastBtn");
+  const cb = document.getElementById("clusterBtn");
 
   // Set up event listeners but keep buttons disabled until analysis is complete
   if (ib) {
     ib.disabled = true;
-    ib.addEventListener('click', insights);
+    ib.addEventListener("click", insights);
   }
   if (pb) {
     pb.disabled = true;
-    pb.addEventListener('click', podcast);
+    pb.addEventListener("click", podcast);
   }
   if (cb) {
-    cb.addEventListener('click', clusterDocuments);
+    cb.addEventListener("click", clusterDocuments);
   }
 
   setupToolbar();
@@ -2904,91 +3058,101 @@ async function main() {
 
   // Theme
   initTheme();
-  const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+  const themeToggle = document.getElementById("themeToggle");
+  if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
 
-  const selectAllBtn = document.getElementById('selectAllBtn');
-  const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-  const deleteAllBtn = document.getElementById('deleteAllBtn');
-  const resetIndexBtn = document.getElementById('resetIndexBtn');
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  const clearSelectionBtn = document.getElementById("clearSelectionBtn");
+  const deleteAllBtn = document.getElementById("deleteAllBtn");
+  const resetIndexBtn = document.getElementById("resetIndexBtn");
 
-  if (selectAllBtn) selectAllBtn.addEventListener('click', () => {
-    const list = document.getElementById('docList');
-    for (const li of list.children) li.classList.add('selected');
-    updateSelectedCount();
-  });
-  if (clearSelectionBtn) clearSelectionBtn.addEventListener('click', () => {
-    const list = document.getElementById('docList');
-    for (const li of list.children) li.classList.remove('selected');
-    updateSelectedCount();
-  });
-  if (deleteAllBtn) deleteAllBtn.addEventListener('click', () => {
-    const selectedDocs = getSelectedDocs();
-    if (selectedDocs.length === 0) {
-      toast('Please select documents to delete', 'warning');
-      return;
-    }
-    showDeleteAllConfirmation(selectedDocs);
-  });
-  if (resetIndexBtn) resetIndexBtn.addEventListener('click', showResetIndexConfirmation);
+  if (selectAllBtn)
+    selectAllBtn.addEventListener("click", () => {
+      const list = document.getElementById("docList");
+      for (const li of list.children) li.classList.add("selected");
+      updateSelectedCount();
+    });
+  if (clearSelectionBtn)
+    clearSelectionBtn.addEventListener("click", () => {
+      const list = document.getElementById("docList");
+      for (const li of list.children) li.classList.remove("selected");
+      updateSelectedCount();
+    });
+  if (deleteAllBtn)
+    deleteAllBtn.addEventListener("click", () => {
+      const selectedDocs = getSelectedDocs();
+      if (selectedDocs.length === 0) {
+        toast("Please select documents to delete", "warning");
+        return;
+      }
+      showDeleteAllConfirmation(selectedDocs);
+    });
+  if (resetIndexBtn)
+    resetIndexBtn.addEventListener("click", showResetIndexConfirmation);
 
   // Add event listener for deleteSelectedBtn
-  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
-  if (deleteSelectedBtn) deleteSelectedBtn.addEventListener('click', () => {
-    const selectedDocs = getSelectedDocs();
-    if (selectedDocs.length === 0) {
-      toast('Please select documents to delete', 'warning');
-      return;
-    }
-    showDeleteAllConfirmation(selectedDocs);
-  });
+  const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+  if (deleteSelectedBtn)
+    deleteSelectedBtn.addEventListener("click", () => {
+      const selectedDocs = getSelectedDocs();
+      if (selectedDocs.length === 0) {
+        toast("Please select documents to delete", "warning");
+        return;
+      }
+      showDeleteAllConfirmation(selectedDocs);
+    });
 
-  const docFilter = document.getElementById('docFilter');
-  if (docFilter) docFilter.addEventListener('input', () => {
-    const q = (docFilter.value || '').toLowerCase();
-    const list = document.getElementById('docList');
-    for (const li of list.children) {
-      const name = (li.dataset.filename || li.textContent || '').toLowerCase();
-      li.style.display = name.includes(q) ? '' : 'none';
-    }
-  });
+  const docFilter = document.getElementById("docFilter");
+  if (docFilter)
+    docFilter.addEventListener("input", () => {
+      const q = (docFilter.value || "").toLowerCase();
+      const list = document.getElementById("docList");
+      for (const li of list.children) {
+        const name = (
+          li.dataset.filename ||
+          li.textContent ||
+          ""
+        ).toLowerCase();
+        li.style.display = name.includes(q) ? "" : "none";
+      }
+    });
 }
 
 // Set up upload functionality with drag and drop
 function setupUploadFunctionality() {
-  const uploadBtn = document.getElementById('uploadBtn');
-  const fileInput = document.getElementById('fileInput');
-  const uploadArea = document.querySelector('.group\\/upload');
+  const uploadBtn = document.getElementById("uploadBtn");
+  const fileInput = document.getElementById("fileInput");
+  const uploadArea = document.querySelector(".group\\/upload");
 
   if (uploadBtn) {
-    uploadBtn.addEventListener('click', () => {
+    uploadBtn.addEventListener("click", () => {
       fileInput.click();
     });
   }
 
   if (fileInput) {
-    fileInput.addEventListener('change', uploadFiles);
+    fileInput.addEventListener("change", uploadFiles);
   }
 
   // Drag and drop functionality
   if (uploadArea) {
     // Prevent default drag behaviors
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
       uploadArea.addEventListener(eventName, preventDefaults, false);
       document.body.addEventListener(eventName, preventDefaults, false);
     });
 
     // Highlight drop area when item is dragged over it
-    ['dragenter', 'dragover'].forEach(eventName => {
+    ["dragenter", "dragover"].forEach((eventName) => {
       uploadArea.addEventListener(eventName, highlight, false);
     });
 
-    ['dragleave', 'drop'].forEach(eventName => {
+    ["dragleave", "drop"].forEach((eventName) => {
       uploadArea.addEventListener(eventName, unhighlight, false);
     });
 
     // Handle dropped files
-    uploadArea.addEventListener('drop', handleDrop, false);
+    uploadArea.addEventListener("drop", handleDrop, false);
   }
 }
 
@@ -2998,16 +3162,16 @@ function preventDefaults(e) {
 }
 
 function highlight(e) {
-  const uploadArea = document.querySelector('.group\\/upload');
+  const uploadArea = document.querySelector(".group\\/upload");
   if (uploadArea) {
-    uploadArea.classList.add('dragover');
+    uploadArea.classList.add("dragover");
   }
 }
 
 function unhighlight(e) {
-  const uploadArea = document.querySelector('.group\\/upload');
+  const uploadArea = document.querySelector(".group\\/upload");
   if (uploadArea) {
-    uploadArea.classList.remove('dragover');
+    uploadArea.classList.remove("dragover");
   }
 }
 
@@ -3017,9 +3181,9 @@ function handleDrop(e) {
 
   if (files.length > 0) {
     // Show immediate feedback
-    toast(`Processing ${files.length} dropped file(s)...`, 'info');
+    toast(`Processing ${files.length} dropped file(s)...`, "info");
 
-    const fileInput = document.getElementById('fileInput');
+    const fileInput = document.getElementById("fileInput");
     fileInput.files = files;
 
     // Start upload after a brief delay to show the feedback
@@ -3027,21 +3191,22 @@ function handleDrop(e) {
       uploadFiles();
     }, 100);
   } else {
-    toast('No valid files found in the dropped items', 'warning');
+    toast("No valid files found in the dropped items", "warning");
   }
 }
 
 // Initialize the application when DOM is loaded
-window.addEventListener('DOMContentLoaded', main);
+window.addEventListener("DOMContentLoaded", main);
 
 // Show text selection hint
 function showTextSelectionHint() {
   // Create or show text selection hint
-  let hint = document.getElementById('textSelectionHint');
+  let hint = document.getElementById("textSelectionHint");
   if (!hint) {
-    hint = document.createElement('div');
-    hint.id = 'textSelectionHint';
-    hint.className = 'fixed top-6 right-8 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-y-[-120%] opacity-0 transition-all duration-300';
+    hint = document.createElement("div");
+    hint.id = "textSelectionHint";
+    hint.className =
+      "fixed top-6 right-8 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-y-[-120%] opacity-0 transition-all duration-300";
     hint.innerHTML = `
       <div class="flex items-center space-x-2">
         <i class="fas fa-mouse-pointer text-sm"></i>
@@ -3053,63 +3218,73 @@ function showTextSelectionHint() {
 
   // Show the hint with animation
   setTimeout(() => {
-    hint.classList.remove('translate-y-[-120%]', 'opacity-0');
-    hint.classList.add('translate-y-0', 'opacity-100');
+    hint.classList.remove("translate-y-[-120%]", "opacity-0");
+    hint.classList.add("translate-y-0", "opacity-100");
   }, 100);
 
   // Hide the hint after 5 seconds
   setTimeout(() => {
-    hint.classList.add('translate-y-[-120%]', 'opacity-0');
+    hint.classList.add("translate-y-[-120%]", "opacity-0");
   }, 5000);
 }
 
 // Insights function
 async function insights() {
   // Check if we have any content to work with
-  if (!currentDoc && (!currentSections.length && !currentSnippets.length)) {
-    toast('Please select a document or run analysis first to generate insights.', 'error');
+  if (!currentDoc && !currentSections.length && !currentSnippets.length) {
+    toast(
+      "Please select a document or run analysis first to generate insights.",
+      "error",
+    );
     return;
   }
 
-  const persona = document.getElementById('persona').value.trim() || 'General User';
-  const job = document.getElementById('job').value.trim() || 'Understanding document content and structure';
-  const btn = document.getElementById('insightsBtn');
+  const persona =
+    document.getElementById("persona").value.trim() || "General User";
+  const job =
+    document.getElementById("job").value.trim() ||
+    "Understanding document content and structure";
+  const btn = document.getElementById("insightsBtn");
   const prev = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Thinking...';
+  btn.textContent = "Thinking...";
 
   try {
-    let currentText = '';
+    let currentText = "";
     let relatedTexts = [];
 
     // If we have analysis results, use them
     if (currentSections.length > 0 || currentSnippets.length > 0) {
       const curr = currentSections[0];
-      currentText = curr ? curr.section_title : '';
-      relatedTexts = (currentSnippets || []).slice(0, 3).map((s) => s.refined_text);
+      currentText = curr ? curr.section_title : "";
+      relatedTexts = (currentSnippets || [])
+        .slice(0, 3)
+        .map((s) => s.refined_text);
     } else if (currentDoc) {
       // If no analysis but document is loaded, use document info
-      currentText = `Document: ${currentDoc.split('/').pop()}`;
-      relatedTexts = [`Analyzing the content of ${currentDoc.split('/').pop()}`];
+      currentText = `Document: ${currentDoc.split("/").pop()}`;
+      relatedTexts = [
+        `Analyzing the content of ${currentDoc.split("/").pop()}`,
+      ];
     }
 
-    const res = await fetch('/api/insights', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/insights", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         persona,
         job,
         current_text: currentText,
-        related_texts: relatedTexts
+        related_texts: relatedTexts,
       }),
     });
 
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    document.getElementById('insights').textContent = data.content;
-    toast('Insights ready', 'success');
+    document.getElementById("insights").textContent = data.content;
+    toast("Insights ready", "success");
   } catch (e) {
-    toast(`Insights failed: ${e.message || e}`, 'error');
+    toast(`Insights failed: ${e.message || e}`, "error");
   } finally {
     btn.disabled = false;
     btn.textContent = prev;
@@ -3119,16 +3294,17 @@ async function insights() {
 // Podcast function - using the old working implementation
 async function podcast() {
   if (!HAS_ANALYSIS || (!currentSections.length && !currentSnippets.length)) {
-    toast('Run Analyze first to generate content for podcast.', 'error');
+    toast("Run Analyze first to generate content for podcast.", "error");
     return;
   }
 
-  const persona = document.getElementById('persona').value.trim() || 'listener';
-  const job = document.getElementById('job').value.trim() || 'exploring this content';
-  const btn = document.getElementById('podcastBtn');
+  const persona = document.getElementById("persona").value.trim() || "listener";
+  const job =
+    document.getElementById("job").value.trim() || "exploring this content";
+  const btn = document.getElementById("podcastBtn");
   const prev = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Creating Podcast...';
+  btn.textContent = "Creating Podcast...";
 
   try {
     // Create enhanced podcast data with sections and snippets
@@ -3145,9 +3321,9 @@ async function podcast() {
         page_number: section.page_number,
         section_title: section.section_title,
         relevant_text: section.section_summary || section.section_title,
-        relevance_score: 0.9 - (index * 0.1), // Decreasing relevance
+        relevance_score: 0.9 - index * 0.1, // Decreasing relevance
         insight_type: "section",
-        jump_url: `/files/${section.document}#page=${section.page_number}`
+        jump_url: `/files/${section.document}#page=${section.page_number}`,
       });
     });
 
@@ -3158,54 +3334,60 @@ async function podcast() {
         page_number: snippet.page_number,
         section_title: `Key Insight ${index + 1}`,
         relevant_text: snippet.refined_text,
-        relevance_score: 0.85 - (index * 0.05), // Decreasing relevance
+        relevance_score: 0.85 - index * 0.05, // Decreasing relevance
         insight_type: "snippet",
-        jump_url: `/files/${snippet.document}#page=${snippet.page_number}`
+        jump_url: `/files/${snippet.document}#page=${snippet.page_number}`,
       });
     });
 
     // Use the ENHANCED podcast API for dual voices and better quality
     const enhancedPodcastData = {
-      selected_text: sections.length > 0 ? sections[0].section_summary || sections[0].section_title :
-        snippets.length > 0 ? snippets[0].refined_text :
-          "Analysis of selected documents",
+      selected_text:
+        sections.length > 0
+          ? sections[0].section_summary || sections[0].section_title
+          : snippets.length > 0
+            ? snippets[0].refined_text
+            : "Analysis of selected documents",
       related_insights: relatedInsights,
-      document: currentDoc ? currentDoc.split('/').pop() : 'analyzed_documents',
+      document: currentDoc ? currentDoc.split("/").pop() : "analyzed_documents",
       page_number: currentPage || 1,
       conversation_style: "academic",
       persona: persona,
-      job: job
+      job: job,
     };
 
-    console.log('Creating enhanced podcast with data:', enhancedPodcastData);
+    console.log("Creating enhanced podcast with data:", enhancedPodcastData);
 
     // Use async podcast with progress polling
     showPodcastGenerationProgress();
-    updatePodcastProgressUI(5, 'Generating script...');
+    updatePodcastProgressUI(5, "Generating script...");
 
     // Start
-    const startRes = await fetch('/api/podcast/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(enhancedPodcastData)
+    const startRes = await fetch("/api/podcast/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(enhancedPodcastData),
     });
     if (!startRes.ok) throw new Error(await startRes.text());
     const { task_id } = await startRes.json();
 
     const pollStatus = async () => {
-      const res = await fetch(`/api/podcast/status?task_id=${encodeURIComponent(task_id)}`);
-      if (!res.ok) throw new Error('Status polling failed');
+      const res = await fetch(
+        `/api/podcast/status?task_id=${encodeURIComponent(task_id)}`,
+      );
+      if (!res.ok) throw new Error("Status polling failed");
       return res.json();
     };
 
     const statusToText = (state) => {
-      if (state.phase === 'script') return 'Generating script...';
-      if (state.phase === 'prepare_segments') return 'Preparing segments...';
-      if (state.phase === 'segments') return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
-      if (state.phase === 'combining') return 'Combining audio...';
-      if (state.phase === 'done') return 'Finalizing...';
-      if (state.phase === 'error') return 'Failed';
-      return 'Working...';
+      if (state.phase === "script") return "Generating script...";
+      if (state.phase === "prepare_segments") return "Preparing segments...";
+      if (state.phase === "segments")
+        return `Generating audio segments (Female and Male) (${state.segments_done}/${state.segments_total})...`;
+      if (state.phase === "combining") return "Combining audio...";
+      if (state.phase === "done") return "Finalizing...";
+      if (state.phase === "error") return "Failed";
+      return "Working...";
     };
 
     let finalUrl = null;
@@ -3213,27 +3395,27 @@ async function podcast() {
     while (keepPolling) {
       const state = await pollStatus();
       updatePodcastProgressUI(state.progress || 0, statusToText(state));
-      if (state.status === 'completed' && state.url) {
+      if (state.status === "completed" && state.url) {
         finalUrl = state.url;
         keepPolling = false;
         break;
       }
-      if (state.status === 'failed') {
-        throw new Error(state.error || 'Podcast generation failed');
+      if (state.status === "failed") {
+        throw new Error(state.error || "Podcast generation failed");
       }
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 800));
     }
 
     hidePodcastGenerationProgress();
 
-    if (!finalUrl) throw new Error('No URL produced');
+    if (!finalUrl) throw new Error("No URL produced");
 
-    const audioUrl = finalUrl + '?t=' + Date.now(); // Add timestamp to prevent caching
-    console.log('Final audio URL:', audioUrl);
+    const audioUrl = finalUrl + "?t=" + Date.now(); // Add timestamp to prevent caching
+    console.log("Final audio URL:", audioUrl);
 
-    const player = document.getElementById('player');
+    const player = document.getElementById("player");
     player.src = audioUrl;
-    player.setAttribute('title', `AI Podcast: ${job} (Dual Voice)`);
+    player.setAttribute("title", `AI Podcast: ${job} (Dual Voice)`);
 
     // Reset audio player initialization to ensure proper setup
     resetAudioPlayerInitialization();
@@ -3242,26 +3424,34 @@ async function podcast() {
     initializeAudioPlayer();
 
     // Clear any existing audio info
-    const audioInfo = document.getElementById('audioInfo');
-    const audioTitle = document.getElementById('audioTitle');
-    if (audioInfo) audioInfo.classList.add('hidden');
-    if (audioTitle) audioTitle.textContent = 'Loading dual voice podcast...';
+    const audioInfo = document.getElementById("audioInfo");
+    const audioTitle = document.getElementById("audioTitle");
+    if (audioInfo) audioInfo.classList.add("hidden");
+    if (audioTitle) audioTitle.textContent = "Loading dual voice podcast...";
 
     // Wait for audio to load metadata
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Audio loading timeout'));
+        reject(new Error("Audio loading timeout"));
       }, 15000); // 15 second timeout for enhanced podcast
 
-      player.addEventListener('loadedmetadata', () => {
-        clearTimeout(timeout);
-        resolve();
-      }, { once: true });
+      player.addEventListener(
+        "loadedmetadata",
+        () => {
+          clearTimeout(timeout);
+          resolve();
+        },
+        { once: true },
+      );
 
-      player.addEventListener('error', (e) => {
-        clearTimeout(timeout);
-        reject(new Error(`Audio loading failed`));
-      }, { once: true });
+      player.addEventListener(
+        "error",
+        (e) => {
+          clearTimeout(timeout);
+          reject(new Error(`Audio loading failed`));
+        },
+        { once: true },
+      );
 
       player.load(); // Force load
     });
@@ -3273,21 +3463,20 @@ async function podcast() {
     await player.play();
 
     // Update UI to show it's playing
-    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playPauseBtn = document.getElementById("playPauseBtn");
 
     if (playPauseBtn) {
-      const icon = playPauseBtn.querySelector('i');
-      if (icon) icon.className = 'fas fa-pause text-sm';
+      const icon = playPauseBtn.querySelector("i");
+      if (icon) icon.className = "fas fa-pause text-sm";
     }
 
-    if (audioInfo) audioInfo.classList.remove('hidden');
+    if (audioInfo) audioInfo.classList.remove("hidden");
     if (audioTitle) audioTitle.textContent = `AI Podcast: ${job} (Dual Voice)`;
 
-    toast('High-quality dual voice podcast is now playing! 🎧', 'success');
-
+    toast("High-quality dual voice podcast is now playing! 🎧", "success");
   } catch (e) {
-    console.error('Enhanced podcast error:', e);
-    toast(`Podcast failed: ${e.message || 'Unknown error'}`, 'error');
+    console.error("Enhanced podcast error:", e);
+    toast(`Podcast failed: ${e.message || "Unknown error"}`, "error");
   } finally {
     btn.disabled = false;
     btn.textContent = prev;
@@ -3303,10 +3492,10 @@ async function getTextSelectionInsights() {
   if (!selectedText || selectedText.trim().length === 0) return;
 
   try {
-    const response = await fetch('/api/document-search', {
-      method: 'POST',
+    const response = await fetch("/api/document-search", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query: selectedText,
@@ -3322,15 +3511,17 @@ async function getTextSelectionInsights() {
 
     // Update the recommendations panel with text-selection-based results
     displayTextSelectionRecommendations(results.results, selectedText);
-
   } catch (error) {
     console.error("Error getting text insights:", error);
-    showNotification(`Error getting recommendations: ${error.message}`, 'error');
+    showNotification(
+      `Error getting recommendations: ${error.message}`,
+      "error",
+    );
   }
 }
 
 function displayTextSelectionRecommendations(results, selectedText) {
-  const panel = document.getElementById('textSelectionPanel');
+  const panel = document.getElementById("textSelectionPanel");
   if (!panel) return;
 
   const recommendationsHtml = `
@@ -3338,44 +3529,53 @@ function displayTextSelectionRecommendations(results, selectedText) {
       <div class="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
         Recommendations based on your selection:
       </div>
-      <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">"${selectedText.substring(0, 80)}${selectedText.length > 80 ? '...' : ''}"</p>
+      <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">"${selectedText.substring(0, 80)}${selectedText.length > 80 ? "..." : ""}"</p>
       
-      ${results && results.length > 0 ? `
+      ${
+        results && results.length > 0
+          ? `
         <div class="mt-2 space-y-1">
-          ${results.slice(0, 3).map((result, idx) => `
+          ${results
+            .slice(0, 3)
+            .map(
+              (result, idx) => `
             <div class="text-xs text-slate-600 dark:text-slate-400">
               ${idx + 1}. ${result.document} (p.${result.page_number}) - ${result.text.substring(0, 60)}...
             </div>
-          `).join('')}
+          `,
+            )
+            .join("")}
         </div>
-      ` : '<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">No specific recommendations found.</div>'}
+      `
+          : '<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">No specific recommendations found.</div>'
+      }
     </div>
   `;
 
   // Add recommendations to the existing panel
-  const existingContent = panel.querySelector('.flex.space-x-2');
+  const existingContent = panel.querySelector(".flex.space-x-2");
   if (existingContent) {
-    existingContent.insertAdjacentHTML('beforebegin', recommendationsHtml);
+    existingContent.insertAdjacentHTML("beforebegin", recommendationsHtml);
   }
 }
 
-function showNotification(message, type = 'info') {
+function showNotification(message, type = "info") {
   toast(message, type);
 }
 
-function loadAudio(url, title = 'Audio') {
-  const player = document.getElementById('player');
+function loadAudio(url, title = "Audio") {
+  const player = document.getElementById("player");
   if (player) {
     player.src = url;
-    player.setAttribute('title', title);
-    player.play().catch(e => console.log('Auto-play prevented:', e));
-    toast(`Loading audio: ${title}`, 'info');
+    player.setAttribute("title", title);
+    player.play().catch((e) => console.log("Auto-play prevented:", e));
+    toast(`Loading audio: ${title}`, "info");
   } else {
     // Fallback: create a new audio element
     const audio = new Audio(url);
     audio.title = title;
-    audio.play().catch(e => console.log('Auto-play prevented:', e));
-    toast(`Playing audio: ${title}`, 'info');
+    audio.play().catch((e) => console.log("Auto-play prevented:", e));
+    toast(`Playing audio: ${title}`, "info");
   }
 }
 
@@ -3384,11 +3584,12 @@ function loadAudio(url, title = 'Audio') {
 // Show podcast generation progress
 function showPodcastGenerationProgress() {
   // Create or show podcast progress modal
-  let progressModal = document.getElementById('podcastProgressModal');
+  let progressModal = document.getElementById("podcastProgressModal");
   if (!progressModal) {
-    progressModal = document.createElement('div');
-    progressModal.id = 'podcastProgressModal';
-    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    progressModal = document.createElement("div");
+    progressModal.id = "podcastProgressModal";
+    progressModal.className =
+      "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
     progressModal.innerHTML = `
       <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
         <div class="text-center">
@@ -3409,107 +3610,108 @@ function showPodcastGenerationProgress() {
     document.body.appendChild(progressModal);
   }
 
-  progressModal.classList.remove('hidden');
+  progressModal.classList.remove("hidden");
 }
 
 function updatePodcastProgressUI(percent, text) {
-  const bar = document.getElementById('podcastProgress');
-  const status = document.getElementById('podcastStatus');
-  const pct = document.getElementById('podcastPercent');
-  if (bar) bar.style.width = Math.max(0, Math.min(100, percent)) + '%';
-  if (pct) pct.textContent = `${Math.round(Math.max(0, Math.min(100, percent)))}%`;
+  const bar = document.getElementById("podcastProgress");
+  const status = document.getElementById("podcastStatus");
+  const pct = document.getElementById("podcastPercent");
+  if (bar) bar.style.width = Math.max(0, Math.min(100, percent)) + "%";
+  if (pct)
+    pct.textContent = `${Math.round(Math.max(0, Math.min(100, percent)))}%`;
   if (status && text) status.textContent = text;
 }
 
 function hidePodcastGenerationProgress() {
-  const progressModal = document.getElementById('podcastProgressModal');
+  const progressModal = document.getElementById("podcastProgressModal");
   if (progressModal) {
-    progressModal.classList.add('hidden');
+    progressModal.classList.add("hidden");
   }
 }
 
 // Audio Player Initialization Functions
 function resetAudioPlayerInitialization() {
-  const player = document.getElementById('player');
+  const player = document.getElementById("player");
   if (!player) return;
 
   // Remove existing event listeners to prevent duplicates
-  player.removeEventListener('loadedmetadata', updateAudioDuration);
-  player.removeEventListener('timeupdate', updateAudioProgress);
-  player.removeEventListener('play', updatePlayPauseButton);
-  player.removeEventListener('pause', updatePlayPauseButton);
-  player.removeEventListener('ended', handleAudioEnded);
-  player.removeEventListener('error', handleAudioError);
+  player.removeEventListener("loadedmetadata", updateAudioDuration);
+  player.removeEventListener("timeupdate", updateAudioProgress);
+  player.removeEventListener("play", updatePlayPauseButton);
+  player.removeEventListener("pause", updatePlayPauseButton);
+  player.removeEventListener("ended", handleAudioEnded);
+  player.removeEventListener("error", handleAudioError);
 
   // Reset UI elements
-  const currentTimeEl = document.getElementById('currentTime');
-  const totalTimeEl = document.getElementById('totalTime');
-  const progressEl = document.getElementById('audioProgress');
-  const playPauseBtn = document.getElementById('playPauseBtn');
+  const currentTimeEl = document.getElementById("currentTime");
+  const totalTimeEl = document.getElementById("totalTime");
+  const progressEl = document.getElementById("audioProgress");
+  const playPauseBtn = document.getElementById("playPauseBtn");
 
-  if (currentTimeEl) currentTimeEl.textContent = '0:00';
-  if (totalTimeEl) totalTimeEl.textContent = '0:00';
-  if (progressEl) progressEl.style.width = '0%';
+  if (currentTimeEl) currentTimeEl.textContent = "0:00";
+  if (totalTimeEl) totalTimeEl.textContent = "0:00";
+  if (progressEl) progressEl.style.width = "0%";
   if (playPauseBtn) {
-    const icon = playPauseBtn.querySelector('i');
-    if (icon) icon.className = 'fas fa-play text-sm';
+    const icon = playPauseBtn.querySelector("i");
+    if (icon) icon.className = "fas fa-play text-sm";
   }
 }
 
 function initializeAudioPlayer() {
-  const player = document.getElementById('player');
+  const player = document.getElementById("player");
   if (!player) {
-    console.error('Audio player element not found');
+    console.error("Audio player element not found");
     return;
   }
 
   // Set up event listeners for audio player
-  player.addEventListener('loadedmetadata', updateAudioDuration);
-  player.addEventListener('timeupdate', updateAudioProgress);
-  player.addEventListener('play', updatePlayPauseButton);
-  player.addEventListener('pause', updatePlayPauseButton);
-  player.addEventListener('ended', handleAudioEnded);
-  player.addEventListener('error', handleAudioError);
+  player.addEventListener("loadedmetadata", updateAudioDuration);
+  player.addEventListener("timeupdate", updateAudioProgress);
+  player.addEventListener("play", updatePlayPauseButton);
+  player.addEventListener("pause", updatePlayPauseButton);
+  player.addEventListener("ended", handleAudioEnded);
+  player.addEventListener("error", handleAudioError);
 
   // Set up control button event listeners
   setupAudioControls();
 
-  console.log('Audio player initialized successfully');
+  console.log("Audio player initialized successfully");
 }
 
 function setupAudioControls() {
   // Play/Pause button
-  const playPauseBtn = document.getElementById('playPauseBtn');
+  const playPauseBtn = document.getElementById("playPauseBtn");
   if (playPauseBtn) {
-    playPauseBtn.removeEventListener('click', togglePlayPause);
-    playPauseBtn.addEventListener('click', togglePlayPause);
+    playPauseBtn.removeEventListener("click", togglePlayPause);
+    playPauseBtn.addEventListener("click", togglePlayPause);
   }
 
   // Stop button
-  const stopBtn = document.getElementById('stopBtn');
+  const stopBtn = document.getElementById("stopBtn");
   if (stopBtn) {
-    stopBtn.removeEventListener('click', stopAudio);
-    stopBtn.addEventListener('click', stopAudio);
+    stopBtn.removeEventListener("click", stopAudio);
+    stopBtn.addEventListener("click", stopAudio);
   }
 
   // Speed button
-  const speedBtn = document.getElementById('speedBtn');
+  const speedBtn = document.getElementById("speedBtn");
   if (speedBtn) {
-    speedBtn.removeEventListener('click', cyclePlaybackSpeed);
-    speedBtn.addEventListener('click', cyclePlaybackSpeed);
+    speedBtn.removeEventListener("click", cyclePlaybackSpeed);
+    speedBtn.addEventListener("click", cyclePlaybackSpeed);
   }
 
   // Progress bar
-  const progressContainer = document.getElementById('progressContainer');
+  const progressContainer = document.getElementById("progressContainer");
   if (progressContainer) {
-    progressContainer.removeEventListener('click', seekAudio);
-    progressContainer.addEventListener('click', seekAudio);
+    progressContainer.removeEventListener("click", seekAudio);
+    progressContainer.addEventListener("click", seekAudio);
   }
 }
 
 function updateAudioDuration() {
-  const player = document.getElementById('player');
-  const totalTimeEl = document.getElementById('totalTime');
+  const player = document.getElementById("player");
+  const totalTimeEl = document.getElementById("totalTime");
 
   if (player && totalTimeEl && !isNaN(player.duration)) {
     totalTimeEl.textContent = formatTime(player.duration);
@@ -3517,9 +3719,9 @@ function updateAudioDuration() {
 }
 
 function updateAudioProgress() {
-  const player = document.getElementById('player');
-  const currentTimeEl = document.getElementById('currentTime');
-  const progressEl = document.getElementById('audioProgress');
+  const player = document.getElementById("player");
+  const currentTimeEl = document.getElementById("currentTime");
+  const progressEl = document.getElementById("audioProgress");
 
   if (player && !isNaN(player.currentTime) && !isNaN(player.duration)) {
     if (currentTimeEl) {
@@ -3534,45 +3736,47 @@ function updateAudioProgress() {
 }
 
 function updatePlayPauseButton() {
-  const player = document.getElementById('player');
-  const playPauseBtn = document.getElementById('playPauseBtn');
+  const player = document.getElementById("player");
+  const playPauseBtn = document.getElementById("playPauseBtn");
 
   if (player && playPauseBtn) {
-    const icon = playPauseBtn.querySelector('i');
+    const icon = playPauseBtn.querySelector("i");
     if (icon) {
-      icon.className = player.paused ? 'fas fa-play text-sm' : 'fas fa-pause text-sm';
+      icon.className = player.paused
+        ? "fas fa-play text-sm"
+        : "fas fa-pause text-sm";
     }
   }
 }
 
 function handleAudioEnded() {
-  const playPauseBtn = document.getElementById('playPauseBtn');
+  const playPauseBtn = document.getElementById("playPauseBtn");
   if (playPauseBtn) {
-    const icon = playPauseBtn.querySelector('i');
-    if (icon) icon.className = 'fas fa-play text-sm';
+    const icon = playPauseBtn.querySelector("i");
+    if (icon) icon.className = "fas fa-play text-sm";
   }
 
   // Reset progress
-  const progressEl = document.getElementById('audioProgress');
-  if (progressEl) progressEl.style.width = '0%';
+  const progressEl = document.getElementById("audioProgress");
+  if (progressEl) progressEl.style.width = "0%";
 
-  const currentTimeEl = document.getElementById('currentTime');
-  if (currentTimeEl) currentTimeEl.textContent = '0:00';
+  const currentTimeEl = document.getElementById("currentTime");
+  if (currentTimeEl) currentTimeEl.textContent = "0:00";
 }
 
 function handleAudioError(event) {
-  console.error('Audio error:', event);
-  toast('Error playing audio. Please try again.', 'error');
+  console.error("Audio error:", event);
+  toast("Error playing audio. Please try again.", "error");
 }
 
 function togglePlayPause() {
-  const player = document.getElementById('player');
+  const player = document.getElementById("player");
   if (!player) return;
 
   if (player.paused) {
-    player.play().catch(e => {
-      console.error('Error playing audio:', e);
-      toast('Error playing audio. Please try again.', 'error');
+    player.play().catch((e) => {
+      console.error("Error playing audio:", e);
+      toast("Error playing audio. Please try again.", "error");
     });
   } else {
     player.pause();
@@ -3580,29 +3784,29 @@ function togglePlayPause() {
 }
 
 function stopAudio() {
-  const player = document.getElementById('player');
+  const player = document.getElementById("player");
   if (!player) return;
 
   player.pause();
   player.currentTime = 0;
 
   // Update UI
-  const playPauseBtn = document.getElementById('playPauseBtn');
+  const playPauseBtn = document.getElementById("playPauseBtn");
   if (playPauseBtn) {
-    const icon = playPauseBtn.querySelector('i');
-    if (icon) icon.className = 'fas fa-play text-sm';
+    const icon = playPauseBtn.querySelector("i");
+    if (icon) icon.className = "fas fa-play text-sm";
   }
 
-  const progressEl = document.getElementById('audioProgress');
-  if (progressEl) progressEl.style.width = '0%';
+  const progressEl = document.getElementById("audioProgress");
+  if (progressEl) progressEl.style.width = "0%";
 
-  const currentTimeEl = document.getElementById('currentTime');
-  if (currentTimeEl) currentTimeEl.textContent = '0:00';
+  const currentTimeEl = document.getElementById("currentTime");
+  if (currentTimeEl) currentTimeEl.textContent = "0:00";
 }
 
 function cyclePlaybackSpeed() {
-  const player = document.getElementById('player');
-  const speedBtn = document.getElementById('speedBtn');
+  const player = document.getElementById("player");
+  const speedBtn = document.getElementById("speedBtn");
 
   if (!player || !speedBtn) return;
 
@@ -3617,8 +3821,8 @@ function cyclePlaybackSpeed() {
 }
 
 function seekAudio(event) {
-  const player = document.getElementById('player');
-  const progressContainer = document.getElementById('progressContainer');
+  const player = document.getElementById("player");
+  const progressContainer = document.getElementById("progressContainer");
 
   if (!player || !progressContainer || isNaN(player.duration)) return;
 
@@ -3631,71 +3835,81 @@ function seekAudio(event) {
 }
 
 function formatTime(seconds) {
-  if (isNaN(seconds)) return '0:00';
+  if (isNaN(seconds)) return "0:00";
 
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 // Document clustering functionality - works independently of document selection
 async function clusterDocuments() {
   // Show loading state
-  const clusterBtn = document.getElementById('clusterBtn');
+  const clusterBtn = document.getElementById("clusterBtn");
   if (clusterBtn) {
     const originalText = clusterBtn.innerHTML;
-    clusterBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clustering...';
+    clusterBtn.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> Clustering...';
     clusterBtn.disabled = true;
 
     try {
       // First, get all available documents for clustering
-      const docsResponse = await fetch('/api/documents');
+      const docsResponse = await fetch("/api/documents");
       if (!docsResponse.ok) {
-        throw new Error('Failed to fetch available documents');
+        throw new Error("Failed to fetch available documents");
       }
 
       const allDocs = await docsResponse.json();
-      const documentNames = allDocs.map(doc => doc.filename);
+      const documentNames = allDocs.map((doc) => doc.filename);
 
       if (documentNames.length === 0) {
-        toast('No documents available for clustering. Please upload some PDFs first.', 'warning');
+        toast(
+          "No documents available for clustering. Please upload some PDFs first.",
+          "warning",
+        );
         return;
       }
 
-      console.log(`Clustering ${documentNames.length} available documents:`, documentNames);
+      console.log(
+        `Clustering ${documentNames.length} available documents:`,
+        documentNames,
+      );
 
       // Use the existing analyze endpoint with clustering approach
       // This will cluster all available documents based on their content
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documents: documentNames, // Provide all available documents
-          approach: 'clustering',
-          method: 'auto',
+          approach: "clustering",
+          method: "auto",
           top_k: 10,
-          persona: document.getElementById('persona')?.value?.trim() || 'General User',
-          job: document.getElementById('job')?.value?.trim() || 'Understanding document content and structure'
-        })
+          persona:
+            document.getElementById("persona")?.value?.trim() || "General User",
+          job:
+            document.getElementById("job")?.value?.trim() ||
+            "Understanding document content and structure",
+        }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Clustering API error:', response.status, errorText);
+        console.error("Clustering API error:", response.status, errorText);
         throw new Error(`Clustering failed: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('Document clustering response:', data);
+      console.log("Document clustering response:", data);
 
       // Handle clustering response structure - it returns extracted_sections and snippets
       const sections = data.extracted_sections || data.sections || [];
       const snippets = data.snippets || [];
       const relatedMap = data.related_map || {};
 
-      console.log('Sections extracted:', sections);
-      console.log('Snippets extracted:', snippets);
-      console.log('Related map:', relatedMap);
+      console.log("Sections extracted:", sections);
+      console.log("Snippets extracted:", snippets);
+      console.log("Related map:", relatedMap);
 
       // Store the clustering results
       currentSections = sections;
@@ -3704,11 +3918,13 @@ async function clusterDocuments() {
       // Display the clustered results with clustering-specific styling
       displayClusteredResults(sections, snippets, relatedMap);
 
-      toast(`Document clustering completed! ${documentNames.length} PDFs are now grouped by similarity.`, 'success');
-
+      toast(
+        `Document clustering completed! ${documentNames.length} PDFs are now grouped by similarity.`,
+        "success",
+      );
     } catch (error) {
-      console.error('Clustering failed:', error);
-      toast(`Clustering failed: ${error.message}`, 'error');
+      console.error("Clustering failed:", error);
+      toast(`Clustering failed: ${error.message}`, "error");
     } finally {
       // Restore button state
       clusterBtn.innerHTML = originalText;
@@ -3719,10 +3935,10 @@ async function clusterDocuments() {
 
 // Display clustered results in the UI
 function displayClusteredResults(sections, snippets, relatedMap) {
-  const container = document.getElementById('clusters');
+  const container = document.getElementById("clusters");
   if (!container) return;
 
-  container.innerHTML = '';
+  container.innerHTML = "";
 
   if (sections.length === 0 && snippets.length === 0) {
     container.innerHTML = `
@@ -3741,12 +3957,12 @@ function displayClusteredResults(sections, snippets, relatedMap) {
 
   // Process sections
   sections.forEach((s, index) => {
-    const docName = s.document || 'Unknown';
+    const docName = s.document || "Unknown";
     if (!documentGroups[docName]) {
       documentGroups[docName] = {
         sections: [],
         snippets: [],
-        document: docName
+        document: docName,
       };
     }
     documentGroups[docName].sections.push({ ...s, originalIndex: index });
@@ -3754,23 +3970,24 @@ function displayClusteredResults(sections, snippets, relatedMap) {
 
   // Process snippets
   snippets.forEach((s, index) => {
-    const docName = s.document || 'Unknown';
+    const docName = s.document || "Unknown";
     if (!documentGroups[docName]) {
       documentGroups[docName] = {
         sections: [],
         snippets: [],
-        document: docName
+        document: docName,
       };
     }
     documentGroups[docName].snippets.push({ ...s, originalIndex: index });
   });
 
-  console.log('Document groups created:', documentGroups);
+  console.log("Document groups created:", documentGroups);
 
   // Display each document group as a cluster
   Object.entries(documentGroups).forEach(([docName, docData], groupIndex) => {
-    const clusterItem = document.createElement('div');
-    clusterItem.className = 'cluster-item mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-700 shadow-md';
+    const clusterItem = document.createElement("div");
+    clusterItem.className =
+      "cluster-item mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-700 shadow-md";
 
     const totalSections = docData.sections.length;
     const totalSnippets = docData.snippets.length;
@@ -3802,14 +4019,19 @@ function displayClusteredResults(sections, snippets, relatedMap) {
         </div>
       </div>
       
-      ${totalSections > 0 ? `
+      ${
+        totalSections > 0
+          ? `
         <div class="mb-3">
           <div class="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
             <i class="fas fa-chart-line mr-1 text-blue-500"></i>
             Sections (${totalSections})
           </div>
           <div class="space-y-2">
-            ${docData.sections.slice(0, 2).map((s, idx) => `
+            ${docData.sections
+              .slice(0, 2)
+              .map(
+                (s, idx) => `
               <div class="section-item bg-white dark:bg-slate-800 rounded-lg p-2 border-l-3 border-blue-500 hover:shadow-sm transition-shadow">
                 <div class="flex items-start justify-between">
                   <div class="flex-1">
@@ -3822,13 +4044,17 @@ function displayClusteredResults(sections, snippets, relatedMap) {
                       </span>
                     </div>
                     <h5 class="section-title text-xs font-medium text-slate-800 dark:text-white mb-1">
-                      ${s.section_title || 'Untitled Section'}
+                      ${s.section_title || "Untitled Section"}
                     </h5>
-                    ${s.section_summary ? `
+                    ${
+                      s.section_summary
+                        ? `
                       <p class="section-content text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        ${s.section_summary.substring(0, 80)}${s.section_summary.length > 80 ? '...' : ''}
+                        ${s.section_summary.substring(0, 80)}${s.section_summary.length > 80 ? "..." : ""}
                       </p>
-                    ` : ''}
+                    `
+                        : ""
+                    }
                   </div>
                   
                   <button class="ml-2 p-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300" 
@@ -3837,24 +4063,37 @@ function displayClusteredResults(sections, snippets, relatedMap) {
                   </button>
                 </div>
               </div>
-            `).join('')}
-            ${totalSections > 2 ? `
+            `,
+              )
+              .join("")}
+            ${
+              totalSections > 2
+                ? `
               <div class="text-xs text-slate-500 dark:text-slate-400 text-center py-1">
                 +${totalSections - 2} more sections
               </div>
-            ` : ''}
+            `
+                : ""
+            }
           </div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
-      ${totalSnippets > 0 ? `
+      ${
+        totalSnippets > 0
+          ? `
         <div class="mb-3">
           <div class="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
             <i class="fas fa-lightbulb mr-1 text-purple-500"></i>
             Insights (${totalSnippets})
           </div>
           <div class="space-y-1">
-            ${docData.snippets.slice(0, 2).map((s, idx) => `
+            ${docData.snippets
+              .slice(0, 2)
+              .map(
+                (s, idx) => `
               <div class="snippet-item bg-white dark:bg-slate-800 rounded-lg p-1 border-l-3 border-purple-500">
                 <div class="flex items-start space-x-1">
                   <span class="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1 py-0.5 rounded-full flex-shrink-0">
@@ -3865,7 +4104,7 @@ function displayClusteredResults(sections, snippets, relatedMap) {
                       p.${s.page_number}
                     </div>
                     <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                      "${s.refined_text.substring(0, 60)}${s.refined_text.length > 60 ? '...' : ''}"
+                      "${s.refined_text.substring(0, 60)}${s.refined_text.length > 60 ? "..." : ""}"
                     </p>
                   </div>
                   
@@ -3875,15 +4114,23 @@ function displayClusteredResults(sections, snippets, relatedMap) {
                   </button>
                 </div>
               </div>
-            `).join('')}
-            ${totalSnippets > 2 ? `
+            `,
+              )
+              .join("")}
+            ${
+              totalSnippets > 2
+                ? `
               <div class="text-xs text-slate-500 dark:text-slate-400 text-center py-1">
                 +${totalSnippets - 2} more insights
               </div>
-            ` : ''}
+            `
+                : ""
+            }
           </div>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
       <div class="flex items-center justify-between pt-2 border-t border-blue-200 dark:border-blue-700">
         <button class="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300 text-xs" 
@@ -3903,11 +4150,11 @@ function displayClusteredResults(sections, snippets, relatedMap) {
     container.appendChild(clusterItem);
 
     // Add click handlers for jump buttons
-    clusterItem.querySelectorAll('button[data-page]').forEach((jumpBtn) => {
-      jumpBtn.addEventListener('click', async (e) => {
+    clusterItem.querySelectorAll("button[data-page]").forEach((jumpBtn) => {
+      jumpBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const page = parseInt(jumpBtn.getAttribute('data-page'), 10);
-        const doc = jumpBtn.getAttribute('data-doc');
+        const page = parseInt(jumpBtn.getAttribute("data-page"), 10);
+        const doc = jumpBtn.getAttribute("data-doc");
 
         // Load document if not already loaded
         if (currentDoc !== `/files/${doc}`) {
@@ -3916,12 +4163,12 @@ function displayClusteredResults(sections, snippets, relatedMap) {
           // Wait a bit for the viewer to initialize before jumping to page
           setTimeout(async () => {
             const ok = await jumpToPage(page);
-            if (!ok) toast('Navigation failed.', 'error');
+            if (!ok) toast("Navigation failed.", "error");
           }, 1000);
         } else {
           // Document already loaded, jump directly to page
           const ok = await jumpToPage(page);
-          if (!ok) toast('Navigation failed.', 'error');
+          if (!ok) toast("Navigation failed.", "error");
         }
       });
     });
@@ -3930,13 +4177,16 @@ function displayClusteredResults(sections, snippets, relatedMap) {
   // Store clusters globally for other functions to use
   window.documentClusters = Object.keys(documentGroups);
 
-  console.log('Clusters displayed successfully. Total clusters:', Object.keys(documentGroups).length);
+  console.log(
+    "Clusters displayed successfully. Total clusters:",
+    Object.keys(documentGroups).length,
+  );
 }
 
 // Load a document from a cluster
 async function loadDocumentFromCluster(documentName, pageNumber = 1) {
   if (!documentName) {
-    toast('Document name not available', 'error');
+    toast("Document name not available", "error");
     return;
   }
 
@@ -3951,40 +4201,43 @@ async function loadDocumentFromCluster(documentName, pageNumber = 1) {
       // Wait for viewer to initialize, then jump to page
       setTimeout(async () => {
         const ok = await jumpToPage(pageNumber);
-        if (!ok) toast('Navigation failed.', 'error');
+        if (!ok) toast("Navigation failed.", "error");
       }, 1500);
     }
 
-    toast(`Loaded: ${documentName}`, 'success');
+    toast(`Loaded: ${documentName}`, "success");
   } catch (error) {
-    console.error('Error loading document from cluster:', error);
-    toast('Failed to load document', 'error');
+    console.error("Error loading document from cluster:", error);
+    toast("Failed to load document", "error");
   }
 }
 
 // Analyze a single document from a cluster
 async function analyzeSingleDocument(documentName) {
   if (!documentName) {
-    toast('Document name not available', 'error');
+    toast("Document name not available", "error");
     return;
   }
 
   try {
     // Show loading state
-    toast('Analyzing document...', 'info');
+    toast("Analyzing document...", "info");
 
     // Call the analyze API for this specific document
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         documents: [documentName],
-        approach: 'nlp',
-        method: 'auto',
+        approach: "nlp",
+        method: "auto",
         top_k: 5,
-        persona: document.getElementById('persona')?.value?.trim() || 'General User',
-        job: document.getElementById('job')?.value?.trim() || 'Understanding document content and structure'
-      })
+        persona:
+          document.getElementById("persona")?.value?.trim() || "General User",
+        job:
+          document.getElementById("job")?.value?.trim() ||
+          "Understanding document content and structure",
+      }),
     });
 
     if (!response.ok) {
@@ -3993,7 +4246,7 @@ async function analyzeSingleDocument(documentName) {
     }
 
     const data = await response.json();
-    console.log('Single document analysis response:', data);
+    console.log("Single document analysis response:", data);
 
     // Handle response structure
     const sections = data.extracted_sections || data.sections || [];
@@ -4009,24 +4262,24 @@ async function analyzeSingleDocument(documentName) {
     renderSnippets(snippets);
 
     // Enable insights and podcast buttons
-    const insightsBtn = document.getElementById('insightsBtn');
-    const podcastBtn = document.getElementById('podcastBtn');
+    const insightsBtn = document.getElementById("insightsBtn");
+    const podcastBtn = document.getElementById("podcastBtn");
     if (insightsBtn) insightsBtn.disabled = false;
     if (podcastBtn) podcastBtn.disabled = false;
 
     HAS_ANALYSIS = true;
-    toast(`Analysis completed for ${documentName}!`, 'success');
-
+    toast(`Analysis completed for ${documentName}!`, "success");
   } catch (error) {
-    console.error('Single document analysis failed:', error);
-    toast(`Analysis failed: ${error.message}`, 'error');
+    console.error("Single document analysis failed:", error);
+    toast(`Analysis failed: ${error.message}`, "error");
   }
 }
 
 // Show delete all confirmation dialog
 function showDeleteAllConfirmation(selectedDocs) {
-  const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  const overlay = document.createElement("div");
+  overlay.className =
+    "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
   overlay.innerHTML = `
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
       <div class="text-center">
@@ -4054,7 +4307,7 @@ function showDeleteAllConfirmation(selectedDocs) {
   document.body.appendChild(overlay);
 
   // Close on outside click
-  overlay.addEventListener('click', (e) => {
+  overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
       overlay.remove();
     }
@@ -4065,16 +4318,19 @@ function showDeleteAllConfirmation(selectedDocs) {
 async function deleteSelectedDocuments() {
   const selectedDocs = getSelectedDocs();
   if (selectedDocs.length === 0) {
-    toast('No documents selected for deletion', 'warning');
+    toast("No documents selected for deletion", "warning");
     return;
   }
 
   try {
     // Call delete API for each selected document
     const deletePromises = selectedDocs.map(async (docName) => {
-      const response = await fetch(`/api/documents/${encodeURIComponent(docName)}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(
+        `/api/documents/${encodeURIComponent(docName)}`,
+        {
+          method: "DELETE",
+        },
+      );
       return response.ok;
     });
 
@@ -4082,13 +4338,13 @@ async function deleteSelectedDocuments() {
     const successCount = results.filter(Boolean).length;
 
     if (successCount > 0) {
-      toast(`Successfully deleted ${successCount} document(s)`, 'success');
+      toast(`Successfully deleted ${successCount} document(s)`, "success");
 
       // Reload documents list
       await loadDocuments();
 
       // Clear current document if it was deleted
-      if (currentDoc && selectedDocs.includes(currentDoc.split('/').pop())) {
+      if (currentDoc && selectedDocs.includes(currentDoc.split("/").pop())) {
         currentDoc = null;
         showPDFNeutral();
       }
@@ -4102,23 +4358,22 @@ async function deleteSelectedDocuments() {
       renderSections([], {});
       renderSnippets([]);
     } else {
-      toast('Failed to delete any documents', 'error');
+      toast("Failed to delete any documents", "error");
     }
-
   } catch (error) {
-    console.error('Error deleting documents:', error);
-    toast('Error deleting documents', 'error');
+    console.error("Error deleting documents:", error);
+    toast("Error deleting documents", "error");
   }
 
   // Close confirmation dialog
-  const overlay = document.querySelector('.fixed.bg-black\\/50');
+  const overlay = document.querySelector(".fixed.bg-black\\/50");
   if (overlay) overlay.remove();
 }
 
 // Jump to a specific recommendation
 async function jumpToRecommendation(documentName, pageNumber) {
   if (!documentName) {
-    toast('Document name not available', 'error');
+    toast("Document name not available", "error");
     return;
   }
 
@@ -4137,22 +4392,23 @@ async function jumpToRecommendation(documentName, pageNumber) {
       await jumpToPage(pageNumber || 1);
     }
 
-    toast(`Jumped to ${documentName} page ${pageNumber}`, 'success');
+    toast(`Jumped to ${documentName} page ${pageNumber}`, "success");
   } catch (error) {
-    console.error('Error jumping to recommendation:', error);
-    toast('Failed to jump to recommendation', 'error');
+    console.error("Error jumping to recommendation:", error);
+    toast("Failed to jump to recommendation", "error");
   }
 }
 
 // Show text selection insights panel instantly with loading state
 function showTextSelectionInsightsInstantly(selectedText) {
-  let panel = document.getElementById('textSelectionPanel');
+  let panel = document.getElementById("textSelectionPanel");
 
   // Create panel if it doesn't exist
   if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'textSelectionPanel';
-    panel.className = 'fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40';
+    panel = document.createElement("div");
+    panel.id = "textSelectionPanel";
+    panel.className =
+      "fixed top-20 right-4 w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-40";
     document.body.appendChild(panel);
   }
 
@@ -4168,7 +4424,7 @@ function showTextSelectionInsightsInstantly(selectedText) {
       <div class="mb-4">
         <div class="text-sm text-slate-600 dark:text-slate-400 mb-2">Selected Text:</div>
         <div class="bg-slate-100 dark:bg-slate-700 p-3 rounded-lg text-sm text-slate-800 dark:text-slate-200">
-          "${selectedText.substring(0, 200)}${selectedText.length > 200 ? '...' : ''}"
+          "${selectedText.substring(0, 200)}${selectedText.length > 200 ? "..." : ""}"
         </div>
       </div>
       
@@ -4205,7 +4461,7 @@ function showTextSelectionInsightsInstantly(selectedText) {
     </div>
   `;
 
-  panel.classList.remove('hidden');
+  panel.classList.remove("hidden");
 }
 
 // Process text selection API call separately
@@ -4215,23 +4471,23 @@ async function processTextSelectionAPI(selectedText, pageNumber) {
 
   try {
     // Call the text selection API
-    const response = await fetch('/api/text-selection', {
-      method: 'POST',
+    const response = await fetch("/api/text-selection", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         selected_text: selectedText,
-        document: currentDoc ? currentDoc.split('/').pop() : 'unknown',
+        document: currentDoc ? currentDoc.split("/").pop() : "unknown",
         page_number: pageNumber,
-        persona: document.getElementById('persona')?.value || '',
-        job: document.getElementById('job')?.value || ''
+        persona: document.getElementById("persona")?.value || "",
+        job: document.getElementById("job")?.value || "",
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      console.log('Text selection response:', data);
+      console.log("Text selection response:", data);
 
       // Store the insights globally
       textSelectionInsights = data;
@@ -4242,15 +4498,14 @@ async function processTextSelectionAPI(selectedText, pageNumber) {
       // Also refresh recommendations for current document
       try {
         getDocumentRecommendations();
-      } catch (_) { }
-
+      } catch (_) {}
     } else {
-      console.error('Text selection API failed:', response.status);
-      updateTextSelectionPanelWithError('Failed to analyze text selection');
+      console.error("Text selection API failed:", response.status);
+      updateTextSelectionPanelWithError("Failed to analyze text selection");
     }
   } catch (error) {
-    console.error('Error processing text selection:', error);
-    updateTextSelectionPanelWithError('Error processing text selection');
+    console.error("Error processing text selection:", error);
+    updateTextSelectionPanelWithError("Error processing text selection");
   } finally {
     // Reset processing flag
     isProcessingTextSelection = false;
@@ -4259,11 +4514,11 @@ async function processTextSelectionAPI(selectedText, pageNumber) {
 
 // Update the text selection panel with actual data
 function updateTextSelectionPanel(insights) {
-  const panel = document.getElementById('textSelectionPanel');
+  const panel = document.getElementById("textSelectionPanel");
   if (!panel) return;
 
   // Update the summary section
-  const summarySection = panel.querySelector('.bg-blue-50');
+  const summarySection = panel.querySelector(".bg-blue-50");
   if (summarySection && insights.summary) {
     summarySection.innerHTML = `
       <div class="text-sm text-slate-700 dark:text-slate-300">
@@ -4273,24 +4528,29 @@ function updateTextSelectionPanel(insights) {
   }
 
   // Update the related content section
-  const relatedSection = panel.querySelector('.bg-slate-50');
+  const relatedSection = panel.querySelector(".bg-slate-50");
   if (relatedSection && insights.insights && insights.insights.length > 0) {
     relatedSection.innerHTML = `
       <div class="space-y-2 max-h-40 overflow-y-auto">
-        ${insights.insights.slice(0, 5).map((insight, idx) => `
+        ${insights.insights
+          .slice(0, 5)
+          .map(
+            (insight, idx) => `
           <div class="bg-white dark:bg-slate-700 p-2 rounded border-l-4 border-blue-500">
             <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">
               ${insight.document} (p.${insight.page_number}) - ${insight.insight_type}
             </div>
             <div class="text-sm text-slate-700 dark:text-slate-300">
-              ${insight.relevant_text.substring(0, 100)}${insight.relevant_text.length > 100 ? '...' : ''}
+              ${insight.relevant_text.substring(0, 100)}${insight.relevant_text.length > 100 ? "..." : ""}
             </div>
             <button onclick="jumpToDocument('${insight.document}', ${insight.page_number})" 
                     class="mt-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
               Jump to this section →
             </button>
           </div>
-        `).join('')}
+        `,
+          )
+          .join("")}
       </div>
     `;
   } else if (relatedSection) {
@@ -4304,11 +4564,11 @@ function updateTextSelectionPanel(insights) {
 
 // Update the text selection panel with error state
 function updateTextSelectionPanelWithError(errorMessage) {
-  const panel = document.getElementById('textSelectionPanel');
+  const panel = document.getElementById("textSelectionPanel");
   if (!panel) return;
 
   // Update the summary section with error
-  const summarySection = panel.querySelector('.bg-blue-50');
+  const summarySection = panel.querySelector(".bg-blue-50");
   if (summarySection) {
     summarySection.innerHTML = `
       <div class="text-sm text-red-600 dark:text-red-400">
@@ -4319,7 +4579,7 @@ function updateTextSelectionPanelWithError(errorMessage) {
   }
 
   // Update the related content section with error
-  const relatedSection = panel.querySelector('.bg-slate-50');
+  const relatedSection = panel.querySelector(".bg-slate-50");
   if (relatedSection) {
     relatedSection.innerHTML = `
       <div class="text-sm text-red-600 dark:text-red-400">
@@ -4336,7 +4596,7 @@ function cleanupPDFViewer() {
     try {
       currentRenderTask.cancel();
     } catch (e) {
-      console.log('Render task already completed or cancelled');
+      console.log("Render task already completed or cancelled");
     }
     currentRenderTask = null;
   }
@@ -4347,15 +4607,15 @@ function cleanupPDFViewer() {
   }
 
   // Remove text layers
-  const existingTextLayer = document.getElementById('single-page-text-layer');
+  const existingTextLayer = document.getElementById("single-page-text-layer");
   if (existingTextLayer) {
     existingTextLayer.remove();
   }
 
   // Clear continuous view
-  const continuousView = document.getElementById('continuous-view');
+  const continuousView = document.getElementById("continuous-view");
   if (continuousView) {
-    continuousView.innerHTML = '';
+    continuousView.innerHTML = "";
   }
 
   // Reset variables
@@ -4366,12 +4626,15 @@ function cleanupPDFViewer() {
 // Delete a single document
 async function deleteDocument(filename) {
   try {
-    const response = await fetch(`/api/documents/${encodeURIComponent(filename)}`, {
-      method: 'DELETE'
-    });
+    const response = await fetch(
+      `/api/documents/${encodeURIComponent(filename)}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     if (response.ok) {
-      toast(`Successfully deleted ${filename}`, 'success');
+      toast(`Successfully deleted ${filename}`, "success");
 
       // Reload documents list
       await loadDocuments();
@@ -4384,8 +4647,10 @@ async function deleteDocument(filename) {
       }
 
       // Clear analysis results if the deleted document was analyzed
-      if (currentSections.some(s => s.document === filename) ||
-        currentSnippets.some(s => s.document === filename)) {
+      if (
+        currentSections.some((s) => s.document === filename) ||
+        currentSnippets.some((s) => s.document === filename)
+      ) {
         currentSections = [];
         currentSnippets = [];
         HAS_ANALYSIS = false;
@@ -4395,11 +4660,11 @@ async function deleteDocument(filename) {
         renderSnippets([]);
       }
     } else {
-      toast(`Failed to delete ${filename}`, 'error');
+      toast(`Failed to delete ${filename}`, "error");
     }
   } catch (error) {
-    console.error('Error deleting document:', error);
-    toast('Error deleting document', 'error');
+    console.error("Error deleting document:", error);
+    toast("Error deleting document", "error");
   }
 }
 
@@ -4407,14 +4672,16 @@ async function deleteDocument(filename) {
 async function retryLoadPage(pageNum) {
   try {
     // Remove any error overlays
-    const errorOverlays = document.querySelectorAll('.absolute.inset-0.flex.items-center.justify-center.bg-red-50');
-    errorOverlays.forEach(overlay => overlay.remove());
+    const errorOverlays = document.querySelectorAll(
+      ".absolute.inset-0.flex.items-center.justify-center.bg-red-50",
+    );
+    errorOverlays.forEach((overlay) => overlay.remove());
 
     // Try to load the page again
     await loadPage(pageNum);
   } catch (error) {
-    console.error('Error retrying page load:', error);
-    toast('Failed to retry page load', 'error');
+    console.error("Error retrying page load:", error);
+    toast("Failed to retry page load", "error");
   }
 }
 
@@ -4422,9 +4689,10 @@ async function retryLoadPage(pageNum) {
 function showTextInputModal() {
   closeTextInputModal();
 
-  const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-  modal.id = 'textInputModal';
+  const modal = document.createElement("div");
+  modal.className =
+    "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+  modal.id = "textInputModal";
 
   const curPage = Math.max(1, currentPage || 1);
 
@@ -4472,35 +4740,38 @@ function showTextInputModal() {
 
   document.body.appendChild(modal);
 
-  const area = modal.querySelector('#textInputArea');
-  const counter = modal.querySelector('#textCharCount');
+  const area = modal.querySelector("#textInputArea");
+  const counter = modal.querySelector("#textCharCount");
   if (area && counter) {
-    area.addEventListener('input', () => {
+    area.addEventListener("input", () => {
       counter.textContent = `${area.value.length} characters`;
     });
   }
 
   const handleEscape = (e) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       closeTextInputModal();
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("keydown", handleEscape);
     }
   };
-  document.addEventListener('keydown', handleEscape);
+  document.addEventListener("keydown", handleEscape);
 }
 
 function closeTextInputModal() {
-  const existing = document.getElementById('textInputModal');
+  const existing = document.getElementById("textInputModal");
   if (existing) existing.remove();
 }
 
 async function analyzeSelectedText() {
-  const modal = document.getElementById('textInputModal');
+  const modal = document.getElementById("textInputModal");
   if (!modal) return;
-  const text = modal.querySelector('#textInputArea')?.value?.trim() || '';
-  const page = parseInt(modal.querySelector('#pageInput')?.value || `${currentPage || 1}`, 10);
+  const text = modal.querySelector("#textInputArea")?.value?.trim() || "";
+  const page = parseInt(
+    modal.querySelector("#pageInput")?.value || `${currentPage || 1}`,
+    10,
+  );
   if (!text) {
-    toast('Please enter some text to analyze', 'warning');
+    toast("Please enter some text to analyze", "warning");
     return;
   }
   // Show the insights panel immediately with loading state
@@ -4513,14 +4784,15 @@ async function analyzeSelectedText() {
   try {
     processTextSelectionAPI(text, page);
   } catch (e) {
-    console.error('Error starting text selection processing:', e);
+    console.error("Error starting text selection processing:", e);
   }
 }
 
 // Reset Index confirmation and API call
 function showResetIndexConfirmation() {
-  const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  const overlay = document.createElement("div");
+  overlay.className =
+    "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
   overlay.innerHTML = `
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
       <div class="text-center">
@@ -4539,17 +4811,19 @@ function showResetIndexConfirmation() {
     </div>
   `;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
 }
 
 async function confirmResetIndex(btn) {
   try {
     if (btn) btn.disabled = true;
-    toast('Resetting index and deleting files...', 'info');
-    const res = await fetch('/api/index/reset', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ delete_files: true })
+    toast("Resetting index and deleting files...", "info");
+    const res = await fetch("/api/index/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ delete_files: true }),
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
@@ -4565,11 +4839,11 @@ async function confirmResetIndex(btn) {
     renderSnippets([]);
     await loadDocuments();
 
-    toast(`Index cleared. Deleted ${data.files_deleted} file(s).`, 'success');
+    toast(`Index cleared. Deleted ${data.files_deleted} file(s).`, "success");
   } catch (e) {
-    toast(`Reset failed: ${e.message || e}`, 'error');
+    toast(`Reset failed: ${e.message || e}`, "error");
   } finally {
-    const overlay = document.querySelector('.fixed.inset-0.bg-black\\/50');
+    const overlay = document.querySelector(".fixed.inset-0.bg-black\\/50");
     if (overlay) overlay.remove();
   }
 }
@@ -4577,11 +4851,12 @@ async function confirmResetIndex(btn) {
 // Show upload progress UI
 function showUploadProgress() {
   // Create or show upload progress modal
-  let progressModal = document.getElementById('uploadProgressModal');
+  let progressModal = document.getElementById("uploadProgressModal");
   if (!progressModal) {
-    progressModal = document.createElement('div');
-    progressModal.id = 'uploadProgressModal';
-    progressModal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    progressModal = document.createElement("div");
+    progressModal.id = "uploadProgressModal";
+    progressModal.className =
+      "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
     progressModal.innerHTML = `
       <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
         <div class="text-center">
@@ -4608,25 +4883,25 @@ function showUploadProgress() {
     document.body.appendChild(progressModal);
   }
 
-  progressModal.classList.remove('hidden');
+  progressModal.classList.remove("hidden");
 }
 
 // Update upload progress
-function updateUploadProgress(percent, status, state = 'uploading') {
-  const progressBar = document.getElementById('uploadProgressBar');
-  const progressText = document.getElementById('uploadProgressText');
-  const progressPercent = document.getElementById('uploadProgressPercent');
-  const progressModal = document.getElementById('uploadProgressModal');
+function updateUploadProgress(percent, status, state = "uploading") {
+  const progressBar = document.getElementById("uploadProgressBar");
+  const progressText = document.getElementById("uploadProgressText");
+  const progressPercent = document.getElementById("uploadProgressPercent");
+  const progressModal = document.getElementById("uploadProgressModal");
 
   if (progressBar) {
     progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
 
     // Update progress bar appearance based on state
-    progressBar.classList.remove('success', 'error');
-    if (state === 'success') {
-      progressBar.classList.add('success');
-    } else if (state === 'error') {
-      progressBar.classList.add('error');
+    progressBar.classList.remove("success", "error");
+    if (state === "success") {
+      progressBar.classList.add("success");
+    } else if (state === "error") {
+      progressBar.classList.add("error");
     }
   }
 
@@ -4640,26 +4915,26 @@ function updateUploadProgress(percent, status, state = 'uploading') {
 
   // Update modal icon based on state
   if (progressModal) {
-    const icon = progressModal.querySelector('.fas');
+    const icon = progressModal.querySelector(".fas");
     if (icon) {
-      if (state === 'success') {
-        icon.className = 'fas fa-check-circle text-white text-lg';
-      } else if (state === 'error') {
-        icon.className = 'fas fa-exclamation-circle text-white text-lg';
+      if (state === "success") {
+        icon.className = "fas fa-check-circle text-white text-lg";
+      } else if (state === "error") {
+        icon.className = "fas fa-exclamation-circle text-white text-lg";
       } else {
-        icon.className = 'fas fa-cloud-upload-alt text-white text-lg';
+        icon.className = "fas fa-cloud-upload-alt text-white text-lg";
       }
     }
 
     // Update modal title based on state
-    const title = progressModal.querySelector('h3');
+    const title = progressModal.querySelector("h3");
     if (title) {
-      if (state === 'success') {
-        title.textContent = 'Upload Complete!';
-      } else if (state === 'error') {
-        title.textContent = 'Upload Failed';
+      if (state === "success") {
+        title.textContent = "Upload Complete!";
+      } else if (state === "error") {
+        title.textContent = "Upload Failed";
       } else {
-        title.textContent = 'Uploading Files...';
+        title.textContent = "Uploading Files...";
       }
     }
   }
@@ -4667,40 +4942,41 @@ function updateUploadProgress(percent, status, state = 'uploading') {
 
 // Hide upload progress
 function hideUploadProgress() {
-  const progressModal = document.getElementById('uploadProgressModal');
+  const progressModal = document.getElementById("uploadProgressModal");
   if (progressModal) {
-    progressModal.classList.add('hidden');
+    progressModal.classList.add("hidden");
   }
 }
 
 // Podcast Animation Video Controls
-document.addEventListener('DOMContentLoaded', function () {
-  const video = document.getElementById('podcastAnimationVideo');
-  const playPauseBtn = document.getElementById('podcastAnimPlayPauseBtn');
-  const playPauseIcon = document.getElementById('podcastAnimPlayPauseIcon');
-  const progress = document.getElementById('podcastAnimProgress');
-  const currentTimeEl = document.getElementById('podcastAnimCurrentTime');
-  const totalTimeEl = document.getElementById('podcastAnimTotalTime');
-  if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl) return;
+document.addEventListener("DOMContentLoaded", function () {
+  const video = document.getElementById("podcastAnimationVideo");
+  const playPauseBtn = document.getElementById("podcastAnimPlayPauseBtn");
+  const playPauseIcon = document.getElementById("podcastAnimPlayPauseIcon");
+  const progress = document.getElementById("podcastAnimProgress");
+  const currentTimeEl = document.getElementById("podcastAnimCurrentTime");
+  const totalTimeEl = document.getElementById("podcastAnimTotalTime");
+  if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl)
+    return;
 
   function formatTime(sec) {
     sec = Math.floor(sec);
     const m = Math.floor(sec / 60);
     const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   }
 
-  video.addEventListener('loadedmetadata', function () {
+  video.addEventListener("loadedmetadata", function () {
     progress.max = Math.floor(video.duration);
     totalTimeEl.textContent = formatTime(video.duration);
   });
 
-  video.addEventListener('timeupdate', function () {
+  video.addEventListener("timeupdate", function () {
     progress.value = Math.floor(video.currentTime);
     currentTimeEl.textContent = formatTime(video.currentTime);
   });
 
-  playPauseBtn.addEventListener('click', function () {
+  playPauseBtn.addEventListener("click", function () {
     if (video.paused) {
       video.play();
     } else {
@@ -4708,22 +4984,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  video.addEventListener('play', function () {
-    playPauseIcon.classList.remove('fa-play');
-    playPauseIcon.classList.add('fa-pause');
+  video.addEventListener("play", function () {
+    playPauseIcon.classList.remove("fa-play");
+    playPauseIcon.classList.add("fa-pause");
   });
-  video.addEventListener('pause', function () {
-    playPauseIcon.classList.remove('fa-pause');
-    playPauseIcon.classList.add('fa-play');
+  video.addEventListener("pause", function () {
+    playPauseIcon.classList.remove("fa-pause");
+    playPauseIcon.classList.add("fa-play");
   });
 
-  progress.addEventListener('input', function () {
+  progress.addEventListener("input", function () {
     video.currentTime = progress.value;
   });
 
   // Keyboard accessibility: Space/Enter toggles play/pause
-  playPauseBtn.addEventListener('keydown', function (e) {
-    if (e.key === ' ' || e.key === 'Enter') {
+  playPauseBtn.addEventListener("keydown", function (e) {
+    if (e.key === " " || e.key === "Enter") {
       playPauseBtn.click();
       e.preventDefault();
     }

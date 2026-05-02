@@ -20,65 +20,37 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
-});
 
-// --- AI Podcast Animation Video Controls ---
-document.addEventListener("DOMContentLoaded", function () {
-  const video = document.getElementById("aiPodcastVideo");
-  const playPauseBtn = document.getElementById("videoPlayPauseBtn");
-  const playPauseIcon = document.getElementById("videoPlayPauseIcon");
-  const progress = document.getElementById("videoProgress");
-  const currentTimeEl = document.getElementById("videoCurrentTime");
-  const totalTimeEl = document.getElementById("videoTotalTime");
-  if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl)
-    return;
+  // --- Mobile Sidebar Toggle ---
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  const sidebar = document.getElementById("sidebar");
+  const sidebarOverlay = document.getElementById("sidebarOverlay");
 
-  function formatTime(sec) {
-    sec = Math.floor(sec);
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
+  function closeSidebar() {
+    sidebar && sidebar.classList.remove("open");
+    sidebarOverlay && sidebarOverlay.classList.add("hidden");
   }
 
-  video.addEventListener("loadedmetadata", function () {
-    progress.max = Math.floor(video.duration);
-    totalTimeEl.textContent = formatTime(video.duration);
-  });
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", function () {
+      const isOpen = sidebar.classList.toggle("open");
+      sidebarOverlay.classList.toggle("hidden", !isOpen);
+    });
+  }
 
-  video.addEventListener("timeupdate", function () {
-    progress.value = Math.floor(video.currentTime);
-    currentTimeEl.textContent = formatTime(video.currentTime);
-  });
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", closeSidebar);
+  }
 
-  playPauseBtn.addEventListener("click", function () {
-    if (video.paused) {
-      video.play();
-    } else {
-      video.pause();
-    }
+  // Close sidebar when a nav item is clicked on mobile
+  navButtons.forEach((button) => {
+    button.addEventListener("click", function () {
+      if (window.innerWidth <= 768) closeSidebar();
+    });
   });
-
-  video.addEventListener("play", function () {
-    playPauseIcon.classList.remove("fa-play");
-    playPauseIcon.classList.add("fa-pause");
-  });
-  video.addEventListener("pause", function () {
-    playPauseIcon.classList.remove("fa-pause");
-    playPauseIcon.classList.add("fa-play");
-  });
-
-  progress.addEventListener("input", function () {
-    video.currentTime = progress.value;
-  });
-
-  // Keyboard accessibility: Space/Enter toggles play/pause
-  playPauseBtn.addEventListener("keydown", function (e) {
-    if (e.key === " " || e.key === "Enter") {
-      playPauseBtn.click();
-      e.preventDefault();
-    }
-  });
+  // Theme is handled by initTheme() / toggleTheme() below
 });
+
 // PDF.js variables (replacing Adobe PDF Embed API)
 let pdfDoc = null;
 let pdfPage = null;
@@ -199,88 +171,85 @@ function removeToast(toastEl) {
 
 // Initialize PDF.js viewer
 async function initViewer(url, containerId = "pdf-viewer-container") {
-  return new Promise(async (resolve) => {
-    try {
-      // Check if we have a valid URL
-      if (!url || url === "undefined" || url === "null") {
-        console.log("No valid URL provided to initViewer");
-        hidePDFLoading();
-        resolve(false);
-        return;
-      }
-
-      // Cancel any ongoing render task
-      if (currentRenderTask) {
-        try {
-          currentRenderTask.cancel();
-        } catch (e) {
-          console.log("Render task already completed or cancelled");
-        }
-        currentRenderTask = null;
-      }
-
-      // Set worker path for PDF.js
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-      // Get canvas and context
-      pdfCanvas = document.getElementById("pdf-canvas");
-      pdfContext = pdfCanvas.getContext("2d");
-
-      // Clear the canvas
-      if (pdfContext) {
-        pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
-      }
-
-      // Show loading state only when we have a valid URL
-      showPDFLoading();
-
-      // Load the PDF document
-      const loadingTask = pdfjsLib.getDocument(url);
-      pdfDoc = await loadingTask.promise;
-
-      // Get total pages
-      totalPages = pdfDoc.numPages;
-      updatePageCount();
-
-      // Initialize view mode (start with single page view)
-      isContinuousView = false;
-      const singlePageView = document.getElementById("single-page-view");
-      const continuousView = document.getElementById("continuous-view");
-      if (singlePageView && continuousView) {
-        singlePageView.classList.remove("hidden");
-        continuousView.classList.add("hidden");
-      }
-
-      // Set canvas dimensions
-      resizeCanvas();
-
-      // Load first page
-      await loadPage(1);
-
-      // Set up text selection events
-      setupTextSelectionEvents();
-
-      // Set up the toolbar
-      setupToolbar();
-
-      // Update current document name
-      updateCurrentDocName();
-
-      // Hide loading state
+  try {
+    // Check if we have a valid URL
+    if (!url || url === "undefined" || url === "null") {
+      console.log("No valid URL provided to initViewer");
       hidePDFLoading();
-
-      // Set up window resize handler
-      window.addEventListener("resize", resizeCanvas);
-
-      resolve(true);
-    } catch (error) {
-      console.error("Error in initViewer:", error);
-      showPDFError();
-      toast("Failed to load PDF. Please try again.", "error");
-      resolve(false);
+      return false;
     }
-  });
+
+    // Cancel any ongoing render task
+    if (currentRenderTask) {
+      try {
+        currentRenderTask.cancel();
+      } catch (e) {
+        console.log("Render task already completed or cancelled");
+      }
+      currentRenderTask = null;
+    }
+
+    // Set worker path for PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+    // Get canvas and context
+    pdfCanvas = document.getElementById("pdf-canvas");
+    pdfContext = pdfCanvas.getContext("2d");
+
+    // Clear the canvas
+    if (pdfContext) {
+      pdfContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+    }
+
+    // Show loading state only when we have a valid URL
+    showPDFLoading();
+
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument(url);
+    pdfDoc = await loadingTask.promise;
+
+    // Get total pages
+    totalPages = pdfDoc.numPages;
+    updatePageCount();
+
+    // Initialize view mode (start with single page view)
+    isContinuousView = false;
+    const singlePageView = document.getElementById("single-page-view");
+    const continuousView = document.getElementById("continuous-view");
+    if (singlePageView && continuousView) {
+      singlePageView.classList.remove("hidden");
+      continuousView.classList.add("hidden");
+    }
+
+    // Set canvas dimensions
+    resizeCanvas();
+
+    // Load first page
+    await loadPage(1);
+
+    // Set up text selection events
+    setupTextSelectionEvents();
+
+    // Set up the toolbar
+    setupToolbar();
+
+    // Update current document name
+    updateCurrentDocName();
+
+    // Hide loading state
+    hidePDFLoading();
+
+    // Set up window resize handler
+    window.addEventListener("resize", resizeCanvas);
+
+    return true;
+  } catch (error) {
+    console.error("Error in initViewer:", error);
+    showPDFError();
+    toast("Failed to load PDF. Please try again.", "error");
+    return false;
+  }
 }
 
 // Load a specific page with better error handling
@@ -375,20 +344,21 @@ async function loadPage(pageNum) {
     console.log(`Page ${currentPage} loaded successfully`);
   } catch (error) {
     console.error("Error loading page:", error);
-    // toast(`Failed to load page ${pageNum}. Please try again.`, 'error');
+    toast(`Failed to load page ${pageNum}. Please try again.`, "error");
 
     // Show error state in the viewer
-    // const errorDiv = document.createElement('div');
-    // errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-red-50 dark:bg-red-900/20';
-    // errorDiv.innerHTML = `
-    //   <div class="text-center">
-    //     <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
-    //     <p class="text-red-600 dark:text-red-400 text-sm">Failed to load page ${pageNum}</p>
-    //     <button onclick="retryLoadPage(${pageNum})" class="mt-2 px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">
-    //       Retry
-    //     </button>
-    //   </div>
-    // `;
+    const errorDiv = document.createElement("div");
+    errorDiv.className =
+      "absolute inset-0 flex items-center justify-center bg-slate-800/80";
+    errorDiv.innerHTML = `
+      <div class="text-center">
+        <i class="fas fa-exclamation-triangle text-red-400 text-2xl mb-2"></i>
+        <p class="text-red-400 text-sm mb-2">Failed to load page ${pageNum}</p>
+        <button onclick="retryLoadPage(${pageNum})" class="mt-2 px-3 py-1 bg-red-500 text-white rounded text-xs">
+          Retry
+        </button>
+      </div>
+    `;
 
     const container = document.getElementById("pdf-viewer-container");
     if (container) {
@@ -833,21 +803,30 @@ function showPDFNeutral() {
   }
 }
 
-// Theme handling (light/dark)
+// Theme handling (light/dark) — single source of truth
 function initTheme() {
-  const saved = localStorage.getItem("theme") || "dark";
+  const saved = localStorage.getItem("orbit-theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
-  const t = document.getElementById("themeToggle");
-  if (t) t.textContent = saved === "dark" ? "🌙" : "☀️";
+  _updateThemeIcon(saved);
 }
 
 function toggleTheme() {
-  const cur = document.documentElement.getAttribute("data-theme") || "light";
+  const cur = document.documentElement.getAttribute("data-theme") || "dark";
   const next = cur === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("theme", next);
+  localStorage.setItem("orbit-theme", next);
+  _updateThemeIcon(next);
+}
+
+function _updateThemeIcon(theme) {
   const t = document.getElementById("themeToggle");
-  if (t) t.textContent = next === "dark" ? "🌙" : "☀️";
+  if (!t) return;
+  const icon = t.querySelector("i");
+  if (icon) {
+    icon.className = theme === "dark" ? "fas fa-moon text-slate-400" : "fas fa-sun text-yellow-400";
+  } else {
+    t.textContent = theme === "dark" ? "🌙" : "☀️";
+  }
 }
 
 async function fetchConfig() {
@@ -4949,59 +4928,10 @@ function hideUploadProgress() {
 }
 
 // Podcast Animation Video Controls
+// The animation video uses native browser controls (id="podcastAnimationVideo").
+// The audio podcast player (#player) has its own separate handler elsewhere in this file.
 document.addEventListener("DOMContentLoaded", function () {
   const video = document.getElementById("podcastAnimationVideo");
-  const playPauseBtn = document.getElementById("podcastAnimPlayPauseBtn");
-  const playPauseIcon = document.getElementById("podcastAnimPlayPauseIcon");
-  const progress = document.getElementById("podcastAnimProgress");
-  const currentTimeEl = document.getElementById("podcastAnimCurrentTime");
-  const totalTimeEl = document.getElementById("podcastAnimTotalTime");
-  if (!video || !playPauseBtn || !progress || !currentTimeEl || !totalTimeEl)
-    return;
-
-  function formatTime(sec) {
-    sec = Math.floor(sec);
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }
-
-  video.addEventListener("loadedmetadata", function () {
-    progress.max = Math.floor(video.duration);
-    totalTimeEl.textContent = formatTime(video.duration);
-  });
-
-  video.addEventListener("timeupdate", function () {
-    progress.value = Math.floor(video.currentTime);
-    currentTimeEl.textContent = formatTime(video.currentTime);
-  });
-
-  playPauseBtn.addEventListener("click", function () {
-    if (video.paused) {
-      video.play();
-    } else {
-      video.pause();
-    }
-  });
-
-  video.addEventListener("play", function () {
-    playPauseIcon.classList.remove("fa-play");
-    playPauseIcon.classList.add("fa-pause");
-  });
-  video.addEventListener("pause", function () {
-    playPauseIcon.classList.remove("fa-pause");
-    playPauseIcon.classList.add("fa-play");
-  });
-
-  progress.addEventListener("input", function () {
-    video.currentTime = progress.value;
-  });
-
-  // Keyboard accessibility: Space/Enter toggles play/pause
-  playPauseBtn.addEventListener("keydown", function (e) {
-    if (e.key === " " || e.key === "Enter") {
-      playPauseBtn.click();
-      e.preventDefault();
-    }
-  });
+  if (!video) return;
+  // Video is ready — native controls handle playback.
 });

@@ -6,603 +6,628 @@
     <title>ORBIT · Document Intelligence Platform</title>
     <link rel="stylesheet" href="/styles.css" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* ══ POST-TAILWIND OVERRIDES — CSS variables win the cascade ══ */
+      .bg-slate-950 { background-color: var(--bg-primary)   !important; }
+      .bg-slate-900 { background-color: var(--bg-secondary) !important; }
+      .bg-slate-800 { background-color: var(--bg-tertiary)  !important; }
+      .bg-slate-700 { background-color: var(--bg-accent)    !important; }
+      .bg-slate-600 { background-color: var(--bg-surface)   !important; }
+
+      .text-slate-100 { color: var(--text-primary)   !important; }
+      .text-slate-200 { color: var(--text-primary)   !important; }
+      .text-slate-300 { color: var(--text-primary)   !important; }
+      .text-slate-400 { color: var(--text-secondary) !important; }
+      .text-slate-500 { color: var(--text-muted)     !important; }
+      .text-slate-600 { color: var(--text-secondary) !important; }
+      .text-slate-700 { color: var(--text-muted)     !important; }
+
+      .border-slate-800 { border-color: var(--border-primary)   !important; }
+      .border-slate-700 { border-color: var(--border-primary)   !important; }
+      .border-slate-600 { border-color: var(--border-secondary) !important; }
+      .border-slate-500 { border-color: var(--border-secondary) !important; }
+
+      body { background-color: var(--orbit-bg) !important; color: var(--text-primary) !important; }
+
+      /* ── text-white: only truly white in dark mode ── */
+      [data-theme="dark"] .force-white { color: #ffffff !important; }
+      [data-theme="light"] .force-white { color: var(--text-primary) !important; }
+
+      /* ── Service badges adapt to theme ── */
+      .service-badge-llm {
+        background: var(--primary-light) !important;
+        border-color: rgba(232,35,74,0.2) !important;
+      }
+      .service-badge-llm span, .service-badge-llm i { color: var(--primary) !important; }
+
+      .service-badge-tts {
+        background: rgba(16,185,129,0.1) !important;
+        border-color: rgba(16,185,129,0.2) !important;
+      }
+      .service-badge-tts span { color: var(--success) !important; }
+      .service-badge-tts i { color: var(--success) !important; }
+
+      /* ── Selected count badge ── */
+      #selectedCount {
+        background: var(--primary-light) !important;
+        color: var(--primary) !important;
+        border-color: rgba(232,35,74,0.2) !important;
+      }
+
+      /* ── PDF neutral placeholder icon ── */
+      #pdf-neutral .pdf-icon-wrap {
+        background: var(--bg-accent) !important;
+      }
+      #pdf-neutral .pdf-icon-wrap i { color: var(--text-muted) !important; }
+      #pdf-neutral p { color: var(--text-secondary) !important; }
+
+      /* ── Insights placeholder ── */
+      #textSelectionPlaceholder .icon-wrap {
+        background: var(--bg-accent) !important;
+      }
+      #textSelectionPlaceholder .icon-wrap i { color: var(--text-muted) !important; }
+
+      /* ── Doc panel header gradient: dark in dark, subtle in light ── */
+      [data-theme="dark"] .doc-panel-header {
+        background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-accent) 100%) !important;
+      }
+      [data-theme="light"] .doc-panel-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+      }
+
+      /* ── Upload area border adapts ── */
+      .upload-drop-zone {
+        border-color: var(--border-primary) !important;
+      }
+      [data-theme="light"] .upload-drop-zone {
+        background: var(--bg-secondary) !important;
+      }
+      [data-theme="light"] .upload-drop-zone:hover {
+        border-color: rgba(232,35,74,0.4) !important;
+        background: rgba(232,35,74,0.03) !important;
+      }
+
+      /* ── PDF viewer background ── */
+      [data-theme="light"] #pdf-viewer-container {
+        background: #e8ecf0 !important;
+      }
+
+      /* ── Loading overlay ── */
+      [data-theme="light"] #loadingOverlay > div {
+        background: var(--orbit-surface) !important;
+        border-color: var(--border-primary) !important;
+      }
+      [data-theme="light"] #loadingOverlay .animate-spin {
+        border-color: rgba(232,35,74,0.2) !important;
+        border-top-color: #e8234a !important;
+      }
+
+      /* ── Reset/Yellow button adapts ── */
+      #resetIndexBtn {
+        background: rgba(245,158,11,0.1) !important;
+        color: var(--warning) !important;
+        border: 1px solid rgba(245,158,11,0.2) !important;
+      }
+
+      /* ── Panel header titles ── */
+      .panel-title { color: var(--text-primary) !important; }
+      .panel-subtitle { color: var(--text-secondary) !important; }
+
+      /* ── Current doc name ── */
+      #currentDocName { color: var(--text-primary) !important; }
+
+      /* ── Page count text ── */
+      #pageCount, .page-nav-label { color: var(--text-secondary) !important; }
+
+      /* ── Zoom level badge ── */
+      #zoomLevel { 
+        background: var(--bg-accent) !important; 
+        color: var(--text-primary) !important; 
+      }
+
+      /* ── Small icon buttons (page nav, zoom) ── */
+      .icon-btn {
+        background: var(--bg-accent) !important;
+        color: var(--text-secondary) !important;
+      }
+      .icon-btn:hover:not(:disabled) {
+        background: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+      }
+
+      /* ── Toolbar sub-row ── */
+      .viewer-toolbar {
+        background: var(--orbit-surface) !important;
+        border-color: var(--border-primary) !important;
+      }
+
+      /* ── Search input in viewer ── */
+      #searchInput {
+        background: var(--bg-secondary) !important;
+        border-color: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+      }
+
+      /* ── Filter input ── */
+      #docFilter {
+        background: var(--bg-secondary) !important;
+        border-color: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+      }
+
+      /* ── Page number input ── */
+      #gotoPageInput {
+        background: var(--bg-secondary) !important;
+        border-color: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+      }
+
+      /* ── SERVICES label ── */
+      .services-label { color: var(--text-muted) !important; }
+
+      /* ── Sidebar logo subtitle ── */
+      .logo-sub { color: var(--text-muted) !important; }
+
+      /* ── Global progress bar container ── */
+      #globalProgress {
+        background: var(--bg-tertiary) !important;
+        border: 1px solid var(--border-primary) !important;
+      }
+      #progressLabel { color: var(--text-primary) !important; }
+      #progressPct { color: var(--text-secondary) !important; }
+      .progress-track { background: var(--bg-accent) !important; }
+
+      /* ── Deep Analysis / Media Center headings ── */
+      [data-theme="light"] #page-analysis h2,
+      [data-theme="light"] #page-media h2 { color: var(--text-primary) !important; }
+
+      /* ── Pre / insights output ── */
+      #insights {
+        background: var(--bg-secondary) !important;
+        border-color: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+      }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   </head>
-  <body
-    class="min-h-screen font-['Inter'] antialiased bg-slate-950 text-slate-100 overflow-hidden">
+  <body class="min-h-screen font-['Inter'] antialiased bg-slate-950 text-slate-100 overflow-hidden">
+
+    <!-- Background glow orbs -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      <div
-        class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-600/10 to-red-600/10 rounded-full blur-3xl"></div>
-      <div
-        class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-red-600/10 to-blue-600/10 rounded-full blur-3xl"></div>
+      <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-red-900/10 to-red-800/5 rounded-full blur-3xl"></div>
+      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-red-800/8 to-red-900/4 rounded-full blur-3xl"></div>
     </div>
 
     <div class="flex h-screen relative z-40">
-      <aside
-        class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col overflow-hidden">
+
+      <!-- ═══ SIDEBAR ═══ -->
+      <aside id="sidebar" class="sidebar w-64 bg-slate-900 border-r border-slate-800 flex flex-col overflow-hidden transition-transform duration-300">
+
+        <!-- Logo -->
         <div class="p-6 border-b border-slate-800">
           <div class="flex items-center space-x-3">
-            <div
-              class="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
-              <i class="fas fa-orbit text-white text-lg"></i>
+            <div class="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
+              <i class="fas fa-satellite text-white text-lg"></i>
             </div>
             <div>
-              <h1 class="text-xl font-bold text-white">ORBIT</h1>
-              <p class="text-xs text-slate-400">Intelligence Hub</p>
+              <h1 class="text-xl font-bold force-white">ORBIT</h1>
+              <p class="text-xs logo-sub">Intelligence Hub</p>
             </div>
           </div>
         </div>
 
-        <nav class="flex-1 p-4 space-y-2">
-          <button
-            class="nav-workspace active w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all group"
-            data-page="workspace">
-            <i class="fas fa-file-pdf text-lg group-hover:scale-110"></i>
+        <!-- Nav -->
+        <nav class="flex-1 p-4 space-y-1">
+          <button class="nav-workspace active w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all group" data-page="workspace">
+            <i class="fas fa-file-pdf text-lg group-hover:scale-110 transition-transform"></i>
             <span class="font-medium">Workspace</span>
-            <div
-              class="ml-auto w-2 h-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100"></div>
+            <div class="ml-auto w-2 h-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
-          <button
-            class="nav-analysis w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all group"
-            data-page="analysis">
-            <i class="fas fa-chart-line text-lg group-hover:scale-110"></i>
+          <button class="nav-analysis w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all group" data-page="analysis">
+            <i class="fas fa-chart-line text-lg group-hover:scale-110 transition-transform"></i>
             <span class="font-medium">Deep Analysis</span>
-            <div
-              class="ml-auto w-2 h-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100"></div>
+            <div class="ml-auto w-2 h-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
-          <button
-            class="nav-media w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all group"
-            data-page="media">
-            <i class="fas fa-podcast text-lg group-hover:scale-110"></i>
+          <button class="nav-media w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all group" data-page="media">
+            <i class="fas fa-podcast text-lg group-hover:scale-110 transition-transform"></i>
             <span class="font-medium">Media Center</span>
-            <div
-              class="ml-auto w-2 h-2 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100"></div>
+            <div class="ml-auto w-2 h-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
         </nav>
 
+        <!-- Bottom: Services + Theme -->
         <div class="p-4 border-t border-slate-800 space-y-3">
           <div class="space-y-2">
-            <div
-              class="text-xs text-slate-500 font-semibold uppercase tracking-wide">
-              Services
+            <div class="text-xs services-label font-semibold uppercase tracking-widest px-1">Services</div>
+            <div id="llmBadge" class="service-badge-llm flex items-center space-x-2 px-3 py-2 rounded-lg border">
+              <i class="fas fa-robot text-sm"></i>
+              <span id="llmStatus" class="text-xs font-medium">Gemini</span>
             </div>
-            <div
-              id="llmBadge"
-              class="flex items-center space-x-2 px-3 py-2 bg-blue-500/20 border border-blue-500/30 rounded-lg">
-              <i class="fas fa-robot text-blue-400 text-sm"></i>
-              <span id="llmStatus" class="text-xs text-blue-300 font-medium"
-                >Gemini</span
-              >
-            </div>
-            <div
-              id="ttsBadge"
-              class="flex items-center space-x-2 px-3 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
-              <i class="fas fa-microphone text-emerald-400 text-sm"></i>
-              <span id="ttsStatus" class="text-xs text-emerald-300 font-medium"
-                >Azure TTS</span
-              >
+            <div id="ttsBadge" class="service-badge-tts flex items-center space-x-2 px-3 py-2 rounded-lg border">
+              <i class="fas fa-microphone text-sm"></i>
+              <span id="ttsStatus" class="text-xs font-medium">Azure TTS</span>
             </div>
           </div>
-          <button
-            id="themeToggle"
-            class="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg border border-slate-700 hover:bg-slate-800">
+          <button id="themeToggle" class="w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl border transition-all">
             <i class="fas fa-sun text-slate-400"></i>
-            <span class="text-sm text-slate-400">Theme</span>
+            <span class="text-sm font-medium">Theme</span>
           </button>
         </div>
       </aside>
 
+      <!-- ═══ MAIN ═══ -->
       <main class="flex-1 flex flex-col overflow-hidden">
-        <header
-          class="bg-slate-900 border-b border-slate-800 h-16 flex items-center px-6 justify-between flex-shrink-0">
-          <div class="flex-1 max-w-2xl">
-            <div class="flex items-center space-x-2">
-              <div class="relative flex-1 max-w-xs">
-                <i
-                  class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm"></i>
-                <input
-                  id="persona"
-                  list="persona-options"
-                  placeholder="Persona..."
-                  class="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-300" />
-                <datalist id="persona-options">
-                  <option value="Undergraduate Chemistry Student"></option>
-                  <option value="Researcher"></option>
-                  <option value="Business Analyst"></option>
-                  <option value="High School Teacher"></option>
-                  <option value="General User"></option>
-                </datalist>
-              </div>
-              <div class="relative flex-1 max-w-xs">
-                <i
-                  class="fas fa-tasks absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm"></i>
-                <input
-                  id="job"
-                  list="job-options"
-                  placeholder="Job to be done..."
-                  class="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-300" />
-                <datalist id="job-options">
-                  <option value="Identify key concepts"></option>
-                  <option value="Summarize document"></option>
-                  <option value="Extract data"></option>
-                  <option value="Find main arguments"></option>
-                  <option value="Create quiz"></option>
-                </datalist>
-              </div>
+
+        <!-- Top Header -->
+        <header class="bg-slate-900 border-b border-slate-800 h-14 flex items-center px-5 justify-between flex-shrink-0 gap-4">
+          <button id="sidebarToggle" class="md:hidden p-2 rounded-lg icon-btn" aria-label="Toggle sidebar">
+            <i class="fas fa-bars text-sm"></i>
+          </button>
+
+          <!-- Persona + Job inputs -->
+          <div class="flex items-center gap-2 flex-1 min-w-0">
+            <div class="relative flex-1 max-w-[220px]">
+              <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+              <input id="persona" list="persona-options" placeholder="Persona..."
+                class="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg" />
+              <datalist id="persona-options">
+                <option value="Undergraduate Chemistry Student"></option>
+                <option value="Researcher"></option>
+                <option value="Business Analyst"></option>
+                <option value="High School Teacher"></option>
+                <option value="General User"></option>
+              </datalist>
+            </div>
+            <div class="relative flex-1 max-w-[220px]">
+              <i class="fas fa-tasks absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+              <input id="job" list="job-options" placeholder="Job to be done..."
+                class="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg" />
+              <datalist id="job-options">
+                <option value="Identify key concepts"></option>
+                <option value="Summarize document"></option>
+                <option value="Extract data"></option>
+                <option value="Find main arguments"></option>
+                <option value="Create quiz"></option>
+              </datalist>
             </div>
           </div>
 
-          <div class="flex items-center space-x-2">
-            <button
-              id="analyzeBtn"
-              class="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-sm flex items-center space-x-2 shadow-lg">
+          <!-- CTA Buttons -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button id="analyzeBtn" class="px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-1.5 shadow-md font-semibold">
               <i class="fas fa-search text-xs"></i><span>Analyze</span>
             </button>
-            <button
-              id="insightsBtn"
-              class="px-4 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm flex items-center space-x-2 shadow-lg disabled:opacity-50"
-              disabled>
+            <button id="insightsBtn" class="px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-1.5 shadow-md font-semibold disabled:opacity-40" disabled>
               <i class="fas fa-lightbulb text-xs"></i><span>Insights</span>
             </button>
-            <button
-              id="podcastBtn"
-              class="px-4 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg text-sm flex items-center space-x-2 shadow-lg disabled:opacity-50"
-              disabled>
+            <button id="podcastBtn" class="px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-1.5 shadow-md font-semibold disabled:opacity-40" disabled>
               <i class="fas fa-podcast text-xs"></i><span>Podcast</span>
             </button>
           </div>
         </header>
 
+        <!-- Page Content -->
         <div class="flex-1 overflow-auto relative" id="content-container">
-          <div
-            id="page-workspace"
-            class="page-content w-full h-full p-6 overflow-auto">
-            <div
-              id="globalProgress"
-              class="mb-4 hidden bg-slate-800 rounded-lg p-4">
-              <div class="flex items-center gap-3 text-sm text-slate-300">
-                <span id="progressLabel">Processing…</span>
-                <div
-                  class="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    id="progressBar"
-                    class="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
-                    style="width: 0%"></div>
+
+          <!-- ═══ WORKSPACE PAGE ═══ -->
+          <div id="page-workspace" class="page-content w-full h-full p-5 overflow-auto">
+
+            <!-- Global Progress -->
+            <div id="globalProgress" class="mb-4 hidden rounded-xl p-3 border">
+              <div class="flex items-center gap-3 text-sm">
+                <span id="progressLabel" class="font-medium">Processing…</span>
+                <div class="flex-1 h-1.5 progress-track rounded-full overflow-hidden">
+                  <div id="progressBar" class="h-full" style="width: 0%"></div>
                 </div>
-                <span id="progressPct" class="w-10 text-right">0%</span>
-                <button
-                  id="cancelAnalyzeBtn"
-                  class="px-3 py-1 bg-red-500 text-white rounded-lg text-xs">
-                  Cancel
-                </button>
+                <span id="progressPct" class="w-9 text-right text-xs font-mono">0%</span>
+                <button id="cancelAnalyzeBtn" class="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-semibold">Cancel</button>
               </div>
             </div>
 
-            <div class="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
-              <div
-                class="col-span-3 flex flex-col bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div
-                  class="p-4 border-b border-slate-700 bg-gradient-to-r from-slate-800 to-slate-700">
-                  <h2 class="text-lg font-bold text-white flex items-center">
-                    <div
-                      class="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center mr-3">
-                      <i class="fas fa-file-pdf text-sm text-white"></i>
-                    </div>
-                    Documents
-                  </h2>
+            <!-- Three-column layout -->
+            <div class="grid grid-cols-12 gap-5 h-[calc(100vh-160px)]">
+
+              <!-- ── Column 1: Documents ── -->
+              <div class="col-span-3 flex flex-col bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+
+                <!-- Panel header -->
+                <div class="doc-panel-header p-4 border-b border-slate-700 flex items-center gap-3 flex-shrink-0">
+                  <div class="w-8 h-8 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center shadow-sm">
+                    <i class="fas fa-file-pdf text-white text-sm"></i>
+                  </div>
+                  <h2 class="text-base font-bold panel-title">Documents</h2>
                 </div>
-                <div class="flex-1 p-4 space-y-3 overflow-y-auto flex flex-col">
-                  <div
-                    class="relative border-2 border-dashed border-slate-600 hover:border-blue-400 rounded-xl p-3 text-center">
-                    <input
-                      id="fileInput"
-                      type="file"
-                      multiple
-                      accept="application/pdf"
-                      class="hidden" />
+
+                <div class="flex-1 p-3 space-y-3 overflow-y-auto flex flex-col">
+
+                  <!-- Upload area -->
+                  <div class="upload-drop-zone relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all"
+                       onclick="document.getElementById('fileInput').click()">
+                    <input id="fileInput" type="file" multiple accept="application/pdf" class="hidden" />
                     <div class="space-y-2">
-                      <div
-                        class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mx-auto">
-                        <i
-                          class="fas fa-cloud-upload-alt text-sm text-white"></i>
+                      <div class="w-9 h-9 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center mx-auto shadow-sm">
+                        <i class="fas fa-cloud-upload-alt text-white text-sm"></i>
                       </div>
                       <div>
-                        <p class="text-sm font-semibold text-slate-300 mb-1">
-                          Drop PDFs
-                        </p>
-                        <p class="text-xs text-slate-500">Multiple files</p>
+                        <p class="text-sm font-semibold panel-title mb-0.5">Drop PDFs</p>
+                        <p class="text-xs panel-subtitle">Multiple files</p>
                       </div>
-                      <button
-                        id="uploadBtn"
-                        class="w-full px-3 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs">
+                      <button id="uploadBtn" class="w-full px-3 py-1.5 text-white rounded-lg text-xs font-semibold pointer-events-none">
                         Choose Files
                       </button>
                     </div>
                   </div>
 
-                  <div class="flex flex-wrap gap-1">
-                    <button
-                      id="selectAllBtn"
-                      class="px-2 py-1 bg-slate-700 text-slate-300 rounded-lg text-xs">
-                      <i class="fas fa-check-double mr-1"></i>All
+                  <!-- Action buttons row -->
+                  <div class="flex flex-wrap gap-1.5">
+                    <button id="selectAllBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
+                      <i class="fas fa-check-double"></i>All
                     </button>
-                    <button
-                      id="clearSelectionBtn"
-                      class="px-2 py-1 bg-slate-700 text-slate-300 rounded-lg text-xs">
-                      <i class="fas fa-times mr-1"></i>Clear
+                    <button id="clearSelectionBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
+                      <i class="fas fa-times"></i>Clear
                     </button>
-                    <button
-                      id="deleteSelectedBtn"
-                      class="px-2 py-1 bg-red-900/30 text-red-300 rounded-lg text-xs disabled:opacity-50"
-                      disabled>
-                      <i class="fas fa-trash mr-1"></i>Delete
+                    <button id="deleteSelectedBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-40" disabled>
+                      <i class="fas fa-trash"></i>Delete
                     </button>
-                    <button
-                      id="resetIndexBtn"
-                      class="px-2 py-1 bg-yellow-900/30 text-yellow-300 rounded-lg text-xs">
-                      <i class="fas fa-rotate mr-1"></i>Reset
+                    <button id="resetIndexBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
+                      <i class="fas fa-rotate"></i>Reset
                     </button>
                   </div>
 
+                  <!-- Filter -->
                   <div class="relative">
-                    <i
-                      class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-xs"></i>
-                    <input
-                      id="docFilter"
-                      placeholder="Filter..."
-                      class="w-full pl-6 pr-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-300" />
+                    <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style="color:var(--text-muted)"></i>
+                    <input id="docFilter" placeholder="Filter..." class="w-full pl-7 pr-2 py-1.5 rounded-lg text-xs" />
                   </div>
 
-                  <div class="text-center">
-                    <span
-                      id="selectedCount"
-                      class="inline-flex items-center px-2 py-1 rounded-lg text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                      <i class="fas fa-check-circle mr-1"></i>0 selected
+                  <!-- Selected count -->
+                  <div>
+                    <span id="selectedCount" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border">
+                      <i class="fas fa-check-circle"></i>0 selected
                     </span>
                   </div>
 
-                  <div class="flex-1 overflow-y-auto">
+                  <!-- Document list -->
+                  <div class="flex-1 overflow-y-auto -mx-1 px-1">
                     <ul id="docList" class="space-y-1"></ul>
                   </div>
                 </div>
               </div>
 
-              <div
-                class="col-span-6 flex flex-col bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div
-                  class="p-3 border-b border-slate-700 space-y-2 flex-shrink-0">
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="relative flex-1 max-w-xs">
-                      <i
-                        class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm"></i>
-                      <input
-                        id="searchInput"
-                        placeholder="Search..."
-                        class="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded-lg text-slate-300" />
+              <!-- ── Column 2: PDF Viewer ── -->
+              <div class="col-span-6 flex flex-col bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+
+                <!-- Viewer toolbar -->
+                <div class="viewer-toolbar p-3 border-b border-slate-700 space-y-2 flex-shrink-0">
+                  <!-- Row 1: Search + doc name -->
+                  <div class="flex items-center gap-2">
+                    <div class="relative flex-1 max-w-[180px]">
+                      <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style="color:var(--text-muted)"></i>
+                      <input id="searchInput" placeholder="Search..." class="w-full pl-7 pr-2 py-1.5 text-xs rounded-lg" />
                     </div>
-                    <button
-                      id="searchBtn"
-                      class="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-sm">
-                      <i class="fas fa-search mr-1"></i>Search
+                    <button id="searchBtn" class="px-3 py-1.5 text-white rounded-lg text-xs font-semibold flex items-center gap-1 bg-gradient-to-r from-red-600 to-red-700">
+                      <i class="fas fa-search"></i>Search
                     </button>
-                    <button
-                      id="textSelectionBtn"
-                      class="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-sm">
-                      <i class="fas fa-search mr-1"></i>Text
+                    <button id="textSelectionBtn" class="px-3 py-1.5 text-white rounded-lg text-xs font-semibold flex items-center gap-1 bg-gradient-to-r from-red-600 to-red-700">
+                      <i class="fas fa-i-cursor"></i>Text
                     </button>
-                    <div class="text-right flex-1">
-                      <div
-                        id="currentDocName"
-                        class="text-sm font-bold text-slate-300 truncate">
-                        No document
-                      </div>
+                    <div class="flex-1 text-right min-w-0">
+                      <div id="currentDocName" class="text-xs font-semibold truncate">No document selected</div>
                     </div>
                   </div>
 
+                  <!-- Row 2: Page nav + zoom -->
                   <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center space-x-1">
-                      <button
-                        id="prevPageBtn"
-                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400 disabled:opacity-50"
-                        disabled>
-                        <i class="fas fa-chevron-left text-sm"></i>
+                    <div class="flex items-center gap-1">
+                      <button id="prevPageBtn" class="icon-btn w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-40" disabled>
+                        <i class="fas fa-chevron-left text-xs"></i>
                       </button>
-                      <span class="text-xs text-slate-400">Page</span>
-                      <input
-                        id="gotoPageInput"
-                        type="number"
-                        min="1"
-                        class="w-12 px-2 py-1 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-300 text-center" />
-                      <span id="pageCount" class="text-xs text-slate-400"
-                        >/ 1</span
-                      >
-                      <button
-                        id="nextPageBtn"
-                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400 disabled:opacity-50"
-                        disabled>
-                        <i class="fas fa-chevron-right text-sm"></i>
+                      <span class="text-xs page-nav-label">Page</span>
+                      <input id="gotoPageInput" type="number" min="1"
+                        class="w-10 px-1 py-1 rounded-lg text-xs text-center" />
+                      <span id="pageCount" class="text-xs">/ 1</span>
+                      <button id="nextPageBtn" class="icon-btn w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-40" disabled>
+                        <i class="fas fa-chevron-right text-xs"></i>
                       </button>
                     </div>
 
-                    <div class="flex items-center space-x-1">
-                      <button
-                        id="zoomOutBtn"
-                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400">
-                        <i class="fas fa-search-minus text-sm"></i>
+                    <div class="flex items-center gap-1">
+                      <button id="zoomOutBtn" class="icon-btn w-7 h-7 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-search-minus text-xs"></i>
                       </button>
-                      <span
-                        id="zoomLevel"
-                        class="text-xs text-slate-300 px-2 py-1 bg-slate-700 rounded-lg min-w-12 text-center"
-                        >100%</span
-                      >
-                      <button
-                        id="zoomInBtn"
-                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400">
-                        <i class="fas fa-search-plus text-sm"></i>
+                      <span id="zoomLevel" class="text-xs px-2 py-1 rounded-lg min-w-[40px] text-center font-mono font-semibold">100%</span>
+                      <button id="zoomInBtn" class="icon-btn w-7 h-7 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-search-plus text-xs"></i>
                       </button>
-                      <button
-                        id="resetZoomBtn"
-                        class="p-1.5 bg-slate-700 rounded-lg text-slate-400">
-                        <i class="fas fa-expand-arrows-alt text-sm"></i>
+                      <button id="resetZoomBtn" class="icon-btn w-7 h-7 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-expand-arrows-alt text-xs"></i>
                       </button>
-                      <button
-                        id="viewModeToggle"
-                        class="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-xs">
-                        <i class="fas fa-file-alt mr-1"></i>Single
+                      <button id="viewModeToggle" class="px-2.5 py-1 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1">
+                        <i class="fas fa-file-alt"></i>Single
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div
-                  id="pdf-viewer-container"
-                  class="flex-1 bg-gradient-to-br from-slate-900 to-slate-800 overflow-auto flex items-center justify-center relative">
-                  <div
-                    id="single-page-view"
-                    class="w-full h-full flex items-center justify-center">
+                <!-- PDF Canvas area -->
+                <div id="pdf-viewer-container" class="flex-1 overflow-auto flex items-center justify-center relative">
+                  <div id="single-page-view" class="w-full h-full flex items-center justify-center">
                     <canvas id="pdf-canvas"></canvas>
                   </div>
-                  <div
-                    id="continuous-view"
-                    class="w-full p-4 space-y-4 hidden"></div>
-                  <div
-                    id="pdf-loading"
-                    class="absolute inset-0 flex items-center justify-center bg-slate-800/80 hidden">
+                  <div id="continuous-view" class="w-full p-4 space-y-4 hidden"></div>
+                  <div id="pdf-loading" class="absolute inset-0 flex items-center justify-center hidden" style="background:rgba(0,0,0,0.4)">
                     <div class="text-center">
-                      <div
-                        class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                      <p class="text-slate-400">Loading...</p>
+                      <div class="animate-spin rounded-full h-10 w-10 border-2 border-red-600 border-t-transparent mx-auto mb-3"></div>
+                      <p class="text-sm panel-subtitle">Loading...</p>
                     </div>
                   </div>
-                  <div
-                    id="pdf-neutral"
-                    class="absolute inset-0 flex items-center justify-center">
-                    <div class="text-center">
-                      <div
-                        class="w-16 h-16 bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-file-pdf text-slate-600 text-2xl"></i>
+                  <div id="pdf-neutral" class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center space-y-3">
+                      <div class="pdf-icon-wrap w-14 h-14 rounded-2xl flex items-center justify-center mx-auto">
+                        <i class="fas fa-file-pdf text-2xl"></i>
                       </div>
-                      <p class="text-slate-400">Select a document</p>
+                      <p class="text-sm font-medium">Select a document</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div
-                class="col-span-3 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col">
+              <!-- ── Column 3: Insights ── -->
+              <div class="col-span-3 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col">
                 <div id="textSelectionPanel" class="flex-1 flex flex-col">
-                  <div class="p-4 border-b border-slate-700">
-                    <h2 class="text-lg font-bold text-white">
-                      <i class="fas fa-brain mr-2"></i>Insights
+                  <div class="doc-panel-header p-4 border-b border-slate-700 flex-shrink-0">
+                    <h2 class="text-base font-bold panel-title flex items-center gap-2">
+                      <i class="fas fa-brain text-red-500"></i>Insights
                     </h2>
-                    <p class="text-xs text-slate-400 mt-2">
-                      Select text in PDF
-                    </p>
+                    <p class="text-xs panel-subtitle mt-1">Select text in PDF</p>
                   </div>
-                  <div class="flex-1 p-4 overflow-y-auto"></div>
+                  <div class="flex-1 p-4 overflow-y-auto" id="textSelectionContent">
+                    <div id="textSelectionPlaceholder" class="flex flex-col items-center justify-center h-full text-center py-8 space-y-3">
+                      <div class="icon-wrap w-12 h-12 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-hand-pointer text-lg"></i>
+                      </div>
+                      <p class="text-sm font-medium panel-title">Select text in the PDF</p>
+                      <p class="text-xs panel-subtitle leading-relaxed">Highlight any text in the viewer to get instant AI insights</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div
-            id="page-analysis"
-            class="page-content w-full h-full p-6 overflow-auto space-y-6 hidden">
+            </div><!-- /grid -->
+          </div><!-- /page-workspace -->
+
+          <!-- ═══ ANALYSIS PAGE ═══ -->
+          <div id="page-analysis" class="page-content w-full h-full p-5 overflow-auto space-y-5 hidden">
             <div>
-              <h2 class="text-2xl font-bold text-white">Deep Analysis</h2>
-              <p class="text-sm text-slate-400 mt-1">Comprehensive insights</p>
+              <h2 class="text-2xl font-bold panel-title">Deep Analysis</h2>
+              <p class="text-sm panel-subtitle mt-1">Comprehensive insights</p>
             </div>
-            <div class="grid grid-cols-3 gap-6">
-              <div
-                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div
-                  class="p-4 border-b border-slate-700 flex items-center justify-between">
-                  <h3 class="text-lg font-bold text-white">
-                    <i class="fas fa-sitemap mr-2"></i>Clusters
-                  </h3>
-                  <button
-                    id="clusterBtn"
-                    class="px-2 py-1 bg-cyan-500 text-white rounded-lg text-xs">
+            <div class="grid grid-cols-3 gap-5">
+              <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="doc-panel-header p-4 border-b border-slate-700 flex items-center justify-between">
+                  <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-sitemap"></i>Clusters</h3>
+                  <button id="clusterBtn" class="px-2.5 py-1 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg text-xs font-semibold">
                     <i class="fas fa-magic mr-1"></i>Cluster
                   </button>
                 </div>
                 <div class="p-4 h-96 overflow-y-auto">
                   <div id="clusters" class="space-y-2">
-                    <div class="text-center text-xs text-slate-500 py-3">
-                      Click button
-                    </div>
+                    <div class="text-center text-xs panel-subtitle py-3">Click button</div>
                   </div>
                 </div>
               </div>
-              <div
-                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div class="p-4 border-b border-slate-700">
-                  <h3 class="text-lg font-bold text-white">
-                    <i class="fas fa-chart-line mr-2"></i>Sections
-                  </h3>
+              <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="doc-panel-header p-4 border-b border-slate-700">
+                  <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-chart-line"></i>Sections</h3>
                 </div>
                 <div class="p-4 h-96 overflow-y-auto">
                   <div id="sections" class="space-y-2"></div>
                 </div>
               </div>
-              <div
-                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div class="p-4 border-b border-slate-700">
-                  <h3 class="text-lg font-bold text-white">
-                    <i class="fas fa-quote-left mr-2"></i>Insights
-                  </h3>
+              <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="doc-panel-header p-4 border-b border-slate-700">
+                  <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-quote-left"></i>Insights</h3>
                 </div>
                 <div class="p-4 h-96 overflow-y-auto">
                   <div id="snippets" class="space-y-2"></div>
                 </div>
               </div>
             </div>
-            <div
-              class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-              <div class="p-4 border-b border-slate-700">
-                <h3 class="text-lg font-bold text-white">
-                  <i class="fas fa-lightbulb mr-2"></i>AI Analysis
-                </h3>
+            <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+              <div class="doc-panel-header p-4 border-b border-slate-700">
+                <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-lightbulb"></i>AI Analysis</h3>
               </div>
               <div class="p-4">
-                <pre
-                  id="insights"
-                  class="text-sm text-slate-300 whitespace-pre-wrap bg-slate-900 p-4 rounded-xl border border-slate-700 min-h-40 max-h-80 overflow-y-auto"></pre>
+                <pre id="insights" class="text-sm whitespace-pre-wrap p-4 rounded-xl border min-h-40 max-h-80 overflow-y-auto"></pre>
               </div>
             </div>
-            <div
-              class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-              <div class="p-4 border-b border-slate-700">
-                <h3 class="text-lg font-bold text-white">
-                  <i class="fas fa-lightbulb mr-2"></i>Recommendations
-                </h3>
+            <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+              <div class="doc-panel-header p-4 border-b border-slate-700">
+                <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-lightbulb"></i>Recommendations</h3>
               </div>
               <div class="p-4">
-                <div
-                  id="recommendations"
-                  class="space-y-2 max-h-80 overflow-y-auto">
-                  <div class="text-center text-xs text-slate-500">
-                    Select document
-                  </div>
+                <div id="recommendations" class="space-y-2 max-h-80 overflow-y-auto">
+                  <div class="text-center text-xs panel-subtitle">Select document</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div
-            id="page-media"
-            class="page-content w-full h-full p-6 overflow-auto space-y-6 hidden">
+          <!-- ═══ MEDIA PAGE ═══ -->
+          <div id="page-media" class="page-content w-full h-full p-5 overflow-auto space-y-5 hidden">
             <div>
-              <h2 class="text-2xl font-bold text-white">Media Center</h2>
-              <p class="text-sm text-slate-400 mt-1">Podcast player & more</p>
+              <h2 class="text-2xl font-bold panel-title">Media Center</h2>
+              <p class="text-sm panel-subtitle mt-1">Podcast player & more</p>
             </div>
-            <div class="grid grid-cols-3 gap-6">
-              <div
-                class="col-span-2 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div class="p-4 border-b border-slate-700">
-                  <h3 class="text-lg font-bold text-white">
-                    <i class="fas fa-podcast mr-2"></i>Podcast
-                  </h3>
+            <div class="grid grid-cols-3 gap-5">
+              <div class="col-span-2 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="doc-panel-header p-4 border-b border-slate-700">
+                  <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-podcast"></i>Podcast</h3>
                 </div>
-                <div
-                  class="p-8 flex flex-col items-center justify-center space-y-6 min-h-96">
+                <div class="p-8 flex flex-col items-center justify-center space-y-6 min-h-96">
                   <div class="space-y-4 w-full max-w-sm">
                     <div class="flex items-center justify-center space-x-4">
-                      <button
-                        id="playPauseBtn"
-                        class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center shadow-lg">
+                      <button id="playPauseBtn" class="w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 text-white rounded-full flex items-center justify-center shadow-lg">
                         <i class="fas fa-play text-2xl"></i>
                       </button>
-                      <button
-                        id="stopBtn"
-                        class="w-12 h-12 bg-slate-700 text-slate-300 rounded-full flex items-center justify-center shadow-md">
+                      <button id="stopBtn" class="icon-btn w-12 h-12 rounded-full flex items-center justify-center shadow-md">
                         <i class="fas fa-stop"></i>
                       </button>
-                      <button
-                        id="speedBtn"
-                        class="w-12 h-12 bg-slate-700 text-slate-300 rounded-full flex items-center justify-center text-xs font-bold">
-                        1x
-                      </button>
+                      <button id="speedBtn" class="icon-btn w-12 h-12 rounded-full flex items-center justify-center text-xs font-bold">1x</button>
                     </div>
                     <div class="space-y-2">
-                      <div
-                        id="progressContainer"
-                        class="w-full bg-slate-700 rounded-full h-2 relative">
-                        <div
-                          id="audioProgress"
-                          class="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full"
-                          style="width: 0%"></div>
+                      <div id="progressContainer" class="w-full progress-track rounded-full h-2 relative">
+                        <div id="audioProgress" class="bg-gradient-to-r from-red-600 to-red-700 h-2 rounded-full" style="width: 0%"></div>
                       </div>
-                      <div
-                        class="flex items-center justify-between text-xs text-slate-400">
+                      <div class="flex items-center justify-between text-xs panel-subtitle">
                         <span id="currentTime">0:00</span>
                         <span id="totalTime">0:00</span>
                       </div>
                     </div>
-                    <audio
-                      id="player"
-                      preload="metadata"
-                      class="hidden"></audio>
+                    <audio id="player" preload="metadata" class="hidden"></audio>
                   </div>
                 </div>
               </div>
-              <div
-                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col">
-                <div class="p-4 border-b border-slate-700">
-                  <h3 class="text-lg font-bold text-white">
-                    <i class="fas fa-closed-captioning mr-2"></i>Transcript
-                  </h3>
+              <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col">
+                <div class="doc-panel-header p-4 border-b border-slate-700">
+                  <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-closed-captioning"></i>Transcript</h3>
                 </div>
                 <div class="flex-1 p-4 overflow-y-auto">
-                  <div id="transcript" class="text-sm text-slate-300">
-                    <div class="text-center text-slate-500 py-6">
-                      No transcript
-                    </div>
+                  <div id="transcript" class="text-sm panel-title">
+                    <div class="text-center panel-subtitle py-6">No transcript</div>
                   </div>
                 </div>
               </div>
             </div>
-            <div
-              class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-              <div class="p-4 border-b border-slate-700">
-                <h3 class="text-lg font-bold text-white">
-                  <i class="fas fa-wave-square mr-2"></i>Animation
-                </h3>
-                <p class="text-xs text-slate-400 mt-2">Experimental feature</p>
+            <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+              <div class="doc-panel-header p-4 border-b border-slate-700">
+                <h3 class="text-base font-bold panel-title flex items-center gap-2"><i class="fas fa-wave-square"></i>Animation</h3>
+                <p class="text-xs panel-subtitle mt-1">Experimental feature</p>
               </div>
               <div class="p-6 flex items-center justify-center min-h-80">
-                <div
-                  class="rounded-lg overflow-hidden max-w-lg w-full flex items-center justify-center"
-                  style="height: 300px">
-                  <video
-                    controls
-                    class="w-full h-full object-contain"
-                    style="background: #000">
+                <div class="rounded-xl overflow-hidden max-w-lg w-full flex items-center justify-center" style="height: 300px">
+                  <video id="podcastAnimationVideo" class="w-full h-full object-contain" style="background: #000">
                     <source src="/static/PodcastAnimation.mp4" />
                   </video>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+
+        </div><!-- /content-container -->
       </main>
     </div>
 
+    <!-- Overlays + toasts -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
     <div id="toast" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
-    <div
-      id="loadingOverlay"
-      class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center">
-      <div class="bg-slate-800 rounded-2xl p-8 border border-slate-700">
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center">
+      <div class="rounded-2xl p-8 border">
         <div class="flex items-center space-x-4">
-          <div
-            class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span class="text-slate-300 font-semibold">Processing...</span>
+          <div class="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style="border-color:rgba(232,35,74,0.2);border-top-color:#e8234a"></div>
+          <span class="font-semibold panel-title">Processing...</span>
         </div>
       </div>
     </div>

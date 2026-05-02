@@ -917,22 +917,21 @@ async function loadDocuments() {
       const li = document.createElement("li");
       li.className = "doc-item group cursor-pointer";
       li.innerHTML = `
-        <div class="flex items-center space-x-3 flex-1">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+            <i class="fas fa-file-pdf text-white text-xs"></i>
+          </div>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-              ${d.filename}
-            </div>
-            <div class="text-xs text-slate-500 dark:text-slate-400">
-              PDF Document
-            </div>
+            <div class="text-sm font-semibold truncate" style="color:var(--text-primary)">${d.filename.replace(/\.pdf$/i, "")}</div>
+            <div class="text-xs font-medium mt-0.5" style="color:var(--text-muted)">PDF · ${d.size ? Math.round(d.size/1024) + ' KB' : 'Document'}</div>
           </div>
         </div>
-        <div class="flex items-center space-x-2">
-          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200 opacity-100" title="View document">
-            <i class="fas fa-eye text-slate-600 dark:text-slate-400 text-xs"></i>
+        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <button class="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500 hover:text-white" style="background:var(--bg-accent);color:var(--text-muted)" title="View document">
+            <i class="fas fa-eye text-xs"></i>
           </button>
-          <button class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 opacity-100" title="Delete document" onclick="deleteDocument('${d.filename}')">
-            <i class="fas fa-trash text-red-600 dark:text-red-400 text-xs"></i>
+          <button class="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-600 hover:text-white" style="background:var(--bg-accent);color:var(--text-muted)" title="Delete document" onclick="deleteDocument('${d.filename}')">
+            <i class="fas fa-trash text-xs"></i>
           </button>
         </div>
       `;
@@ -3201,10 +3200,10 @@ function showTextSelectionHint() {
     hint.classList.add("translate-y-0", "opacity-100");
   }, 100);
 
-  // Hide the hint after 5 seconds
+  // Hide the hint after 3 seconds
   setTimeout(() => {
     hint.classList.add("translate-y-[-120%]", "opacity-0");
-  }, 5000);
+  }, 3000);
 }
 
 // Insights function

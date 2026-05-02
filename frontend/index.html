@@ -192,7 +192,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   </head>
-  <body class="min-h-screen font-['Inter'] antialiased bg-slate-950 text-slate-100 overflow-hidden">
+  <body class="font-['Inter'] antialiased bg-slate-950 text-slate-100 overflow-hidden" style="margin:0;padding:0;height:100vh;">
 
     <!-- Background glow orbs -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -200,7 +200,7 @@
       <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-red-800/8 to-red-900/4 rounded-full blur-3xl"></div>
     </div>
 
-    <div class="flex h-screen relative z-40">
+    <div class="flex h-screen w-screen relative z-40" style="overflow:hidden;">
 
       <!-- ═══ SIDEBAR ═══ -->
       <aside id="sidebar" class="sidebar w-64 bg-slate-900 border-r border-slate-800 flex flex-col overflow-hidden transition-transform duration-300">
@@ -299,12 +299,8 @@
             <button id="analyzeBtn" class="px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-1.5 shadow-md font-semibold">
               <i class="fas fa-search text-xs"></i><span>Analyze</span>
             </button>
-            <button id="insightsBtn" class="px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-1.5 shadow-md font-semibold disabled:opacity-40" disabled>
-              <i class="fas fa-lightbulb text-xs"></i><span>Insights</span>
-            </button>
-            <button id="podcastBtn" class="px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-1.5 shadow-md font-semibold disabled:opacity-40" disabled>
-              <i class="fas fa-podcast text-xs"></i><span>Podcast</span>
-            </button>
+            <button id="insightsBtn" class="hidden" disabled></button>
+            <button id="podcastBtn" class="hidden" disabled></button>
           </div>
         </header>
 

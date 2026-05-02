@@ -1,1 +1,32 @@
-{}
+{
+  "Assignment NO 9 soft copy.pdf": {
+    "file_hash": "b007c1c5a0f6621affb299f497b91f9b",
+    "chunk_count": 17,
+    "indexed_at": 1777693618.4305549,
+    "file_size": 479163
+  },
+  "Assignment NO 6 soft copy.pdf": {
+    "file_hash": "1dfb93912153a7316da169cccf46e995",
+    "chunk_count": 12,
+    "indexed_at": 1777693618.5012722,
+    "file_size": 1773310
+  },
+  "Assignment NO 8 soft copy.pdf": {
+    "file_hash": "964341678ab02b9c47fa5c25d571e7d2",
+    "chunk_count": 7,
+    "indexed_at": 1777693618.556766,
+    "file_size": 905468
+  },
+  "Assignment NO 7 soft copy.pdf": {
+    "file_hash": "dea90d318b82386514e00cf310db6398",
+    "chunk_count": 10,
+    "indexed_at": 1777693618.6116397,
+    "file_size": 975341
+  },
+  "Assignment NO 5 soft copy.pdf": {
+    "file_hash": "a945254e30913af07f1ecc24ff766e9c",
+    "chunk_count": 25,
+    "indexed_at": 1777693618.6949313,
+    "file_size": 1331585
+  }
+}

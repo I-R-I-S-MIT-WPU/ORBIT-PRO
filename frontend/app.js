@@ -330,7 +330,7 @@ async function loadPage(pageNum) {
     await createTextLayerForSinglePage(pdfPage, viewport);
 
     // Show text selection hint
-    showTextSelectionHint();
+    // showTextSelectionHint();
 
     // Update page count display
     updatePageCount();
@@ -465,7 +465,7 @@ async function loadAllPages() {
     setupTextSelectionEvents();
 
     // Show text selection hint
-    showTextSelectionHint();
+    // showTextSelectionHint();
   } catch (error) {
     console.error("Error loading all pages:", error);
     toast("Failed to load PDF pages. Please try again.", "error");
@@ -823,7 +823,10 @@ function _updateThemeIcon(theme) {
   if (!t) return;
   const icon = t.querySelector("i");
   if (icon) {
-    icon.className = theme === "dark" ? "fas fa-moon text-slate-400" : "fas fa-sun text-yellow-400";
+    icon.className =
+      theme === "dark"
+        ? "fas fa-moon text-slate-400"
+        : "fas fa-sun text-yellow-400";
   } else {
     t.textContent = theme === "dark" ? "🌙" : "☀️";
   }
@@ -923,7 +926,7 @@ async function loadDocuments() {
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-semibold truncate" style="color:var(--text-primary)">${d.filename.replace(/\.pdf$/i, "")}</div>
-            <div class="text-xs font-medium mt-0.5" style="color:var(--text-muted)">PDF · ${d.size ? Math.round(d.size/1024) + ' KB' : 'Document'}</div>
+            <div class="text-xs font-medium mt-0.5" style="color:var(--text-muted)">PDF · ${d.size ? Math.round(d.size / 1024) + " KB" : "Document"}</div>
           </div>
         </div>
         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
